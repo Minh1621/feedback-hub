@@ -415,7 +415,7 @@ label{
   <div class="topbar">
     <div class="topbar-title">All Brands</div>
     <button class="btn btn-sm btn-primary" onclick="openAddBrand()">+ Brand</button>
-    <button class="btn btn-ghost btn-sm" onclick="goTo('s-settings')" style="padding:6px 8px;">
+    <button class="btn btn-ghost btn-sm" onclick="applySettingsToUI();goTo('s-settings')" style="padding:6px 8px;">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <circle cx="12" cy="12" r="3"/>
         <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
@@ -763,16 +763,16 @@ label{
       <div style="font-size:13px;font-weight:500;margin-bottom:8px;">Notify me when:</div>
       <div id="notif-options">
         <label style="display:flex;align-items:center;gap:10px;text-transform:none;font-size:13px;color:var(--text);margin-bottom:12px;cursor:pointer;">
-          <input type="checkbox" id="notif-on-submit" checked style="width:16px;height:16px;accent-color:var(--accent);"/> Store submits feedback
+          <input type="checkbox" id="notif-on-submit" checked onchange="onNotifCheckChange()"/> Store submits feedback
         </label>
         <label style="display:flex;align-items:center;gap:10px;text-transform:none;font-size:13px;color:var(--text);margin-bottom:12px;cursor:pointer;">
-          <input type="checkbox" id="notif-all-done" checked style="width:16px;height:16px;accent-color:var(--accent);"/> All stores in a report have responded
+          <input type="checkbox" id="notif-all-done" checked onchange="onNotifCheckChange()"/> All stores in a report have responded
         </label>
         <label style="display:flex;align-items:center;gap:10px;text-transform:none;font-size:13px;color:var(--text);margin-bottom:12px;cursor:pointer;">
-          <input type="checkbox" id="notif-brand-complete" checked style="width:16px;height:16px;accent-color:var(--accent);"/> All reports in a brand are complete
+          <input type="checkbox" id="notif-brand-complete" checked onchange="onNotifCheckChange()"/> All reports in a brand are complete
         </label>
         <label style="display:flex;align-items:center;gap:10px;text-transform:none;font-size:13px;color:var(--text);margin-bottom:4px;cursor:pointer;">
-          <input type="checkbox" id="notif-store-complete" checked style="width:16px;height:16px;accent-color:var(--accent);"/> A specific store completes all their reports
+          <input type="checkbox" id="notif-store-complete" checked onchange="onNotifCheckChange()"/> A specific store completes all their reports
         </label>
       </div>
     </div>
@@ -851,8 +851,9 @@ label{
       </div>
       <div id="rv-notif-email-section" style="display:none;">
         <div class="field" style="margin-bottom:10px;">
-          <label>Notification email</label>
+          <label>Your notification email</label>
           <input type="email" id="rv-notif-email" placeholder="e.g. store@company.com"/>
+          <div style="font-size:11px;color:var(--text3);margin-top:5px;">You will receive alerts and reminders at this email</div>
         </div>
         <button class="btn btn-primary btn-sm" style="width:100%;margin-bottom:4px;" onclick="saveRvNotif()">Save email</button>
         <div id="rv-notif-msg" style="margin-top:8px;"></div>
@@ -861,13 +862,13 @@ label{
     <div class="card" style="margin-bottom:18px;">
       <div style="font-size:13px;font-weight:500;margin-bottom:10px;">Notify me when:</div>
       <label style="display:flex;align-items:center;gap:10px;text-transform:none;font-size:13px;color:var(--text);margin-bottom:12px;cursor:pointer;">
-        <input type="checkbox" id="rv-notif-new-report" checked style="width:16px;height:16px;accent-color:var(--accent);"/> A new report is assigned to my store
+        <input type="checkbox" id="rv-notif-new-report" checked/> A new report is assigned to my store
       </label>
       <label style="display:flex;align-items:center;gap:10px;text-transform:none;font-size:13px;color:var(--text);margin-bottom:12px;cursor:pointer;">
-        <input type="checkbox" id="rv-notif-reminder" checked style="width:16px;height:16px;accent-color:var(--accent);"/> Reminder when I haven't responded
+        <input type="checkbox" id="rv-notif-reminder" checked/> Reminder when I haven't responded
       </label>
       <label style="display:flex;align-items:center;gap:10px;text-transform:none;font-size:13px;color:var(--text);margin-bottom:4px;cursor:pointer;">
-        <input type="checkbox" id="rv-notif-alert" checked style="width:16px;height:16px;accent-color:var(--accent);"/> Admin sends me an alert
+        <input type="checkbox" id="rv-notif-alert" checked/> Admin sends me an alert
       </label>
     </div>
 
@@ -1186,6 +1187,7 @@ async function restoreSession(){
 
 // Run on page load
 window.addEventListener('load', async ()=>{
+  loadSettingsFromStorage();
   const restored = await restoreSession();
   if(!restored){
     goTo('s-login');
@@ -2269,12 +2271,18 @@ function toggleRvNotif(){
     track.style.background='var(--bg3)'; knob.style.transform=''; knob.style.background='var(--text3)'; section.style.display='none';
   }
 }
-function saveRvNotif(){
+async function saveRvNotif(){
   const email=document.getElementById('rv-notif-email').value.trim();
   const msg=document.getElementById('rv-notif-msg');
   if(!email||!email.includes('@')){ msg.innerHTML='<div class="alert alert-danger">Please enter a valid email.</div>'; return; }
-  msg.innerHTML='<div class="alert alert-success">✓ Email saved!</div>';
-  setTimeout(()=>{ msg.innerHTML=''; },2500);
+  // Save email to store record
+  const s=reviewerStore();
+  if(s){
+    s.email=email;
+    await api('PUT',`/api/stores/${s.id}`,{...s});
+  }
+  msg.innerHTML='<div class="alert alert-success">✓ Email saved! You will receive alerts at '+email+'</div>';
+  setTimeout(()=>{ msg.innerHTML=''; },3000);
 }
 
 function adminViewStorePass(){
@@ -2299,6 +2307,19 @@ function openRvSettings(){
   document.getElementById('rv-settings-user').textContent=s.username;
   document.getElementById('rv-pass-revealed').style.display='none';
   document.getElementById('rv-pass-masked').style.display='';
+  document.getElementById('rv-change-pass-form').style.display='none';
+  // Pre-fill email if already saved
+  if(s.email){
+    document.getElementById('rv-notif-email').value=s.email;
+    // Auto-enable toggle if email exists
+    const track=document.getElementById('rv-notif-toggle');
+    const knob=document.getElementById('rv-notif-knob');
+    const section=document.getElementById('rv-notif-email-section');
+    track.style.background='var(--accent)';
+    knob.style.transform='translateX(16px)';
+    knob.style.background='#fff';
+    section.style.display='';
+  }
   goTo('s-rv-settings');
 }
 
@@ -2465,9 +2486,13 @@ function alertOneStore(rid, sid){
   if(!s) return;
   showAlertConfirm(`Send reminder to ${s.name}?`, ()=>{ sendReminder(s, r, b); });
 }
-function sendReminder(store, report, brand){
-  // In production this sends an email/push — for now show a toast
-  showToast(`🔔 Reminder sent to ${store.name}`);
+async function sendReminder(store, report, brand){
+  const result = await api('POST','/api/alert',{report_id:report.id, store_id:store.id});
+  if(result.sent){
+    showToast(`🔔 Reminder sent to ${store.name}`);
+  } else {
+    showToast(`🔔 Alert sent — no email set for ${store.name}`);
+  }
 }
 function showAlertConfirm(msg, onConfirm){
   showGenericConfirm(msg, onConfirm);
@@ -2481,42 +2506,99 @@ function showToast(msg){
 }
 
 /* ===== SETTINGS ===== */
-let SETTINGS = { notifEnabled: false, notifEmail: '', notifOnSubmit: true, notifAllDone: true };
+let SETTINGS = {
+  notifEnabled: false, notifEmail: '',
+  notifOnSubmit: true, notifAllDone: true,
+  notifBrandComplete: true, notifStoreComplete: true
+};
+
+function saveSettingsToStorage(){
+  try{ localStorage.setItem('fh_settings', JSON.stringify(SETTINGS)); }catch(e){}
+}
+
+function loadSettingsFromStorage(){
+  try{
+    const raw=localStorage.getItem('fh_settings');
+    if(!raw) return;
+    const saved=JSON.parse(raw);
+    SETTINGS={...SETTINGS,...saved};
+  }catch(e){}
+}
+
+function applySettingsToUI(){
+  // Notif toggle
+  const track=document.getElementById('notif-toggle');
+  const knob=document.getElementById('notif-knob');
+  const section=document.getElementById('notif-email-section');
+  if(!track) return;
+  if(SETTINGS.notifEnabled){
+    track.style.background='var(--accent)';
+    knob.style.transform='translateX(16px)';
+    knob.style.background='#fff';
+    section.style.display='';
+  } else {
+    track.style.background='var(--bg3)';
+    knob.style.transform='';
+    knob.style.background='var(--text3)';
+    section.style.display='none';
+  }
+  // Email
+  const emailEl=document.getElementById('notif-email');
+  if(emailEl && SETTINGS.notifEmail) emailEl.value=SETTINGS.notifEmail;
+  // Checkboxes
+  const boxes={
+    'notif-on-submit': SETTINGS.notifOnSubmit,
+    'notif-all-done': SETTINGS.notifAllDone,
+    'notif-brand-complete': SETTINGS.notifBrandComplete,
+    'notif-store-complete': SETTINGS.notifStoreComplete,
+  };
+  Object.entries(boxes).forEach(([id,val])=>{
+    const el=document.getElementById(id);
+    if(el) el.checked=val;
+  });
+}
 
 function toggleNotif(){
-  SETTINGS.notifEnabled = !SETTINGS.notifEnabled;
-  const knob = document.getElementById('notif-knob');
-  const track = document.getElementById('notif-toggle');
-  const section = document.getElementById('notif-email-section');
-  if(SETTINGS.notifEnabled){
-    track.style.background = 'var(--accent)';
-    knob.style.transform = 'translateX(16px)';
-    knob.style.background = '#fff';
-    section.style.display = '';
-  } else {
-    track.style.background = 'var(--bg3)';
-    knob.style.transform = '';
-    knob.style.background = 'var(--text3)';
-    section.style.display = 'none';
-  }
+  SETTINGS.notifEnabled=!SETTINGS.notifEnabled;
+  applySettingsToUI();
+  saveSettingsToStorage();
 }
-function saveNotifSettings(){
-  const email = document.getElementById('notif-email').value.trim();
-  const msg = document.getElementById('notif-msg');
-  if(!email || !email.includes('@')){ msg.innerHTML='<div class="alert alert-danger">Please enter a valid email.</div>'; return; }
-  SETTINGS.notifEmail = email;
-  SETTINGS.notifOnSubmit = document.getElementById('notif-on-submit').checked;
-  SETTINGS.notifAllDone = document.getElementById('notif-all-done').checked;
-  SETTINGS.notifBrandComplete = document.getElementById('notif-brand-complete').checked;
-  SETTINGS.notifStoreComplete = document.getElementById('notif-store-complete').checked;
-  msg.innerHTML='<div class="alert alert-success">✓ Email saved! Notifications will be sent to '+email+'</div>';
+
+async function saveNotifSettings(){
+  const email=document.getElementById('notif-email').value.trim();
+  const msg=document.getElementById('notif-msg');
+  if(!email||!email.includes('@')){ msg.innerHTML='<div class="alert alert-danger">Please enter a valid email.</div>'; return; }
+  SETTINGS.notifEmail=email;
+  SETTINGS.notifOnSubmit=document.getElementById('notif-on-submit').checked;
+  SETTINGS.notifAllDone=document.getElementById('notif-all-done').checked;
+  SETTINGS.notifBrandComplete=document.getElementById('notif-brand-complete').checked;
+  SETTINGS.notifStoreComplete=document.getElementById('notif-store-complete').checked;
+  saveSettingsToStorage();
+  await api('PUT','/api/admin/password',{username:ADMIN_CREDS.username,password:ADMIN_CREDS.password,notif_email:email});
+  msg.innerHTML='<div class="alert alert-success">✓ Settings saved!</div>';
   setTimeout(()=>{ msg.innerHTML=''; },3000);
 }
-function testNotif(){
-  const email = document.getElementById('notif-email').value.trim();
-  const msg = document.getElementById('notif-msg');
+
+// Also save when any checkbox changes
+function onNotifCheckChange(){
+  SETTINGS.notifOnSubmit=document.getElementById('notif-on-submit')?.checked??true;
+  SETTINGS.notifAllDone=document.getElementById('notif-all-done')?.checked??true;
+  SETTINGS.notifBrandComplete=document.getElementById('notif-brand-complete')?.checked??true;
+  SETTINGS.notifStoreComplete=document.getElementById('notif-store-complete')?.checked??true;
+  saveSettingsToStorage();
+}
+
+async function testNotif(){
+  const email=document.getElementById('notif-email').value.trim();
+  const msg=document.getElementById('notif-msg');
   if(!email){ msg.innerHTML='<div class="alert alert-danger">Please enter an email first.</div>'; return; }
-  msg.innerHTML='<div class="alert alert-success">✓ Test notification sent to '+email+' (demo mode — connect a server to enable real emails)</div>';
+  // Send real test email via Resend
+  const result=await api('POST','/api/test-email',{email});
+  if(result.ok){
+    msg.innerHTML='<div class="alert alert-success">✓ Test email sent to '+email+'</div>';
+  } else {
+    msg.innerHTML='<div class="alert alert-danger">Failed to send — check your email address.</div>';
+  }
   setTimeout(()=>{ msg.innerHTML=''; },4000);
 }
 let ADMIN_CREDS = { username: 'admin', password: '1234' };
