@@ -1,0 +1,2562 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+<title>QC — Quality Control</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+/* ===== THEME TOKENS ===== */
+[data-theme="dark"] {
+  --bg:#0d0d10; --bg2:#161619; --bg3:#1e1e24; --bg4:#26262e;
+  --border:#2a2a35; --border2:#35353f;
+  --text:#f2f0fa; --text2:#8e8ca0; --text3:#54526a;
+  --shadow:rgba(0,0,0,.4);
+  --inp-bg:#161619;
+  --alert-danger-bg:#2a1010; --alert-danger-border:#3a1818;
+  --alert-success-bg:#0e2a1a; --alert-success-border:#1a3828;
+  --badge-partial-bg:#1a1a30; --badge-done-bg:#0e2a1a; --badge-none-bg:#1e1e24;
+  --topbar-bg:#0d0d10;
+}
+[data-theme="light"] {
+  --bg:#f2f2f7; --bg2:#ffffff; --bg3:#f0f0f5; --bg4:#e8e8f0;
+  --border:#e0e0ea; --border2:#cacad8;
+  --text:#1a1a2e; --text2:#6b6980; --text3:#a0a0b8;
+  --shadow:rgba(0,0,0,.08);
+  --inp-bg:#ffffff;
+  --alert-danger-bg:#fff0f0; --alert-danger-border:#ffd0d0;
+  --alert-success-bg:#edfaf3; --alert-success-border:#c0e8d0;
+  --badge-partial-bg:#ededff; --badge-done-bg:#edfaf3; --badge-none-bg:#f0f0f5;
+  --topbar-bg:#ffffff;
+}
+:root{
+  --accent:#7c6fff; --accent2:#5b4fe8;
+  --success:#20c070; --danger:#ff5252; --warn:#f5a623;
+  --r:12px; --rl:16px;
+}
+
+/* ===== RESET & BASE ===== */
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html{font-size:16px;}
+body{
+  font-family:'DM Sans',sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  min-height:100vh;
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+  transition:background .2s,color .2s;
+  overscroll-behavior:none;
+}
+
+/* ===== LAYOUT — fully responsive ===== */
+.wrap{
+  width:100%;
+  max-width:520px;
+  margin:0 auto;
+  min-height:100vh;
+  position:relative;
+  background:var(--bg);
+}
+@media(min-width:768px){
+  body{background:var(--bg3);}
+  .wrap{
+    min-height:100vh;
+    box-shadow:0 0 0 1px var(--border),0 8px 40px var(--shadow);
+  }
+}
+@media(min-width:1200px){
+  .wrap{max-width:560px;}
+}
+
+.screen{display:none;}
+.screen.active{display:block;animation:fadeIn .2s ease;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+/* ===== TOPBAR ===== */
+.topbar{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:12px 16px;
+  border-bottom:1px solid var(--border);
+  background:var(--topbar-bg);
+  position:sticky;
+  top:0;
+  z-index:30;
+  transition:background .2s,border-color .2s;
+  min-height:52px;
+}
+.topbar-title{
+  font-size:15px;
+  font-weight:700;
+  flex:1;
+  color:var(--text);
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.back-btn{
+  display:flex;
+  align-items:center;
+  gap:4px;
+  font-size:13px;
+  color:var(--text2);
+  cursor:pointer;
+  background:none;
+  border:none;
+  padding:4px 0;
+  font-family:inherit;
+  flex-shrink:0;
+  font-weight:500;
+}
+.back-btn:hover{color:var(--accent);}
+
+/* ===== THEME TOGGLE ===== */
+.theme-toggle{
+  width:38px;height:22px;border-radius:11px;
+  background:var(--bg3);border:1.5px solid var(--border2);
+  cursor:pointer;position:relative;flex-shrink:0;
+  transition:background .25s;
+}
+.theme-toggle::after{
+  content:'';position:absolute;top:3px;left:3px;
+  width:14px;height:14px;border-radius:50%;
+  background:var(--accent);transition:transform .25s;
+}
+[data-theme="light"] .theme-toggle{background:var(--accent);}
+[data-theme="light"] .theme-toggle::after{transform:translateX(16px);background:#fff;}
+
+/* ===== BUTTONS ===== */
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  padding:10px 18px;border-radius:var(--r);
+  border:1.5px solid var(--border2);background:var(--bg2);
+  cursor:pointer;font-size:13px;font-weight:600;
+  font-family:inherit;color:var(--text);
+  transition:all .15s;white-space:nowrap;
+  -webkit-user-select:none;user-select:none;
+}
+.btn:active{transform:scale(.97);}
+.btn:hover{background:var(--bg3);}
+.btn-primary{background:var(--accent);color:#fff;border-color:var(--accent);box-shadow:0 2px 8px rgba(124,111,255,.3);}
+.btn-primary:hover{background:var(--accent2);border-color:var(--accent2);}
+.btn-primary:active{transform:scale(.97);}
+.btn-ghost{background:transparent;border-color:transparent;color:var(--text2);}
+.btn-ghost:hover{background:var(--bg3);color:var(--text);}
+.btn-danger{background:transparent;border-color:var(--border2);color:var(--danger);}
+.btn-danger:hover{background:var(--alert-danger-bg);border-color:var(--danger);}
+.btn-sm{padding:7px 13px;font-size:12px;border-radius:9px;}
+.btn-xs{padding:4px 10px;font-size:11px;border-radius:7px;}
+.btn-full{width:100%;padding:13px;font-size:14px;border-radius:var(--rl);}
+
+/* ===== INPUTS ===== */
+input:not([type="checkbox"]):not([type="radio"]),textarea,select{
+  width:100%;padding:11px 14px;
+  border:1.5px solid var(--border2);
+  border-radius:var(--r);
+  background:var(--inp-bg);color:var(--text);
+  font-size:15px;font-family:inherit;
+  transition:border-color .15s,background .2s,box-shadow .15s;
+  appearance:none;-webkit-appearance:none;
+}
+input[type="checkbox"],input[type="radio"]{
+  width:18px;height:18px;
+  flex-shrink:0;cursor:pointer;
+  accent-color:var(--accent);
+  appearance:auto;-webkit-appearance:auto;
+  border:none;padding:0;background:none;
+}
+select{
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23a0a0b8' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;
+  background-position:right 14px center;
+  padding-right:36px;
+}
+input:not([type="checkbox"]):not([type="radio"]):focus,textarea:focus,select:focus{
+  outline:none;
+  border-color:var(--accent);
+  box-shadow:0 0 0 3px rgba(124,111,255,.12);
+}
+input:not([type="checkbox"]):not([type="radio"])::placeholder,textarea::placeholder{color:var(--text3);}
+textarea{resize:vertical;min-height:76px;line-height:1.65;}
+label{
+  font-size:11px;font-weight:700;color:var(--text2);
+  display:block;margin-bottom:7px;
+  letter-spacing:.05em;text-transform:uppercase;
+}
+.field{margin-bottom:16px;}
+
+/* ===== CARDS ===== */
+.card{
+  background:var(--bg2);
+  border:1.5px solid var(--border);
+  border-radius:var(--rl);
+  padding:16px;
+  margin-bottom:12px;
+  transition:border-color .15s,background .2s;
+}
+.card-click{cursor:pointer;}
+.card-click:hover{border-color:var(--accent);box-shadow:0 2px 12px var(--shadow);}
+.card-click:active{transform:scale(.99);}
+
+/* ===== BADGE ===== */
+.badge{
+  display:inline-flex;align-items:center;gap:4px;
+  padding:4px 10px;border-radius:20px;
+  font-size:11px;font-weight:700;
+  letter-spacing:.02em;white-space:nowrap;
+}
+.badge-none{background:var(--badge-none-bg);color:var(--text3);}
+.badge-partial{background:var(--badge-partial-bg);color:var(--accent);}
+.badge-done{background:var(--badge-done-bg);color:var(--success);}
+.badge-pending{background:#fff3e0;color:var(--warn);}
+[data-theme="dark"] .badge-pending{background:#2a1f00;}
+
+/* ===== TABS ===== */
+.tabs{display:flex;border-bottom:1.5px solid var(--border);margin-bottom:18px;}
+.tab{
+  flex:1;text-align:center;
+  padding:12px 8px;font-size:13px;font-weight:600;
+  cursor:pointer;border-bottom:2.5px solid transparent;
+  color:var(--text2);transition:color .15s,border-color .15s;
+}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+
+/* ===== FILTERS ===== */
+.filters{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;}
+.fbtn{
+  padding:6px 14px;border-radius:20px;
+  font-size:12px;font-weight:600;
+  border:1.5px solid var(--border2);
+  background:var(--bg2);color:var(--text2);
+  cursor:pointer;font-family:inherit;
+  transition:all .15s;
+}
+.fbtn.active{background:var(--accent);color:#fff;border-color:var(--accent);box-shadow:0 2px 8px rgba(124,111,255,.25);}
+.fbtn:hover:not(.active){background:var(--bg3);}
+
+/* ===== ALERTS ===== */
+.alert{
+  padding:12px 15px;border-radius:var(--r);
+  font-size:13px;margin-bottom:14px;
+  font-weight:500;line-height:1.5;
+}
+.alert-danger{background:var(--alert-danger-bg);color:var(--danger);border:1.5px solid var(--alert-danger-border);}
+.alert-success{background:var(--alert-success-bg);color:var(--success);border:1.5px solid var(--alert-success-border);}
+
+/* ===== MISC ===== */
+.empty{text-align:center;padding:52px 20px;color:var(--text3);font-size:14px;}
+.empty-icon{font-size:40px;margin-bottom:12px;}
+.prog-wrap{background:var(--bg3);border-radius:4px;height:5px;overflow:hidden;}
+.prog-bar{height:5px;border-radius:4px;transition:width .5s ease;}
+.dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;display:inline-block;}
+.sec-label{
+  font-size:11px;font-weight:700;color:var(--text3);
+  text-transform:uppercase;letter-spacing:.07em;
+  margin-bottom:10px;
+}
+.content{padding:16px 16px 32px;}
+.store-row{
+  display:flex;align-items:center;gap:10px;
+  padding:11px 0;border-bottom:1px solid var(--border);
+}
+.store-row:last-child{border-bottom:none;}
+
+/* ===== BRAND CARD ===== */
+.brand-card{
+  background:var(--bg2);border:1.5px solid var(--border);
+  border-radius:var(--rl);overflow:hidden;
+  margin-bottom:14px;cursor:pointer;
+  transition:border-color .15s,box-shadow .15s;
+}
+.brand-card:hover{border-color:var(--border2);box-shadow:0 4px 16px var(--shadow);}
+.brand-card:active{transform:scale(.99);}
+.brand-header{display:flex;align-items:center;gap:12px;padding:15px 16px;}
+.brand-logo{
+  width:46px;height:46px;border-radius:11px;
+  flex-shrink:0;display:flex;align-items:center;
+  justify-content:center;font-size:21px;overflow:hidden;
+}
+.brand-stats{
+  display:flex;gap:14px;padding:10px 16px;
+  border-top:1px solid var(--border);background:var(--bg3);
+}
+.brand-stat{font-size:12px;color:var(--text2);}
+.brand-stat strong{color:var(--text);font-weight:600;}
+
+/* ===== SWATCHES ===== */
+.swatches{display:flex;gap:9px;flex-wrap:wrap;margin-top:6px;}
+.swatch{
+  width:30px;height:30px;border-radius:50%;
+  cursor:pointer;border:2.5px solid transparent;
+  transition:all .15s;
+}
+.swatch.picked{border-color:var(--text);transform:scale(1.18);box-shadow:0 2px 8px var(--shadow);}
+
+/* ===== UPLOAD ZONE ===== */
+.upload-zone{
+  border:2px dashed var(--border2);border-radius:var(--r);
+  padding:24px 20px;text-align:center;cursor:pointer;
+  transition:all .15s;
+}
+.upload-zone:hover{border-color:var(--accent);background:rgba(124,111,255,.04);}
+
+/* ===== FEEDBACK ITEMS ===== */
+.fb-item{background:var(--bg3);border-radius:var(--r);padding:14px;margin-bottom:9px;}
+.fb-meta{font-size:12px;color:var(--text2);margin-bottom:6px;display:flex;align-items:center;gap:7px;flex-wrap:wrap;}
+.fb-photos{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;}
+.fb-photo{width:64px;height:64px;border-radius:8px;object-fit:cover;border:1.5px solid var(--border);cursor:pointer;transition:transform .15s;}
+.fb-photo:hover{transform:scale(1.05);}
+
+/* ===== REFERENCE ITEMS ===== */
+.ref-item{background:var(--bg2);border:1.5px solid var(--border);border-radius:var(--r);padding:14px;margin-bottom:9px;position:relative;}
+.ref-item-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+.ref-badge{font-size:10px;font-weight:700;padding:2px 9px;border-radius:20px;background:var(--badge-partial-bg);color:var(--accent);}
+.ref-photos{display:flex;gap:6px;margin-top:9px;flex-wrap:wrap;}
+.ref-photo{width:64px;height:64px;border-radius:8px;object-fit:cover;border:1.5px solid var(--border);}
+
+/* ===== PHOTO THUMB ===== */
+.photo-grid{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;}
+.photo-thumb-wrap{position:relative;width:72px;height:72px;}
+.photo-thumb{width:72px;height:72px;border-radius:9px;object-fit:cover;border:1.5px solid var(--border);cursor:pointer;}
+.photo-remove{
+  position:absolute;top:-6px;right:-6px;
+  width:20px;height:20px;border-radius:50%;
+  background:var(--danger);color:#fff;font-size:11px;
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;border:none;font-family:inherit;
+  box-shadow:0 2px 4px rgba(0,0,0,.3);
+}
+
+/* ===== PDF BOX ===== */
+#fb-pdf-box:hover,#rv-pdf-box:hover{border-color:var(--accent)!important;background:rgba(124,111,255,.04)!important;}
+
+/* ===== LIGHTBOX ===== */
+.lightbox{
+  display:none;position:fixed;inset:0;
+  background:rgba(0,0,0,.9);z-index:100;
+  align-items:center;justify-content:center;
+  padding:16px;
+}
+.lightbox.open{display:flex;}
+.lightbox img{
+  max-width:min(90vw,480px);max-height:88vh;
+  border-radius:12px;object-fit:contain;
+}
+.lightbox-close{
+  position:fixed;top:16px;right:16px;
+  width:38px;height:38px;border-radius:50%;
+  background:rgba(255,255,255,.18);color:#fff;
+  font-size:18px;display:flex;align-items:center;
+  justify-content:center;cursor:pointer;border:none;
+  backdrop-filter:blur(4px);
+}
+
+/* ===== GLOBAL STATS GRID ===== */
+#global-stats .stat-card{
+  background:var(--bg2);border:1.5px solid var(--border);
+  border-radius:var(--rl);padding:14px 12px;
+  transition:background .2s;
+}
+
+/* ===== SCROLLBAR ===== */
+::-webkit-scrollbar{width:4px;height:4px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px;}
+
+.content{padding:16px 16px calc(env(safe-area-inset-bottom) + 32px);}
+.topbar{padding-top:max(12px,env(safe-area-inset-top));}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<!-- LIGHTBOX -->
+<div class="lightbox" id="lightbox" onclick="closeLightbox()">
+  <button class="lightbox-close" onclick="closeLightbox()">✕</button>
+  <img id="lightbox-img" src="" alt=""/>
+</div>
+
+<!-- ======= LOGIN ======= -->
+<div class="screen active" id="s-login">
+  <div style="padding:56px 26px 0;">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:36px;">
+      <div style="width:52px;height:52px;border-radius:12px;overflow:hidden;flex-shrink:0;"><img src="data:image/png;base64,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" style="width:100%;height:100%;object-fit:cover;"/></div>
+      <div>
+        <div style="font-size:24px;font-weight:700;">FEEDBACK HUB</div>
+        <div style="font-size:13px;color:var(--text2);">Multi-Brand Inspection</div>
+      </div>
+    </div>
+    <div id="login-err" class="alert alert-danger" style="display:none;"></div>
+    <div class="field"><label>Username</label><input type="text" id="login-u" placeholder="Username"/></div>
+    <div class="field"><label>Password</label><input type="password" id="login-p" placeholder="••••"/></div>
+    <button class="btn btn-primary btn-full" onclick="doLogin()">Sign in →</button>
+
+  </div>
+  <!-- Support contact fixed at bottom -->
+  <div style="position:fixed;bottom:0;left:0;right:0;display:flex;justify-content:center;padding:16px;pointer-events:none;z-index:10;">
+    <a href="https://t.me/lmig25" target="_blank" style="pointer-events:auto;display:flex;align-items:center;gap:8px;padding:10px 18px;background:var(--bg2);border:1px solid var(--border);border-radius:50px;text-decoration:none;box-shadow:0 2px 12px var(--shadow);">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="#2AABEE"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12L7.88 13.264l-2.962-.924c-.643-.204-.657-.643.136-.953l11.57-4.461c.537-.194 1.006.131.27.295z"/></svg>
+      <span style="font-size:13px;color:var(--text2);">Support</span>
+    </a>
+  </div>
+</div>
+
+<!-- ======= HOME ======= -->
+<div class="screen" id="s-home">
+  <div class="topbar">
+    <div class="topbar-title">All Brands</div>
+    <button class="btn btn-sm btn-primary" onclick="openAddBrand()">+ Brand</button>
+    <button class="btn btn-ghost btn-sm" onclick="goTo('s-settings')" style="padding:6px 8px;">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+      </svg>
+    </button>
+    <button class="btn btn-ghost btn-sm" onclick="doLogout()">Out</button>
+  </div>
+  <div class="content">
+    <div id="global-stats" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:20px;"></div>
+    <div class="sec-label">Brands</div>
+    <div id="brand-list"></div>
+  </div>
+</div>
+
+<!-- ======= BRAND DETAIL ======= -->
+<div class="screen" id="s-brand">
+  <div class="topbar">
+    <button class="back-btn" onclick="goTo('s-home')">&#8592; Back</button>
+    <div class="topbar-title" id="brand-topbar-title">Brand</div>
+    <button class="btn btn-sm" onclick="editBrand()">Edit</button>
+  </div>
+  <div class="content">
+    <div id="brand-hero" style="margin-bottom:18px;"></div>
+    <div class="tabs">
+      <div class="tab active" id="btab-reports" onclick="brandTab('reports')">Reports</div>
+      <div class="tab" id="btab-stores" onclick="brandTab('stores')">Stores</div>
+    </div>
+    <div id="bpane-reports">
+      <div class="filters">
+        <button class="fbtn active" id="bf-all" onclick="setBF('all')">All</button>
+        <button class="fbtn" id="bf-pending" onclick="setBF('pending')">Pending</button>
+        <button class="fbtn" id="bf-partial" onclick="setBF('partial')">Partial</button>
+        <button class="fbtn" id="bf-done" onclick="setBF('done')">Complete</button>
+      </div>
+      <button class="btn btn-primary btn-sm" style="width:100%;margin-bottom:14px;" onclick="goUpload()">+ Upload report</button>
+      <div id="brand-report-list"></div>
+    </div>
+    <div id="bpane-stores" style="display:none;">
+      <button class="btn btn-primary btn-sm" style="width:100%;margin-bottom:14px;" onclick="goAddStore()">+ Add store</button>
+      <div id="brand-store-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ======= STORE DETAIL ======= -->
+<div class="screen" id="s-store-detail">
+  <div class="topbar">
+    <button class="back-btn" onclick="goTo('s-brand')">&#8592; Back</button>
+    <div class="topbar-title" id="sd-store-name">Store</div>
+    <button class="btn btn-sm" onclick="goEditStore()">Edit</button>
+  </div>
+  <div class="content">
+    <div id="sd-store-card" style="margin-bottom:14px;"></div>
+    <button class="btn btn-primary btn-sm" style="width:100%;margin-bottom:18px;" onclick="goUploadForStore(DB.currentStoreId)">+ Upload report for this store</button>
+    <div class="sec-label">Reports sent to this store</div>
+    <div id="sd-report-list"></div>
+  </div>
+</div>
+
+<!-- ======= EDIT STORE ======= -->
+<div class="screen" id="s-edit-store">
+  <div class="topbar">
+    <button class="back-btn" onclick="goTo('s-store-detail')">&#8592; Back</button>
+    <div class="topbar-title">Edit store</div>
+  </div>
+  <div class="content">
+    <div class="field"><label>Store name</label><input type="text" id="es-name" placeholder="e.g. Central Branch"/></div>
+    <div class="field">
+      <label>Store logo</label>
+      <div style="display:flex;align-items:center;gap:14px;">
+        <div id="es-logo-preview" style="width:56px;height:56px;border-radius:10px;border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:22px;overflow:hidden;background:var(--bg3);">🏷️</div>
+        <div>
+          <button class="btn btn-sm" onclick="document.getElementById('es-logo-input').click()">Change logo</button>
+          <input type="file" id="es-logo-input" accept="image/*" style="display:none;" onchange="onEsLogoPick(this)"/>
+          <div style="font-size:11px;color:var(--text3);margin-top:4px;">PNG, JPG or SVG</div>
+        </div>
+      </div>
+    </div>
+    <div class="field"><label>Phone number</label><input type="tel" id="es-phone" placeholder="e.g. +855 12 345 678"/></div>
+    <div class="field"><label>Location / address</label><textarea id="es-location" placeholder="e.g. St. 271, Toul Kork, Phnom Penh" style="min-height:60px;"></textarea></div>
+    <div class="field"><label>Username</label><input type="text" id="es-user" placeholder="e.g. coffee_central"/></div>
+    <div class="field"><label>New password (leave blank to keep current)</label>
+      <div style="display:flex;gap:8px;">
+        <input type="password" id="es-pass" placeholder="Enter new password" style="flex:1;"/>
+        <button class="btn btn-sm" style="flex-shrink:0;" onclick="adminViewStorePass()">View</button>
+      </div>
+      <div id="es-pass-shown" style="display:none;margin-top:8px;padding:9px 12px;background:var(--bg3);border-radius:var(--r);font-size:14px;font-family:'DM Mono',monospace;letter-spacing:.08em;color:var(--text);"></div>
+    </div>
+    <div id="edit-store-msg"></div>
+    <button class="btn btn-primary btn-full" onclick="doEditStore()">Save changes</button>
+    <div style="border-top:1px solid var(--border);margin:20px 0 14px;"></div>
+    <div class="sec-label" style="color:var(--danger);">Danger zone</div>
+    <button class="btn btn-danger btn-full" id="remove-store-btn" onclick="confirmRemoveStore()">Remove this store</button>
+  </div>
+</div>
+
+<!-- ======= ADD/EDIT BRAND ======= -->
+<div class="screen" id="s-add-brand">
+  <div class="topbar">
+    <button class="back-btn" id="add-brand-back">&#8592; Back</button>
+    <div class="topbar-title" id="add-brand-title">New brand</div>
+  </div>
+  <div class="content">
+    <div class="field"><label>Brand name</label><input type="text" id="nb-name" placeholder="e.g. Coffee House"/></div>
+    <div class="field">
+      <label>Brand color</label>
+      <div class="swatches" id="color-swatches"></div>
+    </div>
+    <div class="field">
+      <label>Logo image</label>
+      <div style="display:flex;align-items:center;gap:14px;">
+        <div id="logo-preview-box" style="width:64px;height:64px;border-radius:12px;border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:26px;overflow:hidden;background:var(--bg3);">🏷️</div>
+        <div>
+          <button class="btn btn-sm" onclick="document.getElementById('logo-input').click()">Upload logo</button>
+          <input type="file" id="logo-input" accept="image/*" style="display:none;" onchange="onLogoPick(this)"/>
+          <div style="font-size:11px;color:var(--text3);margin-top:5px;">PNG, JPG or SVG</div>
+        </div>
+      </div>
+    </div>
+    <div id="brand-form-msg"></div>
+    <button class="btn btn-primary btn-full" id="brand-form-btn" onclick="saveBrand()">Create brand</button>
+    <button class="btn btn-danger btn-full" id="brand-delete-btn" style="display:none;margin-top:10px;" onclick="deleteBrand()">Delete brand</button>
+  </div>
+</div>
+
+<!-- ======= ADD STORE ======= -->
+<div class="screen" id="s-add-store">
+  <div class="topbar">
+    <button class="back-btn" onclick="goTo('s-brand')">&#8592; Back</button>
+    <div class="topbar-title">Add store</div>
+  </div>
+  <div class="content">
+    <div style="padding:12px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);margin-bottom:18px;font-size:13px;color:var(--text2);line-height:1.6;">
+      Adding to <strong id="add-store-brand-name" style="color:var(--text);"></strong>. This store can only see reports for this brand.
+    </div>
+    <div class="field"><label>Store name</label><input type="text" id="ns-name" placeholder="e.g. Central Branch"/></div>
+    <div class="field">
+      <label>Store logo (optional)</label>
+      <div style="display:flex;align-items:center;gap:14px;">
+        <div id="ns-logo-preview" style="width:56px;height:56px;border-radius:10px;border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:22px;overflow:hidden;background:var(--bg3);">🏷️</div>
+        <div>
+          <button class="btn btn-sm" onclick="document.getElementById('ns-logo-input').click()">Upload logo</button>
+          <input type="file" id="ns-logo-input" accept="image/*" style="display:none;" onchange="onNsLogoPick(this)"/>
+          <div style="font-size:11px;color:var(--text3);margin-top:4px;">PNG, JPG or SVG</div>
+        </div>
+      </div>
+    </div>
+    <div class="field"><label>Phone number</label><input type="tel" id="ns-phone" placeholder="e.g. +855 12 345 678"/></div>
+    <div class="field"><label>Location / address</label><textarea id="ns-location" placeholder="e.g. St. 271, Toul Kork, Phnom Penh" style="min-height:60px;"></textarea></div>
+    <div class="field"><label>Username</label><input type="text" id="ns-user" placeholder="e.g. coffee_central"/></div>
+    <div class="field"><label>Password</label><input type="password" id="ns-pass" placeholder="Set a password"/></div>
+    <div id="add-store-msg"></div>
+    <button class="btn btn-primary btn-full" onclick="doAddStore()">Add store</button>
+  </div>
+</div>
+
+<!-- ======= UPLOAD REPORT ======= -->
+<div class="screen" id="s-upload">
+  <div class="topbar">
+    <button class="back-btn" onclick="goTo('s-brand')">&#8592; Back</button>
+    <div class="topbar-title">Upload report</div>
+  </div>
+  <div class="content">
+    <!-- Brand info -->
+    <div style="display:flex;align-items:center;gap:10px;padding:11px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);margin-bottom:18px;">
+      <div id="upload-brand-logo" style="width:32px;height:32px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:16px;overflow:hidden;flex-shrink:0;"></div>
+      <div style="font-size:13px;color:var(--text2);">Uploading to: <strong id="upload-brand-name" style="color:var(--text);"></strong></div>
+    </div>
+
+    <div class="field"><label>Report title</label><input type="text" id="r-title" placeholder="e.g. Q1 Sales Summary"/></div>
+    <div class="field"><label>Description (optional)</label><textarea id="r-desc" placeholder="Brief description..." style="min-height:60px;"></textarea></div>
+
+    <!-- Store selector -->
+    <div class="field">
+      <label>Visible to stores (leave blank for all)</label>
+      <div id="r-store-checks" style="background:var(--bg2);border:1px solid var(--border2);border-radius:var(--r);padding:10px 12px;display:flex;flex-direction:column;gap:8px;"></div>
+    </div>
+
+    <!-- Inspection info -->
+    <div style="border-top:1px solid var(--border);margin:4px 0 16px;"></div>
+    <div style="font-size:14px;font-weight:600;margin-bottom:12px;">Inspection details</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      <div class="field" style="margin-bottom:0;">
+        <label>Store name</label>
+        <input type="text" id="r-store-name" placeholder="e.g. CH – North"/>
+      </div>
+      <div class="field" style="margin-bottom:0;">
+        <label>Date of inspection</label>
+        <input type="date" id="r-inspect-date"/>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;margin-bottom:16px;">
+      <div class="field" style="margin-bottom:0;">
+        <label>Checked by</label>
+        <input type="text" id="r-checked-by" placeholder="Inspector name"/>
+      </div>
+      <div class="field" style="margin-bottom:0;">
+        <label>Score (%)</label>
+        <input type="number" id="r-score" placeholder="e.g. 85" min="0" max="100"/>
+      </div>
+    </div>
+
+    <!-- PDF -->
+    <div class="field">
+      <label>PDF file</label>
+      <div class="upload-zone" onclick="document.getElementById('pdf-input').click()" style="padding:20px 16px;">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin:0 auto 8px;display:block;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="12" x2="12" y2="18"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+        <div id="pdf-lbl" style="font-size:14px;color:var(--text2);font-weight:500;">Tap to select PDF</div>
+        <div style="font-size:12px;color:var(--text3);margin-top:4px;">PDF files only</div>
+        <input type="file" id="pdf-input" accept=".pdf,application/pdf" style="display:none;" onchange="onPDFPick(this)"/>
+      </div>
+    </div>
+
+    <div id="upload-msg"></div>
+
+    <!-- Reference items — below upload button -->
+    <div style="border-top:1px solid var(--border);margin:20px 0 16px;"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+      <div>
+        <div style="font-size:14px;font-weight:600;">Reference items</div>
+        <div style="font-size:12px;color:var(--text2);margin-top:2px;">Add notes + photos stores will see when reviewing</div>
+      </div>
+    </div>
+    <div id="ref-items-list"></div>
+    <button class="btn btn-primary btn-full" style="margin-top:4px;margin-bottom:12px;" onclick="addRefItem()">+ Add reference item</button>
+
+    <button class="btn btn-primary btn-full" style="margin-bottom:24px;" onclick="confirmUpload()">Upload report</button>
+  </div>
+</div>
+
+<!-- ======= VIEW FEEDBACK ======= -->
+<div class="screen" id="s-feedback">
+  <div class="topbar">
+    <button class="back-btn" onclick="goTo('s-brand')">&#8592; Back</button>
+    <div class="topbar-title" id="fb-screen-title">Feedback</div>
+    <button class="btn btn-sm" onclick="goEditReport(DB.currentReportId)">Edit</button>
+  </div>
+  <div class="content">
+    <div id="fb-pdf-box" style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);height:120px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:7px;margin-bottom:16px;cursor:pointer;transition:border-color .15s;" onclick="openReportPDF()">
+      <div style="font-size:30px;">📄</div>
+      <div style="font-size:13px;color:var(--text2);" id="fb-filename"></div>
+      <div style="font-size:11px;color:var(--accent);">Tap to open PDF ↗</div>
+    </div>
+    <div id="fb-inspection"></div>
+    <div id="fb-summary" style="margin-bottom:18px;"></div>
+
+    <!-- Reference items on this report -->
+    <div id="fb-refs-wrap" style="margin-bottom:18px;"></div>
+    <div id="fb-missing" style="margin-top:4px;"></div>
+  </div>
+</div>
+
+<!-- ======= REVIEWER: HOME ======= -->
+<div class="screen" id="s-reviewer-home">
+  <div class="topbar">
+    <div id="rv-brand-logo-top" style="width:30px;height:30px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:15px;overflow:hidden;flex-shrink:0;"></div>
+    <div class="topbar-title" id="rv-store-name">My Reports</div>
+    <button class="btn btn-ghost btn-sm" onclick="openRvSettings()" style="padding:6px 8px;">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    </button>
+    <button class="btn btn-ghost btn-sm" onclick="doLogout()">Sign out</button>
+  </div>
+  <div class="content">
+    <!-- Store info card -->
+    <div id="rv-store-card" style="margin-bottom:16px;"></div>
+    <!-- Stats row -->
+    <div id="rv-stats-row" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:18px;"></div>
+    <!-- Report list -->
+    <div class="sec-label" style="margin-bottom:10px;">Reports</div>
+    <div id="rv-report-list"></div>
+  </div>
+</div>
+
+<!-- ======= REVIEWER: REPORT DETAIL ======= -->
+<div class="screen" id="s-reviewer-report">
+  <div class="topbar">
+    <button class="back-btn" onclick="goTo('s-reviewer-home')">&#8592; Back</button>
+    <div class="topbar-title" id="rv-report-title">Report</div>
+  </div>
+  <div class="content">
+    <!-- Inspection details (if any) -->
+    <div id="rv-inspection-card" style="margin-bottom:14px;"></div>
+    <!-- PDF open box -->
+    <div id="rv-pdf-box" style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);height:96px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:5px;margin-bottom:16px;cursor:pointer;transition:border-color .15s;" onclick="openReviewerPDF()">
+      <div style="font-size:26px;">📄</div>
+      <div style="font-size:13px;color:var(--text2);" id="rv-pdf-name"></div>
+      <div style="font-size:11px;color:var(--accent);">Tap to open PDF ↗</div>
+    </div>
+    <!-- Already submitted view -->
+    <div id="rv-submitted-view" style="display:none;"></div>
+    <!-- Item-by-item feedback form -->
+    <div id="rv-feedback-form">
+      <div id="rv-items-form"></div>
+      <div id="rv-fb-msg" style="margin-top:4px;"></div>
+      <button class="btn btn-primary btn-full" style="margin-top:12px;margin-bottom:24px;" onclick="submitReviewerFeedback()">Submit feedback</button>
+    </div>
+  </div>
+</div>
+
+<!-- ======= SETTINGS ======= -->
+<div class="screen" id="s-settings">
+  <div class="topbar">
+    <button class="back-btn" onclick="goTo('s-home')">&#8592; Back</button>
+    <div class="topbar-title">Settings</div>
+  </div>
+  <div class="content">
+    <!-- Appearance -->
+    <div class="sec-label" style="margin-bottom:10px;">Appearance</div>
+    <div class="card" style="margin-bottom:18px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <div>
+          <div style="font-size:14px;font-weight:500;">Dark mode</div>
+          <div style="font-size:12px;color:var(--text2);margin-top:2px;">Switch between dark and light</div>
+        </div>
+        <div class="theme-toggle" onclick="toggleTheme()"></div>
+      </div>
+    </div>
+
+    <!-- Email notifications -->
+    <div class="sec-label" style="margin-bottom:10px;">Email notifications</div>
+    <div class="card" style="margin-bottom:10px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+        <div>
+          <div style="font-size:14px;font-weight:500;">Enable notifications</div>
+          <div style="font-size:12px;color:var(--text2);margin-top:2px;">Get notified when a store submits feedback</div>
+        </div>
+        <div id="notif-toggle" onclick="toggleNotif()" style="width:36px;height:20px;border-radius:10px;background:var(--bg3);border:1px solid var(--border2);cursor:pointer;position:relative;flex-shrink:0;transition:background .2s;">
+          <div id="notif-knob" style="position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:var(--text3);transition:all .2s;"></div>
+        </div>
+      </div>
+      <div id="notif-email-section" style="display:none;">
+        <div class="field" style="margin-bottom:10px;">
+          <label>Notification email</label>
+          <input type="email" id="notif-email" placeholder="e.g. admin@yourcompany.com"/>
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:4px;">
+          <button class="btn btn-primary btn-sm" style="flex:1;" onclick="saveNotifSettings()">Save email</button>
+          <button class="btn btn-sm" onclick="testNotif()">Send test</button>
+        </div>
+        <div id="notif-msg" style="margin-top:8px;"></div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:18px;">
+      <div style="font-size:13px;font-weight:500;margin-bottom:8px;">Notify me when:</div>
+      <div id="notif-options">
+        <label style="display:flex;align-items:center;gap:10px;text-transform:none;font-size:13px;color:var(--text);margin-bottom:12px;cursor:pointer;">
+          <input type="checkbox" id="notif-on-submit" checked style="width:16px;height:16px;accent-color:var(--accent);"/> Store submits feedback
+        </label>
+        <label style="display:flex;align-items:center;gap:10px;text-transform:none;font-size:13px;color:var(--text);margin-bottom:12px;cursor:pointer;">
+          <input type="checkbox" id="notif-all-done" checked style="width:16px;height:16px;accent-color:var(--accent);"/> All stores in a report have responded
+        </label>
+        <label style="display:flex;align-items:center;gap:10px;text-transform:none;font-size:13px;color:var(--text);margin-bottom:12px;cursor:pointer;">
+          <input type="checkbox" id="notif-brand-complete" checked style="width:16px;height:16px;accent-color:var(--accent);"/> All reports in a brand are complete
+        </label>
+        <label style="display:flex;align-items:center;gap:10px;text-transform:none;font-size:13px;color:var(--text);margin-bottom:4px;cursor:pointer;">
+          <input type="checkbox" id="notif-store-complete" checked style="width:16px;height:16px;accent-color:var(--accent);"/> A specific store completes all their reports
+        </label>
+      </div>
+    </div>
+
+    <!-- Admin account -->
+    <div class="sec-label" style="margin-bottom:10px;">Admin account</div>
+    <div class="card">
+      <div class="field"><label>Change admin username</label>
+        <div style="display:flex;gap:8px;">
+          <input type="text" id="admin-new-user" placeholder="New username" style="flex:1;"/>
+          <button class="btn btn-sm" style="flex-shrink:0;" onclick="changeAdminUser()">Save</button>
+        </div>
+        <div id="admin-user-msg" style="margin-top:6px;"></div>
+      </div>
+      <div style="border-top:1px solid var(--border);margin:4px 0 14px;"></div>
+      <div class="field"><label>Change admin password</label><input type="password" id="admin-new-pass" placeholder="New password"/></div>
+      <div class="field" style="margin-bottom:4px;"><label>Confirm password</label><input type="password" id="admin-confirm-pass" placeholder="Confirm new password"/></div>
+      <div id="admin-pass-msg" style="margin-bottom:10px;"></div>
+      <button class="btn btn-primary btn-sm" style="width:100%;" onclick="changeAdminPass()">Update password</button>
+    </div>
+
+    <!-- Support -->
+    <div style="margin-top:24px;margin-bottom:8px;">
+      <a href="https://t.me/lmig25" target="_blank" style="display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);text-decoration:none;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="#2AABEE"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12L7.88 13.264l-2.962-.924c-.643-.204-.657-.643.136-.953l11.57-4.461c.537-.194 1.006.131.27.295z"/></svg>
+        <div>
+          <div style="font-size:13px;font-weight:600;color:var(--text);">Contact Support</div>
+          
+        </div>
+      </a>
+    </div>
+  </div>
+</div>
+
+<!-- ======= UPLOAD CONFIRM OVERLAY ======= -->
+<div id="upload-confirm-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:50;align-items:flex-end;justify-content:center;">
+  <div style="background:var(--bg2);border-radius:20px 20px 0 0;padding:24px 20px 36px;width:100%;max-width:440px;border-top:1px solid var(--border);">
+    <div style="width:36px;height:4px;border-radius:2px;background:var(--border2);margin:0 auto 20px;"></div>
+    <div style="font-size:17px;font-weight:700;margin-bottom:16px;">Confirm upload</div>
+    <div id="upload-confirm-body" style="background:var(--bg3);border-radius:var(--rl);padding:14px 16px;margin-bottom:20px;font-size:13px;line-height:2;"></div>
+    <div style="display:flex;gap:10px;">
+      <button class="btn btn-full" style="flex:1;" onclick="closeConfirm()">Cancel</button>
+      <button class="btn btn-primary btn-full" style="flex:1;" onclick="doUpload()">Confirm & upload</button>
+    </div>
+  </div>
+</div>
+
+<!-- ======= REVIEWER SETTINGS ======= -->
+<div class="screen" id="s-rv-settings">
+  <div class="topbar">
+    <button class="back-btn" onclick="goTo('s-reviewer-home')">&#8592; Back</button>
+    <div class="topbar-title">Settings</div>
+  </div>
+  <div class="content">
+    <div class="sec-label" style="margin-bottom:10px;">Appearance</div>
+    <div class="card" style="margin-bottom:18px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <div>
+          <div style="font-size:14px;font-weight:500;">Dark mode</div>
+          <div style="font-size:12px;color:var(--text2);margin-top:2px;">Switch between dark and light</div>
+        </div>
+        <div class="theme-toggle" onclick="toggleTheme()"></div>
+      </div>
+    </div>
+
+    <div class="sec-label" style="margin-bottom:10px;">Notifications</div>
+    <div class="card" style="margin-bottom:10px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+        <div>
+          <div style="font-size:14px;font-weight:500;">Enable notifications</div>
+          <div style="font-size:12px;color:var(--text2);margin-top:2px;">Get reminded about pending reports</div>
+        </div>
+        <div id="rv-notif-toggle" onclick="toggleRvNotif()" style="width:36px;height:20px;border-radius:10px;background:var(--bg3);border:1px solid var(--border2);cursor:pointer;position:relative;flex-shrink:0;transition:background .2s;">
+          <div id="rv-notif-knob" style="position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:var(--text3);transition:all .2s;"></div>
+        </div>
+      </div>
+      <div id="rv-notif-email-section" style="display:none;">
+        <div class="field" style="margin-bottom:10px;">
+          <label>Notification email</label>
+          <input type="email" id="rv-notif-email" placeholder="e.g. store@company.com"/>
+        </div>
+        <button class="btn btn-primary btn-sm" style="width:100%;margin-bottom:4px;" onclick="saveRvNotif()">Save email</button>
+        <div id="rv-notif-msg" style="margin-top:8px;"></div>
+      </div>
+    </div>
+    <div class="card" style="margin-bottom:18px;">
+      <div style="font-size:13px;font-weight:500;margin-bottom:10px;">Notify me when:</div>
+      <label style="display:flex;align-items:center;gap:10px;text-transform:none;font-size:13px;color:var(--text);margin-bottom:12px;cursor:pointer;">
+        <input type="checkbox" id="rv-notif-new-report" checked style="width:16px;height:16px;accent-color:var(--accent);"/> A new report is assigned to my store
+      </label>
+      <label style="display:flex;align-items:center;gap:10px;text-transform:none;font-size:13px;color:var(--text);margin-bottom:12px;cursor:pointer;">
+        <input type="checkbox" id="rv-notif-reminder" checked style="width:16px;height:16px;accent-color:var(--accent);"/> Reminder when I haven't responded
+      </label>
+      <label style="display:flex;align-items:center;gap:10px;text-transform:none;font-size:13px;color:var(--text);margin-bottom:4px;cursor:pointer;">
+        <input type="checkbox" id="rv-notif-alert" checked style="width:16px;height:16px;accent-color:var(--accent);"/> Admin sends me an alert
+      </label>
+    </div>
+
+    <div class="sec-label" style="margin-bottom:10px;">Account</div>
+    <div class="card">
+      <div style="font-size:14px;font-weight:500;margin-bottom:4px;" id="rv-settings-name"></div>
+      <div style="font-size:12px;color:var(--text2);font-family:'DM Mono',monospace;" id="rv-settings-user"></div>
+      <div style="border-top:1px solid var(--border);margin:12px 0;"></div>
+      <!-- View password -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <div>
+          <div style="font-size:13px;font-weight:500;">Login password</div>
+          <div style="font-size:12px;color:var(--text3);margin-top:2px;" id="rv-pass-masked">••••••••</div>
+        </div>
+        <button class="btn btn-sm" onclick="requestAdminAction('view')">View</button>
+      </div>
+      <div id="rv-pass-revealed" style="display:none;margin-bottom:10px;padding:10px 12px;background:var(--bg3);border-radius:var(--r);font-size:14px;font-family:'DM Mono',monospace;letter-spacing:.08em;"></div>
+      <!-- Change password -->
+      <div style="border-top:1px solid var(--border);padding-top:12px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <div style="font-size:13px;font-weight:500;">Change password</div>
+          <button class="btn btn-sm" onclick="requestAdminAction('change')">Change</button>
+        </div>
+        <div id="rv-change-pass-form" style="display:none;margin-top:10px;">
+          <div class="field" style="margin-bottom:8px;">
+            <label>New password</label>
+            <input type="password" id="rv-new-pass" placeholder="Enter new password"/>
+          </div>
+          <div class="field" style="margin-bottom:8px;">
+            <label>Confirm new password</label>
+            <input type="password" id="rv-confirm-pass" placeholder="Confirm password"/>
+          </div>
+          <div id="rv-change-pass-msg"></div>
+          <button class="btn btn-primary btn-sm" style="width:100%;" onclick="doChangeRvPass()">Save new password</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Support -->
+    <div style="margin-top:24px;margin-bottom:8px;">
+      <a href="https://t.me/lmig25" target="_blank" style="display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);text-decoration:none;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="#2AABEE"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12L7.88 13.264l-2.962-.924c-.643-.204-.657-.643.136-.953l11.57-4.461c.537-.194 1.006.131.27.295z"/></svg>
+        <div>
+          <div style="font-size:13px;font-weight:600;color:var(--text);">Contact Support</div>
+          
+        </div>
+      </a>
+    </div>
+  </div>
+</div>
+
+<!-- PASSWORD VERIFY OVERLAY -->
+<div id="pass-verify-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:60;align-items:flex-end;justify-content:center;">
+  <div style="background:var(--bg2);border-radius:20px 20px 0 0;padding:24px 20px 36px;width:100%;max-width:440px;border-top:1px solid var(--border);">
+    <div style="width:36px;height:4px;border-radius:2px;background:var(--border2);margin:0 auto 20px;"></div>
+    <div style="font-size:16px;font-weight:600;margin-bottom:6px;" id="verify-title">Admin verification</div>
+    <div style="font-size:13px;color:var(--text2);margin-bottom:18px;" id="verify-subtitle">Enter admin password to continue.</div>
+    <div class="field">
+      <label>Admin password</label>
+      <input type="password" id="verify-admin-pass" placeholder="Enter admin password" onkeydown="if(event.key==='Enter')doVerifyAdmin()"/>
+    </div>
+    <div id="verify-msg" style="margin-bottom:10px;"></div>
+    <div style="display:flex;gap:10px;">
+      <button class="btn btn-full" style="flex:1;" onclick="closePassVerify()">Cancel</button>
+      <button class="btn btn-primary btn-full" style="flex:1;" onclick="doVerifyAdmin()">Verify</button>
+    </div>
+  </div>
+</div>
+
+<!-- ======= EDIT REPORT ======= -->
+<div class="screen" id="s-edit-report">
+  <div class="topbar">
+    <button class="back-btn" onclick="DB.currentReportId?viewFeedback(DB.currentReportId):goTo('s-brand')">&#8592; Back</button>
+    <div class="topbar-title">Edit report</div>
+  </div>
+  <div class="content">
+    <div class="field"><label>Report title</label><input type="text" id="er-title"/></div>
+    <div class="field"><label>Description (optional)</label><textarea id="er-desc" style="min-height:60px;"></textarea></div>
+    <div class="field">
+      <label>Visible to store</label>
+      <select id="er-store"><option value="">All stores in this brand</option></select>
+    </div>
+    <div style="border-top:1px solid var(--border);margin:4px 0 16px;"></div>
+    <div style="font-size:14px;font-weight:600;margin-bottom:12px;">Inspection details</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+      <div class="field" style="margin-bottom:0;"><label>Store name</label><input type="text" id="er-store-name"/></div>
+      <div class="field" style="margin-bottom:0;"><label>Date</label><input type="date" id="er-inspect-date"/></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">
+      <div class="field" style="margin-bottom:0;"><label>Checked by</label><input type="text" id="er-checked-by"/></div>
+      <div class="field" style="margin-bottom:0;"><label>Score (%)</label><input type="number" id="er-score" min="0" max="100"/></div>
+    </div>
+    <div id="er-msg"></div>
+    <button class="btn btn-primary btn-full" onclick="doEditReport()">Save changes</button>
+    <div style="border-top:1px solid var(--border);margin:20px 0 14px;"></div>
+    <div class="sec-label" style="color:var(--danger);">Danger zone</div>
+    <button class="btn btn-danger btn-full" onclick="confirmRemoveReport(_editingReportId)">Remove this report</button>
+  </div>
+</div>
+
+<!-- REMOVE REPORT CONFIRM OVERLAY -->
+<div id="remove-report-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:60;align-items:flex-end;justify-content:center;">
+  <div style="background:var(--bg2);border-radius:20px 20px 0 0;padding:24px 20px 36px;width:100%;max-width:440px;border-top:1px solid var(--border);">
+    <div style="width:36px;height:4px;border-radius:2px;background:var(--border2);margin:0 auto 20px;"></div>
+    <div style="font-size:17px;font-weight:700;margin-bottom:8px;color:var(--danger);">Remove report?</div>
+    <div style="font-size:13px;color:var(--text2);margin-bottom:6px;">You are about to remove:</div>
+    <div id="remove-report-name" style="font-size:15px;font-weight:600;margin-bottom:16px;padding:12px 14px;background:var(--bg3);border-radius:var(--r);"></div>
+    <div style="font-size:13px;color:var(--danger);margin-bottom:20px;padding:10px 14px;background:var(--alert-danger-bg);border-radius:var(--r);border:1px solid var(--alert-danger-border);">
+      ⚠️ This will permanently delete the report and all feedback from stores.
+    </div>
+    <div style="font-size:13px;color:var(--text2);margin-bottom:8px;font-weight:500;">Type <strong style="color:var(--text);">DELETE</strong> to confirm:</div>
+    <input type="text" id="remove-report-confirm-input" placeholder="Type DELETE here" style="margin-bottom:14px;" oninput="checkRemoveInput()"/>
+    <div style="display:flex;gap:10px;">
+      <button class="btn btn-full" style="flex:1;" onclick="closeRemoveReport()">Cancel</button>
+      <button class="btn btn-danger btn-full" id="remove-report-confirm-btn" style="flex:1;opacity:.4;pointer-events:none;" onclick="doRemoveReport()">Remove</button>
+    </div>
+  </div>
+</div>
+
+<!-- GENERIC CONFIRM OVERLAY -->
+<div id="generic-confirm-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:65;align-items:flex-end;justify-content:center;">
+  <div style="background:var(--bg2);border-radius:20px 20px 0 0;padding:24px 20px 36px;width:100%;max-width:520px;border-top:1px solid var(--border);">
+    <div style="width:36px;height:4px;border-radius:2px;background:var(--border2);margin:0 auto 20px;"></div>
+    <div id="generic-confirm-msg" style="font-size:15px;color:var(--text);margin-bottom:24px;line-height:1.6;white-space:pre-line;"></div>
+    <div style="display:flex;gap:10px;">
+      <button class="btn btn-full" style="flex:1;" onclick="closeGenericConfirm()">Cancel</button>
+      <button class="btn btn-danger btn-full" style="flex:1;border-color:var(--danger);" onclick="doGenericConfirm()">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<!-- REMOVE STORE CONFIRM OVERLAY -->
+<div id="remove-store-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:60;align-items:flex-end;justify-content:center;">
+  <div style="background:var(--bg2);border-radius:20px 20px 0 0;padding:24px 20px 36px;width:100%;max-width:520px;border-top:1px solid var(--border);">
+    <div style="width:36px;height:4px;border-radius:2px;background:var(--border2);margin:0 auto 20px;"></div>
+    <div style="font-size:17px;font-weight:700;margin-bottom:8px;color:var(--danger);">Remove store?</div>
+    <div style="font-size:13px;color:var(--text2);margin-bottom:6px;">You are about to remove:</div>
+    <div id="remove-store-name-text" style="font-size:15px;font-weight:600;margin-bottom:16px;padding:12px 14px;background:var(--bg3);border-radius:var(--r);"></div>
+    <div style="font-size:13px;color:var(--danger);margin-bottom:20px;padding:10px 14px;background:var(--alert-danger-bg);border-radius:var(--r);border:1px solid var(--alert-danger-border);">
+      ⚠️ This will permanently delete the store and all their feedback.
+    </div>
+    <div style="display:flex;gap:10px;">
+      <button class="btn btn-full" style="flex:1;" onclick="closeRemoveStoreOverlay()">Cancel</button>
+      <button class="btn btn-danger btn-full" style="flex:1;border-color:var(--danger);" onclick="doRemoveStoreConfirmed()">Remove store</button>
+    </div>
+  </div>
+</div>
+
+</div><!-- /wrap -->
+<script>
+/* ===== SCORE HELPER ===== */
+function scoreInfo(s){
+  const n=parseInt(s)||0;
+  if(n===100) return {color:'var(--success)',label:'Excellent'};
+  if(n>=90)   return {color:'var(--success)',label:'Very good'};
+  if(n>=85)   return {color:'var(--warn)',   label:'Good'};
+  if(n>=80)   return {color:'var(--warn)',   label:'Good'};
+  return       {color:'var(--danger)',       label:'Low'};
+}
+function scoreHTML(s, size){
+  if(!s) return '';
+  const info=scoreInfo(s);
+  const fs=size||14;
+  return `<span style="color:${info.color};font-weight:700;font-size:${fs}px;">${s}% <span style="font-size:10px;font-weight:500;opacity:.85;">${info.label}</span></span>`;
+}
+
+/* ===== THEME ===== */
+function toggleTheme(){
+  const h=document.documentElement;
+  h.setAttribute('data-theme', h.getAttribute('data-theme')==='dark'?'light':'dark');
+}
+
+/* ===== DATA ===== */
+const BRAND_COLORS=['#7c6fff','#20c070','#f5a623','#ff5252','#38bdf8','#f472b6','#fb923c','#a78bfa','#34d399'];
+const STORE_DOTS  =['#7c6fff','#20c070','#f5a623','#ff5252','#38bdf8','#f472b6','#fb923c','#a78bfa','#34d399','#f87171'];
+
+let DB = {
+  brands:[],
+  currentBrandId:null, currentReportId:null, currentStoreId:null,
+  reviewerBrandId:null, reviewerStoreId:null,
+  reviewerReportId:null, itemFeedbacks:[],
+  brandFilter:'all', brandTab:'reports',
+  editingBrandId:null,
+  pendingLogo:null, pickedColor:BRAND_COLORS[0],
+  pendingUpload:null, pendingUploadURL:null,
+  pendingRefs:[], // [{id, desc, photos:[dataURL]}]
+};
+
+/* ===== NAV ===== */
+function goTo(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0,0);
+}
+function brand(){ return DB.brands.find(b=>b.id===DB.currentBrandId); }
+
+/* ===== LOGIN ===== */
+function doLogin(){
+  const u=document.getElementById('login-u').value.trim();
+  const p=document.getElementById('login-p').value;
+  const err=document.getElementById('login-err');
+  err.style.display='none';
+  // Admin
+  if(u===ADMIN_CREDS.username&&p===ADMIN_CREDS.password){ renderHome(); goTo('s-home'); return; }
+  // Store reviewer
+  for(const brand of DB.brands){
+    const store=brand.stores.find(s=>s.username===u&&s.password===p);
+    if(store){
+      DB.reviewerBrandId=brand.id;
+      DB.reviewerStoreId=store.id;
+      renderReviewerHome(); goTo('s-reviewer-home'); return;
+    }
+  }
+  err.textContent='Incorrect username or password.'; err.style.display='block';
+}
+function doLogout(){
+  document.getElementById('login-u').value='';
+  document.getElementById('login-p').value='';
+  DB.reviewerBrandId=null; DB.reviewerStoreId=null;
+  goTo('s-login');
+}
+
+/* ===== HOME ===== */
+function renderHome(){
+  const tb=DB.brands.length, tr=DB.brands.reduce((a,b)=>a+b.reports.length,0), ts=DB.brands.reduce((a,b)=>a+b.stores.length,0);
+  document.getElementById('global-stats').innerHTML=[{v:tb,l:'Brands'},{v:tr,l:'Reports'},{v:ts,l:'Stores'}].map(s=>`
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);padding:13px 14px;">
+      <div style="font-size:24px;font-weight:700;line-height:1;">${s.v}</div>
+      <div style="font-size:12px;color:var(--text2);margin-top:3px;">${s.l}</div>
+    </div>`).join('');
+  const el=document.getElementById('brand-list');
+  if(!DB.brands.length){ el.innerHTML='<div class="empty">No brands yet</div>'; return; }
+  el.innerHTML=DB.brands.map(b=>{
+    const totalFB=b.reports.reduce((a,r)=>a+r.feedbacks.length,0);
+    const maxFB=b.reports.reduce((a,r)=>a+(r.storeId?1:b.stores.length),0)||1;
+    const pct=Math.round(totalFB/maxFB*100);
+    const logoEl=b.logo?`<img src="${b.logo}" style="width:100%;height:100%;object-fit:cover;border-radius:10px;"/>`:`<span>${b.logoText||'🏷️'}</span>`;
+    return `<div class="brand-card" onclick="openBrand('${b.id}')">
+      <div class="brand-header">
+        <div class="brand-logo" style="background:${b.color}22;border:1px solid ${b.color}44;">${logoEl}</div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:15px;font-weight:600;">${b.name}</div>
+          <div style="font-size:12px;color:var(--text2);margin-top:2px;">${b.stores.length} stores &bull; ${b.reports.length} reports</div>
+        </div>
+        <div style="width:11px;height:11px;border-radius:50%;background:${b.color};flex-shrink:0;"></div>
+      </div>
+      <div class="brand-stats">
+        <div class="brand-stat">Feedback: <strong>${totalFB}</strong></div>
+        <div style="flex:1;align-self:center;padding:0 10px;"><div class="prog-wrap"><div class="prog-bar" style="width:${pct}%;background:${b.color};"></div></div></div>
+        <div style="font-size:12px;font-weight:600;color:${b.color};">${pct}%</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/* ===== BRAND ===== */
+function openBrand(id){
+  DB.currentBrandId=id; DB.brandFilter='all'; DB.brandTab='reports';
+  const b=brand();
+  document.getElementById('brand-topbar-title').textContent=b.name;
+  renderBrandHero(); brandTab('reports'); goTo('s-brand');
+}
+function renderBrandHero(){
+  const b=brand();
+  const logoEl=b.logo?`<img src="${b.logo}" style="width:100%;height:100%;object-fit:cover;border-radius:10px;"/>`:`<span style="font-size:24px;">${b.logoText||'🏷️'}</span>`;
+  document.getElementById('brand-hero').innerHTML=`
+    <div style="display:flex;align-items:center;gap:14px;padding:14px;background:${b.color}14;border-radius:var(--rl);border:1px solid ${b.color}30;">
+      <div style="width:50px;height:50px;border-radius:12px;background:${b.color}25;border:1px solid ${b.color}50;display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;">${logoEl}</div>
+      <div>
+        <div style="font-size:17px;font-weight:700;">${b.name}</div>
+        <div style="font-size:12px;color:var(--text2);margin-top:2px;">${b.stores.length} stores &bull; ${b.reports.length} reports</div>
+      </div>
+    </div>`;
+}
+function brandTab(tab){
+  DB.brandTab=tab;
+  ['reports','stores'].forEach(t=>{ document.getElementById('btab-'+t).classList.toggle('active',t===tab); document.getElementById('bpane-'+t).style.display=t===tab?'':'none'; });
+  if(tab==='reports') renderBrandReports(); else renderBrandStores();
+}
+function setBF(f){
+  DB.brandFilter=f;
+  ['all','pending','partial','done'].forEach(k=>document.getElementById('bf-'+k).classList.toggle('active',k===f));
+  renderBrandReports();
+}
+function renderBrandReports(){
+  const b=brand();
+  let list=[...b.reports];
+  const ts=b.stores.length;
+
+  // Sort: pending (0 feedback) → partial → complete
+  list.sort((a,b)=>{
+    const statusScore=(r)=>{
+      const n=r.feedbacks.length, t=r.storeId?1:ts;
+      if(n===0) return 0;
+      if(n>=t) return 2;
+      return 1;
+    };
+    return statusScore(a)-statusScore(b);
+  });
+
+  if(DB.brandFilter==='pending') list=list.filter(r=>r.feedbacks.length===0);
+  if(DB.brandFilter==='partial') list=list.filter(r=>{ const t=r.storeId?1:b.stores.length; return r.feedbacks.length>0&&r.feedbacks.length<t; });
+  if(DB.brandFilter==='done')    list=list.filter(r=>{ const t=r.storeId?1:b.stores.length; return t>0&&r.feedbacks.length>=t; });
+  const el=document.getElementById('brand-report-list');
+  if(!list.length){ el.innerHTML='<div class="empty">No reports</div>'; return; }
+  el.innerHTML=list.map(r=>{
+    const ts=r.storeId?1:b.stores.length;
+    const n=r.feedbacks.length, pct=ts?Math.round(n/ts*100):0;
+    let bc='badge-none', bt='No feedback';
+    if(n>0&&n<ts){bc='badge-partial';bt=`${n}/${ts}`;}
+    else if(ts>0&&n>=ts){bc='badge-done';bt='All done';}
+    const targetStore=r.storeId?b.stores.find(s=>s.id===r.storeId):null;
+    return `<div class="card card-click" style="margin-bottom:10px;" onclick="viewFeedback('${r.id}')">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+        <div style="font-size:14px;font-weight:600;flex:1;">${r.title}</div>
+        <span class="badge ${bc}">${bt}</span>
+      </div>
+      <div style="font-size:12px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:4px;">${r.file}</div>
+      ${targetStore?`<div style="font-size:12px;color:var(--text2);margin-top:4px;display:flex;align-items:center;gap:5px;"><span class="dot" style="background:${targetStore.color}"></span>${targetStore.name} only</div>`:''}
+      ${r.desc?`<div style="font-size:13px;color:var(--text2);margin-top:5px;">${r.desc}</div>`:''}
+      ${r.refs&&r.refs.length?`<div style="font-size:12px;color:var(--accent);margin-top:5px;">📎 ${r.refs.length} reference item${r.refs.length>1?'s':''}</div>`:''}
+      ${r.inspection&&r.inspection.score?`<div style="font-size:12px;color:var(--text2);margin-top:5px;">Score: ${scoreHTML(r.inspection.score,13)}${r.inspection.checkedBy?' · '+r.inspection.checkedBy:''}</div>`:''}
+      <div style="display:flex;align-items:center;gap:8px;margin-top:10px;">
+        <div class="prog-wrap" style="flex:1;"><div class="prog-bar" style="width:${pct}%;background:${b.color};"></div></div>
+        <span style="font-size:11px;color:var(--text3);">${pct}%</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+function renderBrandStores(){
+  const b=brand();
+  const el=document.getElementById('brand-store-list');
+  if(!b.stores.length){ el.innerHTML='<div class="empty">No stores yet</div>'; return; }
+  el.innerHTML=`<div class="card">${b.stores.map(s=>{
+    // count reports visible to this store
+    const visibleReports=b.reports.filter(r=>reportVisibleToStore(r,s.id));
+    const fbCount=visibleReports.filter(r=>r.feedbacks.find(f=>f.storeId===s.id)).length;
+    return `<div class="store-row card-click" style="cursor:pointer;" onclick="openStoreDetail('${s.id}')">
+      <div class="dot" style="background:${s.color};width:10px;height:10px;"></div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:14px;font-weight:500;">${s.name}</div>
+        <div style="font-size:12px;color:var(--text3);font-family:'DM Mono',monospace;">${s.username}</div>
+      </div>
+      <div style="font-size:12px;color:var(--text2);">${visibleReports.length} report${visibleReports.length!==1?'s':''}</div>
+      <div style="font-size:16px;color:var(--text3);">›</div>
+    </div>`;
+  }).join('')}</div>`;
+}
+function openStoreDetail(sid){
+  DB.currentStoreId=sid;
+  // Always find the brand that owns this store
+  let b=null;
+  for(const br of DB.brands){ if(br.stores.find(s=>s.id===sid)){ b=br; break; } }
+  if(!b) return;
+  DB.currentBrandId=b.id;
+  const s=b.stores.find(s=>s.id===sid);
+  if(!s) return;
+  document.getElementById('sd-store-name').textContent=s.name;
+
+  // Store info card
+  document.getElementById('sd-store-card').innerHTML=`
+    <div style="background:${s.color}14;border-radius:var(--rl);border:1px solid ${s.color}30;overflow:hidden;">
+      <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;">
+        <div style="width:46px;height:46px;border-radius:50%;background:${s.color}30;border:1px solid ${s.color}60;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;">
+          ${s.logo?`<img src="${s.logo}" style="width:100%;height:100%;object-fit:cover;"/>`:`<span style="font-size:16px;font-weight:700;color:${s.color};">${s.name.split(/\s+/).map(w=>w[0]).filter(Boolean).slice(0,2).join('').toUpperCase()}</span>`}
+        </div>
+        <div>
+          <div style="font-size:17px;font-weight:700;">${s.name}</div>
+          <div style="font-size:12px;color:var(--text2);font-family:'DM Mono',monospace;margin-top:2px;">${s.username}</div>
+        </div>
+      </div>
+      <div style="border-top:1px solid ${s.color}25;padding:12px 16px;display:flex;flex-direction:column;gap:10px;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span style="font-size:15px;width:22px;text-align:center;flex-shrink:0;">📞</span>
+          <span style="font-size:13px;color:${s.phone?'var(--text)':'var(--text3)'};">${s.phone||'No phone number added'}</span>
+        </div>
+        <div style="display:flex;align-items:flex-start;gap:10px;">
+          <span style="font-size:15px;width:22px;text-align:center;flex-shrink:0;margin-top:1px;">📍</span>
+          <span style="font-size:13px;color:${s.location?'var(--text)':'var(--text3)'};">${s.location||'No location added'}</span>
+        </div>
+      </div>
+    </div>`;
+
+  // Reports visible to this store
+  const visibleReports=b.reports.filter(r=>reportVisibleToStore(r,s.id));
+  const el=document.getElementById('sd-report-list');
+  if(!visibleReports.length){
+    el.innerHTML='<div class="empty">No reports sent to this store</div>';
+  } else {
+    el.innerHTML=visibleReports.map(r=>{
+      const myFb=r.feedbacks.find(f=>f.storeId===s.id);
+      const isExclusive=r.storeId===s.id;
+      return `<div class="card card-click" onclick="viewFeedback('${r.id}')">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+          <div style="font-size:14px;font-weight:600;flex:1;">${r.title}</div>
+          <span class="badge ${myFb?'badge-done':'badge-none'}">${myFb?'Responded':'No response'}</span>
+        </div>
+        <div style="font-size:12px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:4px;">${r.file}</div>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:6px;flex-wrap:wrap;">
+          <span style="font-size:12px;color:var(--text2);">${r.date}</span>
+          ${isExclusive?`<span style="font-size:11px;padding:2px 7px;border-radius:20px;background:${s.color}20;color:${s.color};font-weight:600;">This store only</span>`:'<span style="font-size:11px;color:var(--text3);">All stores</span>'}
+        </div>
+        ${myFb?`<div style="margin-top:8px;padding:9px 11px;background:var(--bg3);border-radius:8px;font-size:13px;color:var(--text2);line-height:1.5;">"${myFb.text.length>80?myFb.text.slice(0,80)+'…':myFb.text}"</div>`:''}
+      </div>`;
+    }).join('');
+  }
+  goTo('s-store-detail');
+}
+
+function goAddStore(){ document.getElementById('add-store-brand-name').textContent=brand().name; goTo('s-add-store'); }
+function doAddStore(){
+  const name=document.getElementById('ns-name').value.trim();
+  const phone=document.getElementById('ns-phone').value.trim();
+  const location=document.getElementById('ns-location').value.trim();
+  const user=document.getElementById('ns-user').value.trim();
+  const pass=document.getElementById('ns-pass').value;
+  const msg=document.getElementById('add-store-msg');
+  if(!name||!user||!pass){ msg.innerHTML='<div class="alert alert-danger">Name, username and password are required.</div>'; return; }
+  const all=DB.brands.flatMap(b=>b.stores.map(s=>s.username));
+  if(all.includes(user)||user==='admin'){ msg.innerHTML='<div class="alert alert-danger">Username already taken.</div>'; return; }
+  brand().stores.push({id:'s'+Date.now(),name,username:user,password:pass,phone,location,logo:_nsLogoData||null,color:STORE_DOTS[brand().stores.length%STORE_DOTS.length]});
+  ['ns-name','ns-phone','ns-location','ns-user','ns-pass'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('ns-logo-preview').innerHTML='🏷️';
+  _nsLogoData=null;
+  msg.innerHTML='<div class="alert alert-success">✓ Store added!</div>';
+  setTimeout(()=>{ msg.innerHTML=''; renderBrandHero(); brandTab('stores'); goTo('s-brand'); },1200);
+}
+function goEditStore(){
+  const sid = DB.currentStoreId;
+  if(!sid){ showToast('⚠️ No store selected'); return; }
+  // Search all brands for this store
+  let s = null;
+  for(const b of DB.brands){ s=b.stores.find(st=>st.id===sid); if(s) break; }
+  if(!s) return;
+  document.getElementById('es-name').value=s.name||'';
+  document.getElementById('es-phone').value=s.phone||'';
+  document.getElementById('es-location').value=s.location||'';
+  document.getElementById('es-user').value=s.username||'';
+  document.getElementById('es-pass').value='';
+  _esLogoData=s.logo||null;
+  const prev=document.getElementById('es-logo-preview');
+  prev.innerHTML=s.logo?`<img src="${s.logo}" style="width:100%;height:100%;object-fit:cover;border-radius:9px;"/>`:'🏷️';
+  document.getElementById('edit-store-msg').innerHTML='';
+  goTo('s-edit-store');
+}
+function doEditStore(){
+  const sid = DB.currentStoreId;
+  let s=null, foundBrand=null;
+  for(const b of DB.brands){ s=b.stores.find(st=>st.id===sid); if(s){ foundBrand=b; break; } }
+  if(!s) return;
+  const name=document.getElementById('es-name').value.trim();
+  const phone=document.getElementById('es-phone').value.trim();
+  const location=document.getElementById('es-location').value.trim();
+  const user=document.getElementById('es-user').value.trim();
+  const pass=document.getElementById('es-pass').value;
+  const msg=document.getElementById('edit-store-msg');
+  if(!name||!user){ msg.innerHTML='<div class="alert alert-danger">Name and username are required.</div>'; return; }
+  const allOther=DB.brands.flatMap(b=>b.stores.filter(st=>st.id!==s.id).map(st=>st.username));
+  if(allOther.includes(user)||user==='admin'){ msg.innerHTML='<div class="alert alert-danger">Username already taken.</div>'; return; }
+  s.name=name; s.phone=phone; s.location=location; s.username=user;
+  if(pass) s.password=pass;
+  if(_esLogoData) s.logo=_esLogoData;
+  msg.innerHTML='<div class="alert alert-success">✓ Changes saved!</div>';
+  setTimeout(()=>{
+    msg.innerHTML='';
+    document.getElementById('sd-store-name').textContent=s.name;
+    openStoreDetail(s.id);
+  },1000);
+}
+function confirmRemoveStore(sid){
+  const storeId = sid || DB.currentStoreId;
+  if(!storeId){ showToast('⚠️ No store selected'); return; }
+
+  // Search ALL brands for this store
+  let foundBrand=null, foundStore=null;
+  for(const b of DB.brands){
+    const s=b.stores.find(s=>s.id===storeId);
+    if(s){ foundBrand=b; foundStore=s; break; }
+  }
+  if(!foundBrand||!foundStore){ showToast('⚠️ Store not found'); return; }
+
+  // Show inline confirm overlay instead of browser confirm()
+  showRemoveStoreConfirm(foundStore.name, ()=>{
+    foundBrand.stores=foundBrand.stores.filter(s=>s.id!==storeId);
+    foundBrand.reports.forEach(r=>{ r.feedbacks=r.feedbacks.filter(f=>f.storeId!==storeId); });
+    DB.currentStoreId=null;
+    DB.currentBrandId=foundBrand.id;
+    renderBrandHero();
+    brandTab('stores');
+    goTo('s-brand');
+    showToast('Store removed');
+  });
+}
+function removeStore(sid){ confirmRemoveStore(sid); }
+
+function showRemoveStoreConfirm(name, onConfirm){
+  const overlay=document.getElementById('remove-store-overlay');
+  if(overlay){
+    document.getElementById('remove-store-name-text').textContent=name;
+    overlay.style.display='flex';
+    window._pendingRemoveStoreAction=onConfirm;
+  } else {
+    onConfirm(); // fallback
+  }
+}
+function doRemoveStoreConfirmed(){
+  document.getElementById('remove-store-overlay').style.display='none';
+  if(window._pendingRemoveStoreAction) window._pendingRemoveStoreAction();
+  window._pendingRemoveStoreAction=null;
+}
+function closeRemoveStoreOverlay(){
+  document.getElementById('remove-store-overlay').style.display='none';
+  window._pendingRemoveStoreAction=null;
+}
+
+function goUploadForStore(sid){
+  // Open upload screen with this store pre-selected
+  goUpload();
+  setTimeout(()=>{
+    const sel=document.getElementById('r-store');
+    if(sel) sel.value=sid;
+  },50);
+}
+
+/* ===== UPLOAD ===== */
+function goUpload(){
+  const b=brand();
+  document.getElementById('upload-brand-name').textContent=b.name;
+  // logo
+  const logoBox=document.getElementById('upload-brand-logo');
+  logoBox.style.background=b.color+'33';
+  logoBox.innerHTML=b.logo?`<img src="${b.logo}" style="width:100%;height:100%;object-fit:cover;border-radius:7px;"/>`:`<span>${b.logoText||'🏷️'}</span>`;
+  // store checkboxes
+  const checksEl=document.getElementById('r-store-checks');
+  checksEl.innerHTML=`<label style="display:flex;align-items:center;gap:10px;padding:6px 2px;cursor:pointer;font-size:14px;font-weight:600;color:var(--text);text-transform:none;letter-spacing:0;margin-bottom:0;">
+    <input type="checkbox" id="r-store-all" checked onchange="toggleAllStores(this)"/> All stores
+  </label>
+  <div style="border-top:1px solid var(--border);margin:6px 0;"></div>`+
+  b.stores.map(s=>`<label style="display:flex;align-items:center;gap:10px;padding:6px 2px;cursor:pointer;font-size:14px;color:var(--text);text-transform:none;letter-spacing:0;font-weight:400;margin-bottom:0;">
+    <input type="checkbox" class="store-check" data-sid="${s.id}" onchange="updateAllStoresCheck()"/>
+    <span style="width:9px;height:9px;border-radius:50%;background:${s.color};flex-shrink:0;display:inline-block;"></span>${s.name}
+  </label>`).join('');
+  // reset fields safely
+  ['r-title','r-desc','r-store-name','r-checked-by','r-score'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  const dateEl=document.getElementById('r-inspect-date'); if(dateEl) dateEl.value=new Date().toISOString().slice(0,10);
+  const lbl=document.getElementById('pdf-lbl'); if(lbl){ lbl.textContent='Tap to select PDF'; lbl.style.color=''; }
+  DB.pendingUpload=null;
+  DB.pendingRefs=[];
+  renderRefItems();
+  document.getElementById('upload-msg').innerHTML='';
+  goTo('s-upload');
+}
+function onPDFPick(input){
+  const file=input.files&&input.files[0];
+  if(!file) return;
+  if(DB.pendingUploadURL) URL.revokeObjectURL(DB.pendingUploadURL);
+  DB.pendingUpload=file;
+  DB.pendingUploadURL=URL.createObjectURL(file);
+  const lbl=document.getElementById('pdf-lbl');
+  if(lbl){ lbl.textContent='✓ '+file.name; lbl.style.color='var(--success)'; }
+}
+
+/* ===== REFERENCE ITEMS ===== */
+function addRefItem(){
+  const id='ref'+Date.now();
+  DB.pendingRefs.push({id,name:'',desc:'',photos:[]});
+  renderRefItems();
+  setTimeout(()=>{ const el=document.getElementById('refname_'+id); if(el) el.focus(); },50);
+}
+function updateRefName(id,val){ const r=DB.pendingRefs.find(r=>r.id===id); if(r) r.name=val; }
+function removeRefItem(id){
+  DB.pendingRefs=DB.pendingRefs.filter(r=>r.id!==id);
+  renderRefItems();
+}
+function renderRefItems(){
+  const el=document.getElementById('ref-items-list');
+  if(!DB.pendingRefs.length){ el.innerHTML='<div style="font-size:13px;color:var(--text3);text-align:center;padding:12px 0;">No items yet</div>'; return; }
+  el.innerHTML=DB.pendingRefs.map((ref,i)=>`
+    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:13px;margin-bottom:10px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <span style="font-size:12px;font-weight:600;color:var(--accent);">Item ${i+1}</span>
+        <button class="btn btn-xs btn-danger" onclick="removeRefItem('${ref.id}')">Remove</button>
+      </div>
+      <input type="text" id="refname_${ref.id}" placeholder="Item name (e.g. Cleanliness, Price tag...)" style="margin-bottom:8px;" value="${ref.name||''}" oninput="updateRefName('${ref.id}',this.value)"/>
+      <textarea id="refdesc_${ref.id}" placeholder="Description / note for reviewers..." style="min-height:60px;margin-bottom:8px;" oninput="updateRefDesc('${ref.id}',this.value)">${ref.desc}</textarea>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+        <span style="font-size:11px;color:var(--text2);">Photos (${ref.photos.length})</span>
+        <button class="btn btn-xs" onclick="document.getElementById('refphotos_${ref.id}').click()">+ Photo</button>
+        <input type="file" id="refphotos_${ref.id}" accept="image/*" multiple style="display:none;" onchange="addRefPhotos('${ref.id}',this)"/>
+      </div>
+      <div class="photo-grid" id="refphotosgrid_${ref.id}">
+        ${ref.photos.map((p,pi)=>`<div class="photo-thumb-wrap"><img src="${p}" class="photo-thumb" onclick="openLightbox('${p}')"/><button class="photo-remove" onclick="removeRefPhoto('${ref.id}',${pi})">✕</button></div>`).join('')}
+      </div>
+    </div>`).join('');
+}
+function updateRefDesc(id,val){ const r=DB.pendingRefs.find(r=>r.id===id); if(r) r.desc=val; }
+function addRefPhotos(id,input){
+  const ref=DB.pendingRefs.find(r=>r.id===id); if(!ref) return;
+  Array.from(input.files).forEach(f=>{ const reader=new FileReader(); reader.onload=e=>{ ref.photos.push(e.target.result); renderRefItems(); }; reader.readAsDataURL(f); });
+}
+function removeRefPhoto(id,idx){ const r=DB.pendingRefs.find(r=>r.id===id); if(r){ r.photos.splice(idx,1); renderRefItems(); } }
+
+function reportVisibleToStore(r, sid){
+  if(!r.storeIds||r.storeIds.length===0){
+    // legacy: check storeId single field
+    return !r.storeId||r.storeId===sid;
+  }
+  return r.storeIds.includes(sid);
+}
+
+function getSelectedStoreIds(){
+  const allChecked=document.getElementById('r-store-all')?.checked;
+  if(allChecked) return [];
+  return Array.from(document.querySelectorAll('.store-check:checked')).map(el=>el.getAttribute('data-sid'));
+}
+function toggleAllStores(cb){
+  document.querySelectorAll('.store-check').forEach(el=>{ el.checked=false; el.disabled=cb.checked; });
+}
+function updateAllStoresCheck(){
+  const any=Array.from(document.querySelectorAll('.store-check:checked')).length>0;
+  const allCb=document.getElementById('r-store-all');
+  if(allCb) allCb.checked=!any;
+}
+
+function doUpload(){
+  const titleEl=document.getElementById('r-title');
+  const descEl=document.getElementById('r-desc');
+  const msg=document.getElementById('upload-msg');
+  const title=(titleEl||{}).value?.trim()||'';
+  const desc=(descEl||{}).value?.trim()||'';
+  if(!title){ msg.innerHTML='<div class="alert alert-danger">Please enter a title.</div>'; return; }
+  if(!DB.pendingUpload){ msg.innerHTML='<div class="alert alert-danger">Please select a PDF file.</div>'; return; }
+  const storeIds=getSelectedStoreIds();
+  const refs=DB.pendingRefs.map(r=>({...r,name:r.name||''}));
+  const inspection={
+    storeName:(document.getElementById('r-store-name')||{}).value?.trim()||'',
+    date:(document.getElementById('r-inspect-date')||{}).value||'',
+    checkedBy:(document.getElementById('r-checked-by')||{}).value?.trim()||'',
+    score:(document.getElementById('r-score')||{}).value?.trim()||'',
+  };
+  brand().reports.unshift({
+    id:'r'+Date.now(),title,desc,
+    file:DB.pendingUpload.name,
+    fileURL:DB.pendingUploadURL||null,
+    date:new Date().toISOString().slice(0,10),
+    storeId:storeIds.length===1?storeIds[0]:'',
+    storeIds,refs,inspection,feedbacks:[]
+  });
+  DB.pendingUpload=null; DB.pendingUploadURL=null; DB.pendingRefs=[];
+  ['r-title','r-desc','r-store-name','r-checked-by','r-score'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  const lbl=document.getElementById('pdf-lbl');
+  if(lbl){ lbl.textContent='Tap to select PDF'; lbl.style.color=''; }
+  // Reset date to today
+  const dateEl=document.getElementById('r-inspect-date');
+  if(dateEl) dateEl.value=new Date().toISOString().slice(0,10);
+  renderRefItems();
+  msg.innerHTML='<div class="alert alert-success">✓ Report uploaded!</div>';
+  closeConfirm();
+  setTimeout(()=>{ msg.innerHTML=''; brandTab('reports'); goTo('s-brand'); },1200);
+}
+
+function confirmUpload(){
+  const title=document.getElementById('r-title').value.trim();
+  const msg=document.getElementById('upload-msg');
+  if(!title){ msg.innerHTML='<div class="alert alert-danger">Please enter a report title.</div>'; return; }
+  if(!DB.pendingUpload){ msg.innerHTML='<div class="alert alert-danger">Please select a PDF file.</div>'; return; }
+  msg.innerHTML='';
+
+  const b=brand();
+  const storeIds=getSelectedStoreIds();
+  const targetStoreNames=storeIds.length===0?'All stores':storeIds.map(sid=>{ const s=b.stores.find(s=>s.id===sid); return s?s.name:sid; }).join(', ');
+  const storeName=(document.getElementById('r-store-name')||{}).value||'';
+  const inspDate=(document.getElementById('r-inspect-date')||{}).value||'';
+  const checkedBy=(document.getElementById('r-checked-by')||{}).value||'';
+  const score=(document.getElementById('r-score')||{}).value||'';
+  const refCount=DB.pendingRefs.length;
+
+  document.getElementById('upload-confirm-body').innerHTML=`
+    <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:var(--text2);">Brand</span><strong>${b.name}</strong></div>
+    <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:var(--text2);">Report</span><strong>${title}</strong></div>
+    <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:var(--text2);">File</span><strong style="word-break:break-all;max-width:60%;text-align:right;">${DB.pendingUpload.name}</strong></div>
+    <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:var(--text2);">Send to</span><strong>${targetStoreNames}</strong></div>
+    ${storeName.trim()?`<div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:var(--text2);">Store name</span><strong>${storeName.trim()}</strong></div>`:''}
+    ${inspDate?`<div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:var(--text2);">Date</span><strong>${inspDate}</strong></div>`:''}
+    ${checkedBy.trim()?`<div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:var(--text2);">Checked by</span><strong>${checkedBy.trim()}</strong></div>`:''}
+    ${score.trim()?`<div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:var(--text2);">Score</span>${scoreHTML(score.trim(),13)}</div>`:''}
+    ${refCount?`<div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:var(--text2);">Reference items</span><strong>${refCount} item${refCount>1?'s':''}</strong></div>`:''}
+  `;
+  document.getElementById('upload-confirm-overlay').style.display='flex';
+}
+function closeConfirm(){
+  document.getElementById('upload-confirm-overlay').style.display='none';
+}
+function viewFeedback(rid){
+  DB.currentReportId=rid;
+  const b=brand(), r=b.reports.find(r=>r.id===rid);
+  document.getElementById('fb-screen-title').textContent=r.title;
+  document.getElementById('fb-filename').textContent=r.file;
+
+  // Inspection details card
+  const insp=r.inspection||{};
+  const hasInsp=insp.storeName||insp.date||insp.checkedBy||insp.score;
+  const inspWrap=document.getElementById('fb-inspection');
+  if(inspWrap){
+    if(hasInsp){
+      inspWrap.innerHTML=`
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);padding:14px 16px;margin-bottom:16px;">
+          <div style="font-size:12px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;">Inspection details</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+            ${insp.storeName?`<div><div style="font-size:11px;color:var(--text3);margin-bottom:2px;">Store</div><div style="font-size:14px;font-weight:500;">${insp.storeName}</div></div>`:''}
+            ${insp.date?`<div><div style="font-size:11px;color:var(--text3);margin-bottom:2px;">Date</div><div style="font-size:14px;font-weight:500;">${insp.date}</div></div>`:''}
+            ${insp.checkedBy?`<div><div style="font-size:11px;color:var(--text3);margin-bottom:2px;">Checked by</div><div style="font-size:14px;font-weight:500;">${insp.checkedBy}</div></div>`:''}
+            ${insp.score?`<div><div style="font-size:11px;color:var(--text3);margin-bottom:2px;">Score</div><div style="font-size:22px;font-weight:700;">${scoreHTML(insp.score,22)}</div></div>`:''}
+          </div>
+        </div>`;
+    } else { inspWrap.innerHTML=''; }
+  }
+
+  const targetStores=r.storeId?b.stores.filter(s=>s.id===r.storeId):b.stores;
+  const ts=targetStores.length, n=r.feedbacks.length, pct=ts?Math.round(n/ts*100):0;
+
+  document.getElementById('fb-summary').innerHTML=`
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);padding:14px 16px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+        <span style="font-size:13px;color:var(--text2);">Responses</span>
+        <span style="font-size:20px;font-weight:700;">${n}<span style="font-size:13px;font-weight:400;color:var(--text2);"> / ${ts}</span></span>
+      </div>
+      <div class="prog-wrap"><div class="prog-bar" style="width:${pct}%;background:${b.color};"></div></div>
+      <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;">
+        ${targetStores.map(s=>{const has=r.feedbacks.find(f=>f.storeId===s.id);return `<div style="display:flex;align-items:center;gap:5px;padding:3px 8px;border-radius:20px;background:var(--bg3);border:1px solid ${has?s.color:'var(--border)'};">
+          <div style="width:6px;height:6px;border-radius:50%;background:${has?s.color:'var(--border2)'}"></div>
+          <span style="font-size:11px;color:${has?'var(--text2)':'var(--text3)'};">${s.name.split('–')[1]?.trim()||s.name}</span>
+        </div>`;}).join('')}
+      </div>
+    </div>`;
+
+  // Reference items — collapsible with store responses inside
+  const rw=document.getElementById('fb-refs-wrap');
+  if(r.refs&&r.refs.length){
+    rw.innerHTML=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;"><div class="sec-label" style="margin-bottom:0;">Items (${r.refs.length})</div></div>`+
+    r.refs.map((ref,i)=>{
+      // Collect responses for this ref from all feedbacks
+      const responses=r.feedbacks.map(f=>{
+        const s=b.stores.find(s=>s.id===f.storeId);
+        const it=f.itemFeedbacks?f.itemFeedbacks.find(it=>it.refId===ref.id):null;
+        return {store:s, item:it, date:f.date};
+      }).filter(x=>x.item);
+      const respCount=responses.length;
+      return `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);margin-bottom:10px;overflow:hidden;">
+        <!-- Header row — tap to toggle -->
+        <div onclick="toggleAdminItem('ai_${ref.id}')" style="display:flex;align-items:center;gap:10px;padding:13px 14px;cursor:pointer;user-select:none;">
+          <div style="flex:1;">
+            <div style="font-size:14px;font-weight:600;">${i+1}. ${ref.name||'Item '+(i+1)}</div>
+            ${ref.desc?`<div style="font-size:12px;color:var(--text2);margin-top:2px;">${ref.desc}</div>`:''}
+          </div>
+          ${respCount?`<span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;background:var(--badge-done-bg);color:var(--success);">${respCount} response${respCount>1?'s':''}</span>`:'<span style="font-size:11px;color:var(--text3);">No responses</span>'}
+          <div id="ai_arrow_${ref.id}" style="font-size:13px;color:var(--text3);transition:transform .2s;">▼</div>
+        </div>
+        <!-- Dropdown body -->
+        <div id="ai_${ref.id}" style="display:none;border-top:1px solid var(--border);">
+          <!-- Admin content -->
+          <div style="padding:12px 14px;background:var(--bg3);">
+            ${ref.desc?`<div style="font-size:13px;color:var(--text);line-height:1.5;margin-bottom:8px;">${ref.desc}</div>`:''}
+            ${ref.photos&&ref.photos.length?`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-bottom:10px;">${ref.photos.map(p=>`<div style="aspect-ratio:1;border-radius:7px;overflow:hidden;"><img src="${p}" style="width:100%;height:100%;object-fit:cover;cursor:pointer;" onclick="openLightbox('${p}')"/></div>`).join('')}</div>`:''}
+            <button class="btn btn-xs" onclick="toggleEditRef('${ref.id}','${rid}')">Edit item</button>
+          </div>
+          <!-- Edit form -->
+          <div id="refview_edit_${ref.id}" style="display:none;padding:12px 14px;border-top:1px solid var(--border);">
+            <textarea id="refinput_${ref.id}" style="min-height:60px;margin-bottom:8px;">${ref.desc}</textarea>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+              <span style="font-size:11px;color:var(--text2);">Photos (${ref.photos.length})</span>
+              <button class="btn btn-xs" onclick="document.getElementById('refphotosedit_${ref.id}').click()">+ Photo</button>
+              <input type="file" id="refphotosedit_${ref.id}" accept="image/*" multiple style="display:none;" onchange="addRefPhotosInline('${ref.id}','${rid}',this)"/>
+            </div>
+            <div class="photo-grid" id="refphotosgrid_inline_${ref.id}">${ref.photos.map((p,pi)=>`<div class="photo-thumb-wrap"><img src="${p}" class="photo-thumb" onclick="openLightbox('${p}')"/><button class="photo-remove" onclick="removeRefPhotoInline('${ref.id}','${rid}',${pi})">✕</button></div>`).join('')}</div>
+            <div style="display:flex;gap:8px;margin-top:10px;">
+              <button class="btn btn-primary btn-sm" style="flex:1;" onclick="saveRefEdit('${ref.id}','${rid}')">Save</button>
+              <button class="btn btn-sm" onclick="toggleEditRef('${ref.id}','${rid}')">Cancel</button>
+            </div>
+          </div>
+          <!-- Store responses for this item -->
+          ${responses.length?`<div style="padding:12px 14px;border-top:1px solid var(--border);">
+            <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;">Store responses</div>
+            ${responses.map(({store,item,date})=>`
+              <div style="padding:10px 0;border-bottom:1px solid var(--border);">
+                <div style="display:flex;align-items:center;gap:7px;margin-bottom:6px;">
+                  <div class="dot" style="background:${store?store.color:'#888'}"></div>
+                  <strong style="font-size:13px;">${store?store.name:'Unknown'}</strong>
+                  <span style="font-size:11px;color:var(--text3);">${date}</span>
+                </div>
+                ${item.note?`<div style="font-size:13px;color:var(--text);line-height:1.5;">${item.note}</div>`:'<div style="font-size:12px;color:var(--text3);">No note</div>'}
+                ${item.photos&&item.photos.length?`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-top:7px;">${item.photos.map(p=>`<div style="aspect-ratio:1;border-radius:7px;overflow:hidden;"><img src="${p}" style="width:100%;height:100%;object-fit:cover;cursor:pointer;" onclick="openLightbox('${p}')"/></div>`).join('')}</div>`:''}
+              </div>`).join('')}
+          </div>`:'<div style="padding:12px 14px;border-top:1px solid var(--border);font-size:13px;color:var(--text3);">No responses yet</div>'}
+        </div>
+      </div>`;
+    }).join('');
+  } else { rw.innerHTML=''; }
+
+  const responded=r.feedbacks.map(f=>f.storeId);
+  const missing=targetStores.filter(s=>!responded.includes(s.id));
+  const mw=document.getElementById('fb-missing');
+  if(missing.length){
+    mw.innerHTML=`
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);padding:14px 16px;margin-top:4px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+          <div>
+            <div style="font-size:14px;font-weight:600;">Not yet responded (${missing.length})</div>
+            <div style="font-size:12px;color:var(--text2);margin-top:2px;">Send a reminder to these stores</div>
+          </div>
+          <button class="btn btn-sm" style="background:var(--warn);color:#fff;border-color:var(--warn);flex-shrink:0;" onclick="alertStores('${rid}')">🔔 Alert</button>
+        </div>
+        ${missing.map(s=>`
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <div class="dot" style="background:${s.color}"></div>
+              <span style="font-size:13px;">${s.name}</span>
+            </div>
+            <button class="btn btn-xs" style="color:var(--warn);border-color:var(--warn);" onclick="alertOneStore('${rid}','${s.id}')">Alert</button>
+          </div>`).join('')}
+      </div>`;
+  } else {
+    mw.innerHTML=`<div style="text-align:center;padding:12px 0;font-size:13px;color:var(--success);">✓ All stores have responded</div>`;
+  }
+  goTo('s-feedback');
+}
+
+/* ===== BRAND FORM ===== */
+function buildSwatches(picked){
+  document.getElementById('color-swatches').innerHTML=BRAND_COLORS.map(c=>`<div class="swatch${c===picked?' picked':''}" data-color="${c}" style="background:${c};" onclick="pickColor('${c}')"></div>`).join('');
+}
+function pickColor(c){
+  DB.pickedColor=c;
+  document.querySelectorAll('.swatch').forEach(s=>s.classList.toggle('picked', s.getAttribute('data-color')===c));
+}
+function onLogoPick(input){
+  if(!input.files[0]) return;
+  const reader=new FileReader();
+  reader.onload=e=>{ DB.pendingLogo=e.target.result; document.getElementById('logo-preview-box').innerHTML=`<img src="${e.target.result}" style="width:100%;height:100%;object-fit:cover;border-radius:10px;"/>`; };
+  reader.readAsDataURL(input.files[0]);
+}
+function openAddBrand(){
+  DB.editingBrandId=null; DB.pickedColor=BRAND_COLORS[0]; DB.pendingLogo=null;
+  document.getElementById('nb-name').value='';
+  document.getElementById('add-brand-title').textContent='New brand';
+  document.getElementById('brand-form-btn').textContent='Create brand';
+  document.getElementById('brand-delete-btn').style.display='none';
+  document.getElementById('add-brand-back').onclick=()=>goTo('s-home');
+  document.getElementById('logo-preview-box').innerHTML='🏷️';
+  document.getElementById('brand-form-msg').innerHTML='';
+  buildSwatches(BRAND_COLORS[0]);
+  goTo('s-add-brand');
+}
+function editBrand(){
+  DB.editingBrandId=DB.currentBrandId;
+  const b=brand(); DB.pickedColor=b.color; DB.pendingLogo=b.logo||null;
+  document.getElementById('nb-name').value=b.name;
+  document.getElementById('add-brand-title').textContent='Edit brand';
+  document.getElementById('brand-form-btn').textContent='Save changes';
+  document.getElementById('brand-delete-btn').style.display='';
+  document.getElementById('add-brand-back').onclick=()=>goTo('s-brand');
+  document.getElementById('logo-preview-box').innerHTML=b.logo?`<img src="${b.logo}" style="width:100%;height:100%;object-fit:cover;border-radius:10px;"/>`:'🏷️';
+  document.getElementById('brand-form-msg').innerHTML='';
+  buildSwatches(b.color);
+  goTo('s-add-brand');
+}
+function saveBrand(){
+  const name=document.getElementById('nb-name').value.trim();
+  const msg=document.getElementById('brand-form-msg');
+  if(!name){ msg.innerHTML='<div class="alert alert-danger">Please enter a brand name.</div>'; return; }
+  if(DB.editingBrandId){
+    const b=DB.brands.find(b=>b.id===DB.editingBrandId);
+    b.name=name; b.color=DB.pickedColor;
+    if(DB.pendingLogo) b.logo=DB.pendingLogo;
+    msg.innerHTML='<div class="alert alert-success">✓ Brand updated!</div>';
+    setTimeout(()=>{ msg.innerHTML=''; DB.currentBrandId=DB.editingBrandId; renderBrandHero(); document.getElementById('brand-topbar-title').textContent=name; renderHome(); goTo('s-brand'); },1200);
+  } else {
+    DB.brands.push({id:'b'+Date.now(),name,color:DB.pickedColor,logo:DB.pendingLogo||null,logoText:'🏷️',stores:[],reports:[]});
+    msg.innerHTML='<div class="alert alert-success">✓ Brand created!</div>';
+    setTimeout(()=>{ msg.innerHTML=''; renderHome(); goTo('s-home'); },1200);
+  }
+}
+function deleteBrand(){
+  const b=brand();
+  if(!b) return;
+  showGenericConfirm(
+    `Delete "${b.name}"?\n\nAll stores, reports and feedback will be permanently removed.`,
+    ()=>{
+      DB.brands=DB.brands.filter(br=>br.id!==DB.currentBrandId);
+      DB.currentBrandId=null;
+      renderHome();
+      goTo('s-home');
+      showToast('Brand deleted');
+    }
+  );
+}
+
+/* ===== REVIEWER ===== */
+function reviewerBrand(){ return DB.brands.find(b=>b.id===DB.reviewerBrandId); }
+function reviewerStore(){ const b=reviewerBrand(); return b?b.stores.find(s=>s.id===DB.reviewerStoreId):null; }
+
+function renderReviewerHome(){
+  const b=reviewerBrand(), s=reviewerStore();
+  if(!b||!s) return;
+
+  // Topbar — show store logo if set, else brand logo
+  document.getElementById('rv-store-name').textContent=s.name;
+  const logoTop=document.getElementById('rv-brand-logo-top');
+  logoTop.style.background=b.color+'22';
+  if(s.logo){
+    logoTop.innerHTML=`<img src="${s.logo}" style="width:100%;height:100%;object-fit:cover;border-radius:7px;"/>`;
+  } else if(b.logo){
+    logoTop.innerHTML=`<img src="${b.logo}" style="width:100%;height:100%;object-fit:cover;border-radius:7px;"/>`;
+  } else {
+    logoTop.innerHTML=`<span>${b.logoText||'🏷️'}</span>`;
+  }
+
+  // Store info card
+  const initials=s.name.split(/\s+/).map(w=>w[0]).filter(Boolean).slice(0,2).join('').toUpperCase();
+  const avatarContent=s.logo
+    ? `<img src="${s.logo}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"/>`
+    : `<span style="font-size:15px;font-weight:700;color:${b.color};">${initials}</span>`;
+  document.getElementById('rv-store-card').innerHTML=`
+    <div style="background:${b.color}12;border:1px solid ${b.color}30;border-radius:var(--rl);overflow:hidden;">
+      <div style="display:flex;align-items:center;gap:12px;padding:13px 15px;">
+        <div style="width:48px;height:48px;border-radius:50%;background:${b.color}25;border:2px solid ${b.color}40;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;">
+          ${avatarContent}
+        </div>
+        <div style="flex:1;">
+          <div style="font-size:16px;font-weight:700;">${s.name}</div>
+          <div style="font-size:12px;color:var(--text2);margin-top:1px;">${b.name}</div>
+        </div>
+      </div>
+      ${s.phone||s.location?`<div style="border-top:1px solid ${b.color}20;padding:10px 15px;display:flex;flex-direction:column;gap:6px;">
+        ${s.phone?`<div style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2);">📞 ${s.phone}</div>`:''}
+        ${s.location?`<div style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2);">📍 ${s.location}</div>`:''}
+      </div>`:''}
+    </div>`;
+
+  // Stats
+  const reports=b.reports.filter(r=>reportVisibleToStore(r,s.id));
+  const done=reports.filter(r=>r.feedbacks.find(f=>f.storeId===s.id)).length;
+  const pending=reports.length-done;
+  document.getElementById('rv-stats-row').innerHTML=`
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);padding:13px 14px;">
+      <div style="font-size:24px;font-weight:700;color:var(--warn);">${pending}</div>
+      <div style="font-size:12px;color:var(--text2);margin-top:2px;">Pending</div>
+    </div>
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);padding:13px 14px;">
+      <div style="font-size:24px;font-weight:700;color:var(--success);">${done}</div>
+      <div style="font-size:12px;color:var(--text2);margin-top:2px;">Completed</div>
+    </div>`;
+
+  // Report list — pending first then done
+  const sorted=[...reports].sort((a,b)=>{
+    const aD=a.feedbacks.find(f=>f.storeId===s.id)?1:0;
+    const bD=b.feedbacks.find(f=>f.storeId===s.id)?1:0;
+    return aD-bD;
+  });
+  const el=document.getElementById('rv-report-list');
+  if(!sorted.length){ el.innerHTML='<div class="empty">No reports assigned yet</div>'; return; }
+  el.innerHTML=sorted.map(r=>{
+    const myFb=r.feedbacks.find(f=>f.storeId===s.id);
+    const insp=r.inspection||{};
+    const itemCount=r.refs&&r.refs.length?r.refs.length:0;
+    return `<div class="card card-click" onclick="openReviewerReport('${r.id}')">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+        <div style="font-size:14px;font-weight:600;flex:1;">${r.title}</div>
+        <span class="badge ${myFb?'badge-done':'badge-pending'}" style="flex-shrink:0;">${myFb?'✓ Done':'Pending'}</span>
+      </div>
+      <div style="font-size:12px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:4px;">${r.file}</div>
+        ${insp.date||insp.score?`<div style="display:flex;gap:10px;margin-top:6px;flex-wrap:wrap;">
+        ${insp.date?`<span style="font-size:12px;color:var(--text2);">📅 ${insp.date}</span>`:''}
+        ${insp.score?scoreHTML(insp.score,12):''}
+      </div>`:''}
+      ${itemCount?`<div style="font-size:12px;color:var(--accent);margin-top:5px;">📎 ${itemCount} item${itemCount>1?'s':''} to review</div>`:''}
+      ${myFb?`<div style="margin-top:8px;padding:8px 11px;background:var(--bg3);border-radius:8px;font-size:12px;color:var(--text2);">Submitted ${myFb.date}</div>`:''}
+    </div>`;
+  }).join('');
+}
+
+function openReviewerReport(rid){
+  DB.reviewerReportId=rid;
+  // itemFeedbacks: [{refId, note, photos:[dataURL]}]
+  DB.itemFeedbacks=[];
+  const b=reviewerBrand(), s=reviewerStore();
+  const r=b.reports.find(r=>r.id===rid);
+  document.getElementById('rv-report-title').textContent=r.title;
+  document.getElementById('rv-pdf-name').textContent=r.file;
+  document.getElementById('rv-fb-msg').innerHTML='';
+
+  // Inspection card
+  const insp=r.inspection||{};
+  const hasInsp=insp.storeName||insp.date||insp.checkedBy||insp.score;
+  document.getElementById('rv-inspection-card').innerHTML=hasInsp?`
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);padding:13px 15px;">
+      <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;">Inspection details</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        ${insp.storeName?`<div><div style="font-size:11px;color:var(--text3);">Store</div><div style="font-size:13px;font-weight:600;margin-top:2px;">${insp.storeName}</div></div>`:''}
+        ${insp.date?`<div><div style="font-size:11px;color:var(--text3);">Date</div><div style="font-size:13px;font-weight:600;margin-top:2px;">${insp.date}</div></div>`:''}
+        ${insp.checkedBy?`<div><div style="font-size:11px;color:var(--text3);">Checked by</div><div style="font-size:13px;font-weight:600;margin-top:2px;">${insp.checkedBy}</div></div>`:''}
+        ${insp.score?`<div><div style="font-size:11px;color:var(--text3);">Score</div><div style="font-size:20px;font-weight:700;margin-top:2px;">${scoreHTML(insp.score,20)}</div></div>`:''}
+      </div>
+    </div>`:'';
+
+
+  const submittedDiv=document.getElementById('rv-submitted-view');
+  const formDiv=document.getElementById('rv-feedback-form');
+  const myFb=r.feedbacks.find(f=>f.storeId===s.id);
+
+  if(myFb){
+    submittedDiv.style.display='';
+    submittedDiv.innerHTML=`
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:13px 15px;background:var(--alert-success-bg);border:1px solid var(--alert-success-border);border-radius:var(--rl);margin-bottom:14px;">
+        <div style="font-size:13px;font-weight:600;color:var(--success);">✓ Submitted · ${myFb.date}</div>
+        <button class="btn btn-xs" onclick="editAllResponses('${rid}')">Edit all</button>
+      </div>
+      ${(myFb.itemFeedbacks||[]).map((item,i)=>{
+        const ref=r.refs?r.refs.find(rf=>rf.id===item.refId):null;
+        const hasMyContent=item.note||(item.photos&&item.photos.length);
+        const adminPhotos=ref&&ref.photos&&ref.photos.length?ref.photos:[];
+        return `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);margin-bottom:10px;overflow:hidden;">
+          <!-- Header -->
+          <div onclick="toggleReviewerItem('rvs_${i}')" style="display:flex;align-items:center;gap:10px;padding:13px 14px;cursor:pointer;">
+            <div style="flex:1;">
+              <div style="font-size:14px;font-weight:600;">${i+1}. ${ref&&ref.name?ref.name:'Item '+(i+1)}</div>
+              ${ref&&ref.desc?`<div style="font-size:12px;color:var(--text2);margin-top:1px;">${ref.desc}</div>`:''}
+            </div>
+            <span style="font-size:11px;font-weight:600;color:${hasMyContent?'var(--success)':'var(--text3)'};">${hasMyContent?'✓ Responded':'No response'}</span>
+            <div id="rvi_arrow_s${i}" style="font-size:13px;color:var(--text3);">▼</div>
+          </div>
+          <!-- Dropdown -->
+          <div id="rvs_${i}" style="display:none;border-top:1px solid var(--border);">
+            ${adminPhotos.length?`
+              <div style="padding:10px 14px;background:var(--bg3);border-bottom:1px solid var(--border);">
+                <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:7px;">Admin reference</div>
+                <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:5px;">${adminPhotos.map(p=>`<div style="aspect-ratio:1;border-radius:7px;overflow:hidden;"><img src="${p}" style="width:100%;height:100%;object-fit:cover;cursor:pointer;" onclick="openLightbox('${p}')"/></div>`).join('')}</div>
+              </div>`:''}
+            <div style="padding:13px 14px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;">Your response</div>
+                <button class="btn btn-xs" onclick="editSingleResponse('${rid}',${i})">Edit</button>
+              </div>
+              <div id="rvs_view_${i}">
+                ${item.note?`<div style="font-size:14px;color:var(--text);line-height:1.6;margin-bottom:8px;">${item.note}</div>`:'<div style="font-size:13px;color:var(--text3);margin-bottom:8px;">No note</div>'}
+                ${item.photos&&item.photos.length?`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;">${item.photos.map(p=>`<div style="aspect-ratio:1;border-radius:8px;overflow:hidden;"><img src="${p}" style="width:100%;height:100%;object-fit:cover;cursor:pointer;" onclick="openLightbox('${p}')"/></div>`).join('')}</div>`:''}
+              </div>
+              <div id="rvs_edit_${i}" style="display:none;">
+                <textarea id="rvs_note_${i}" style="min-height:72px;margin-bottom:8px;">${item.note||''}</textarea>
+                <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:8px;" id="rvs_photogrid_${i}">
+                  ${item.photos&&item.photos.length?item.photos.map((p,pi)=>`<div style="position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;"><img src="${p}" style="width:100%;height:100%;object-fit:cover;cursor:pointer;" onclick="openLightbox('${p}')"/><button onclick="removeSubmittedPhoto('${rid}',${i},${pi})" style="position:absolute;top:3px;right:3px;width:18px;height:18px;border-radius:50%;background:rgba(0,0,0,.65);color:#fff;font-size:9px;border:none;cursor:pointer;">✕</button></div>`).join(''):''}
+                </div>
+                <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;">
+                  <button onclick="document.getElementById('rvs_photoinput_${i}').click()" class="btn btn-xs">+ Photo</button>
+                  <input type="file" id="rvs_photoinput_${i}" accept="image/*" multiple style="display:none;" onchange="addSubmittedPhoto('${rid}',${i},this)"/>
+                </div>
+                <div style="display:flex;gap:8px;">
+                  <button class="btn btn-primary btn-sm" style="flex:1;" onclick="saveEditedResponse('${rid}',${i})">Save</button>
+                  <button class="btn btn-sm" onclick="cancelEditResponse(${i})">Cancel</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>`;
+      }).join('')}`;
+    formDiv.style.display='none';
+  } else {
+    submittedDiv.style.display='none';
+    formDiv.style.display='';
+    // Build item-by-item form
+    const refs=r.refs&&r.refs.length?r.refs:[{id:'general',desc:'',photos:[]}];
+    DB.itemFeedbacks=refs.map(ref=>({refId:ref.id,note:'',photos:[]}));
+    renderItemForms(r, b.color);
+  }
+  goTo('s-reviewer-report');
+}
+
+function renderItemForms(r, brandColor){
+  const refs=r.refs&&r.refs.length?r.refs:[{id:'general',desc:'General feedback',photos:[]}];
+  const el=document.getElementById('rv-items-form');
+  el.innerHTML=refs.map((ref,i)=>`
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);margin-bottom:10px;overflow:hidden;">
+      <!-- Tap header to toggle -->
+      <div onclick="toggleReviewerItem('rvi_${i}')" style="display:flex;align-items:center;gap:10px;padding:13px 14px;cursor:pointer;user-select:none;">
+        <div style="flex:1;">
+          <div style="font-size:14px;font-weight:600;color:${brandColor};">${i+1}. ${ref.name||'Item '+(i+1)}</div>
+          ${ref.desc?`<div style="font-size:12px;color:var(--text2);margin-top:2px;">${ref.desc}</div>`:''}
+        </div>
+        <div id="rvi_status_${i}" style="font-size:11px;color:var(--text3);">Tap to respond</div>
+        <div id="rvi_arrow_${i}" style="font-size:13px;color:var(--text3);transition:transform .2s;">▼</div>
+      </div>
+      <!-- Dropdown body -->
+      <div id="rvi_${i}" style="display:none;border-top:1px solid var(--border);">
+        <!-- Admin photos if any -->
+        ${ref.photos&&ref.photos.length?`<div style="padding:10px 14px;background:var(--bg3);display:grid;grid-template-columns:repeat(3,1fr);gap:5px;">${ref.photos.map(p=>`<div style="aspect-ratio:1;border-radius:7px;overflow:hidden;"><img src="${p}" style="width:100%;height:100%;object-fit:cover;cursor:pointer;" onclick="openLightbox('${p}')"/></div>`).join('')}</div>`:''}
+        <!-- Response area -->
+        <div style="padding:13px 14px;">
+          <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:10px;">Your response</div>
+          <!-- Compact action buttons -->
+          <div style="display:flex;gap:8px;margin-bottom:10px;">
+            <button onclick="toggleRvText(${i})" id="rvtextbtn_${i}" style="padding:7px 18px;border-radius:20px;border:1px solid var(--border2);background:var(--bg3);font-size:13px;font-weight:500;color:var(--text2);cursor:pointer;font-family:inherit;transition:all .15s;">
+              Text
+            </button>
+            <button onclick="document.getElementById('item-photo-input-${i}').click()" style="padding:7px 18px;border-radius:20px;border:1px solid var(--border2);background:var(--bg3);font-size:13px;font-weight:500;color:var(--text2);cursor:pointer;font-family:inherit;transition:all .15s;">
+              Photo
+            </button>
+            <input type="file" id="item-photo-input-${i}" accept="image/*" multiple style="display:none;" onchange="addItemPhoto(${i},this)"/>
+          </div>
+          <!-- Text input — hidden until Text button tapped -->
+          <div id="rvtext_${i}" style="display:none;margin-bottom:10px;">
+            <textarea id="item-note-${i}" placeholder="Write your note..." style="min-height:72px;" oninput="updateItemNote(${i},this.value)"></textarea>
+          </div>
+          <!-- Photo grid — always below text -->
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;" id="item-photo-grid-${i}"></div>
+        </div>
+      </div>
+    </div>`).join('');
+  refs.forEach((_,i)=>renderItemPhotoGrid(i));
+}
+
+function toggleRvText(idx){
+  const box=document.getElementById('rvtext_'+idx);
+  const btn=document.getElementById('rvtextbtn_'+idx);
+  if(!box) return;
+  const open=box.style.display==='none';
+  box.style.display=open?'':'none';
+  if(btn){
+    btn.style.background=open?'var(--accent)':'var(--bg3)';
+    btn.style.color=open?'#fff':'var(--text2)';
+    btn.style.borderColor=open?'var(--accent)':'var(--border2)';
+  }
+  if(open) setTimeout(()=>{ const ta=document.getElementById('item-note-'+idx); if(ta) ta.focus(); },50);
+}
+
+function renderItemPhotoGrid(idx){
+  const grid=document.getElementById('item-photo-grid-'+idx);
+  if(!grid||!DB.itemFeedbacks[idx]) return;
+  const photos=DB.itemFeedbacks[idx].photos;
+  if(!photos.length){ grid.innerHTML=''; return; }
+  grid.innerHTML=photos.map((p,pi)=>`
+    <div style="position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;">
+      <img src="${p}" style="width:100%;height:100%;object-fit:cover;cursor:pointer;" onclick="openLightbox('${p}')"/>
+      <button onclick="removeItemPhoto(${idx},${pi})" style="position:absolute;top:3px;right:3px;width:18px;height:18px;border-radius:50%;background:rgba(0,0,0,.65);color:#fff;font-size:9px;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;">✕</button>
+    </div>`).join('');
+}
+
+function toggleAdminItem(id){
+  const el=document.getElementById(id);
+  if(!el) return;
+  const refId=id.replace('ai_','');
+  const arrow=document.getElementById('ai_arrow_'+refId);
+  const open=el.style.display==='none';
+  el.style.display=open?'':'none';
+  if(arrow) arrow.style.transform=open?'rotate(180deg)':'';
+}
+function toggleReviewerItem(id){
+  const el=document.getElementById(id);
+  if(!el) return;
+  const open=el.style.display==='none';
+  el.style.display=open?'':'none';
+  // find arrow — try both naming patterns
+  const isSubmitted=id.startsWith('rvs_');
+  const idx=id.replace('rvs_','').replace('rvi_','');
+  const arrowId=isSubmitted?'rvi_arrow_s'+idx:'rvi_arrow_'+idx;
+  const arrow=document.getElementById(arrowId);
+  if(arrow) arrow.style.transform=open?'rotate(180deg)':'';
+}
+function updateItemNote(idx,val){
+  if(DB.itemFeedbacks[idx]){
+    DB.itemFeedbacks[idx].note=val;
+    refreshReviewerItemStatus(idx);
+  }
+}
+function refreshReviewerItemStatus(idx){
+  const it=DB.itemFeedbacks[idx];
+  const lbl=document.getElementById('rvi_status_'+idx);
+  if(!lbl||!it) return;
+  const hasContent=it.note.trim()||it.photos.length;
+  lbl.textContent=hasContent?'✓ Added':'Tap to respond';
+  lbl.style.color=hasContent?'var(--success)':'var(--text3)';
+  // Keep text button highlighted if note present
+  const btn=document.getElementById('rvtextbtn_'+idx);
+  if(btn&&it.note.trim()){
+    btn.style.background='var(--accent)';
+    btn.style.color='#fff';
+    btn.style.borderColor='var(--accent)';
+  }
+}
+function addItemPhoto(idx,input){
+  Array.from(input.files).forEach(f=>{
+    const reader=new FileReader();
+    reader.onload=e=>{ DB.itemFeedbacks[idx].photos.push(e.target.result); renderItemPhotoGrid(idx); refreshReviewerItemStatus(idx); };
+    reader.readAsDataURL(f);
+  });
+  input.value='';
+}
+function removeItemPhoto(idx,pi){
+  DB.itemFeedbacks[idx].photos.splice(pi,1);
+  renderItemPhotoGrid(idx); refreshReviewerItemStatus(idx);
+}
+
+function submitReviewerFeedback(){
+  const msg=document.getElementById('rv-fb-msg');
+  const hasAny=DB.itemFeedbacks.some(it=>it.note.trim()||it.photos.length);
+  if(!hasAny){ msg.innerHTML='<div class="alert alert-danger">Please add at least one note or photo.</div>'; return; }
+  const b=reviewerBrand(), s=reviewerStore();
+  const r=b.reports.find(r=>r.id===DB.reviewerReportId);
+  r.feedbacks.push({
+    storeId:s.id,
+    text:DB.itemFeedbacks.map((it,i)=>it.note?`Item ${i+1}: ${it.note}`:'').filter(Boolean).join(' | '),
+    itemFeedbacks:DB.itemFeedbacks.map(it=>({...it,photos:[...it.photos]})),
+    photos:[],
+    date:new Date().toISOString().slice(0,10)
+  });
+  DB.itemFeedbacks=[];
+  msg.innerHTML='<div class="alert alert-success">✓ Feedback submitted!</div>';
+  setTimeout(()=>{ renderReviewerHome(); goTo('s-reviewer-home'); },1200);
+}
+
+function openReviewerPDF(){
+  const b=reviewerBrand();
+  if(!b) return;
+  const r=b.reports.find(r=>r.id===DB.reviewerReportId);
+  if(!r) return;
+  if(r.fileURL){ window.open(r.fileURL,'_blank'); }
+  else { showToast('⚠️ PDF not available — connect a server to enable file storage'); }
+}
+
+// legacy stubs (no longer used but keep to avoid errors)
+function renderReviewerPhotoGrid(){}
+function addReviewerPhotos(){}
+function removeReviewerPhoto(){}
+
+let _nsLogoData=null, _esLogoData=null;
+function onNsLogoPick(input){
+  if(!input.files[0]) return;
+  const reader=new FileReader();
+  reader.onload=e=>{ _nsLogoData=e.target.result; document.getElementById('ns-logo-preview').innerHTML=`<img src="${e.target.result}" style="width:100%;height:100%;object-fit:cover;border-radius:9px;"/>`; };
+  reader.readAsDataURL(input.files[0]);
+}
+function onEsLogoPick(input){
+  if(!input.files[0]) return;
+  const reader=new FileReader();
+  reader.onload=e=>{ _esLogoData=e.target.result; document.getElementById('es-logo-preview').innerHTML=`<img src="${e.target.result}" style="width:100%;height:100%;object-fit:cover;border-radius:9px;"/>`; };
+  reader.readAsDataURL(input.files[0]);
+}
+
+let _genericConfirmAction=null;
+function showGenericConfirm(msg, onConfirm){
+  _genericConfirmAction=onConfirm;
+  document.getElementById('generic-confirm-msg').textContent=msg;
+  document.getElementById('generic-confirm-overlay').style.display='flex';
+}
+function doGenericConfirm(){
+  closeGenericConfirm();
+  if(_genericConfirmAction) _genericConfirmAction();
+  _genericConfirmAction=null;
+}
+function closeGenericConfirm(){
+  document.getElementById('generic-confirm-overlay').style.display='none';
+}
+
+function toggleRvNotif(){
+  const track=document.getElementById('rv-notif-toggle');
+  const knob=document.getElementById('rv-notif-knob');
+  const section=document.getElementById('rv-notif-email-section');
+  const isOn=knob.style.transform==='translateX(16px)';
+  if(!isOn){
+    track.style.background='var(--accent)'; knob.style.transform='translateX(16px)'; knob.style.background='#fff'; section.style.display='';
+  } else {
+    track.style.background='var(--bg3)'; knob.style.transform=''; knob.style.background='var(--text3)'; section.style.display='none';
+  }
+}
+function saveRvNotif(){
+  const email=document.getElementById('rv-notif-email').value.trim();
+  const msg=document.getElementById('rv-notif-msg');
+  if(!email||!email.includes('@')){ msg.innerHTML='<div class="alert alert-danger">Please enter a valid email.</div>'; return; }
+  msg.innerHTML='<div class="alert alert-success">✓ Email saved!</div>';
+  setTimeout(()=>{ msg.innerHTML=''; },2500);
+}
+
+function adminViewStorePass(){
+  const sid=DB.currentStoreId;
+  let s=null;
+  for(const b of DB.brands){ s=b.stores.find(st=>st.id===sid); if(s) break; }
+  if(!s) return;
+  const shown=document.getElementById('es-pass-shown');
+  if(shown.style.display==='none'){
+    shown.textContent='Current: '+s.password;
+    shown.style.display='';
+    setTimeout(()=>{ shown.style.display='none'; },8000);
+  } else {
+    shown.style.display='none';
+  }
+}
+
+function openRvSettings(){
+  const s=reviewerStore();
+  if(!s) return;
+  document.getElementById('rv-settings-name').textContent=s.name;
+  document.getElementById('rv-settings-user').textContent=s.username;
+  document.getElementById('rv-pass-revealed').style.display='none';
+  document.getElementById('rv-pass-masked').style.display='';
+  goTo('s-rv-settings');
+}
+
+let _pendingAdminAction = 'view';
+function requestAdminAction(action){
+  _pendingAdminAction = action;
+  document.getElementById('verify-admin-pass').value='';
+  document.getElementById('verify-msg').innerHTML='';
+  const titles = { view:'View password', change:'Change password' };
+  const subs = { view:'Enter admin password to view store credentials.', change:'Enter admin password to change the store password.' };
+  document.getElementById('verify-title').textContent = titles[action]||'Admin verification';
+  document.getElementById('verify-subtitle').textContent = subs[action]||'Enter admin password to continue.';
+  document.getElementById('pass-verify-overlay').style.display='flex';
+  setTimeout(()=>document.getElementById('verify-admin-pass').focus(),100);
+}
+function requestViewPassword(){ requestAdminAction('view'); }
+function closePassVerify(){
+  document.getElementById('pass-verify-overlay').style.display='none';
+}
+function doVerifyAdmin(){
+  const entered=document.getElementById('verify-admin-pass').value;
+  const msg=document.getElementById('verify-msg');
+  if(entered!==ADMIN_CREDS.password){ msg.innerHTML='<div class="alert alert-danger">Incorrect admin password.</div>'; return; }
+  const s=reviewerStore();
+  closePassVerify();
+  if(_pendingAdminAction==='view'){
+    const revealed=document.getElementById('rv-pass-revealed');
+    const masked=document.getElementById('rv-pass-masked');
+    if(revealed&&s){
+      revealed.textContent=s.password;
+      revealed.style.display='';
+      masked.style.display='none';
+      setTimeout(()=>{ revealed.style.display='none'; masked.style.display=''; },10000);
+    }
+  } else if(_pendingAdminAction==='change'){
+    const form=document.getElementById('rv-change-pass-form');
+    if(form){ form.style.display=''; }
+  }
+}
+function doChangeRvPass(){
+  const np=document.getElementById('rv-new-pass').value;
+  const cp=document.getElementById('rv-confirm-pass').value;
+  const msg=document.getElementById('rv-change-pass-msg');
+  if(!np){ msg.innerHTML='<div class="alert alert-danger">Please enter a new password.</div>'; return; }
+  if(np!==cp){ msg.innerHTML='<div class="alert alert-danger">Passwords do not match.</div>'; return; }
+  const s=reviewerStore();
+  if(s) s.password=np;
+  msg.innerHTML='<div class="alert alert-success">✓ Password updated!</div>';
+  document.getElementById('rv-new-pass').value='';
+  document.getElementById('rv-confirm-pass').value='';
+  setTimeout(()=>{ msg.innerHTML=''; document.getElementById('rv-change-pass-form').style.display='none'; },1500);
+}
+
+function toggleReportMenu(id){
+  const el=document.getElementById(id);
+  if(!el) return;
+  const open=el.style.display==='none'||el.style.display==='';
+  // Close all other menus first
+  document.querySelectorAll('[id^="rmenu_"]').forEach(m=>m.style.display='none');
+  el.style.display=open?'block':'none';
+}
+
+/* ===== EDIT / REMOVE REPORT ===== */
+let _editingReportId=null, _removingReportId=null, _pendingRemoveStoreAction=null;
+
+function goEditReport(rid){
+  if(!rid){ console.warn('goEditReport: no rid'); return; }
+  _editingReportId=rid;
+  // Search all brands for this report
+  let foundBrand=null, r=null;
+  for(const b of DB.brands){
+    r=b.reports.find(rep=>rep.id===rid);
+    if(r){ foundBrand=b; break; }
+  }
+  if(!r){ console.warn('goEditReport: report not found', rid); return; }
+  // Make sure currentBrandId is set
+  if(foundBrand) DB.currentBrandId=foundBrand.id;
+
+  document.getElementById('er-title').value=r.title||'';
+  document.getElementById('er-desc').value=r.desc||'';
+  const insp=r.inspection||{};
+  document.getElementById('er-store-name').value=insp.storeName||'';
+  document.getElementById('er-inspect-date').value=insp.date||'';
+  document.getElementById('er-checked-by').value=insp.checkedBy||'';
+  document.getElementById('er-score').value=insp.score||'';
+  document.getElementById('er-msg').innerHTML='';
+  // Populate store dropdown
+  const sel=document.getElementById('er-store');
+  sel.innerHTML='<option value="">All stores in this brand</option>';
+  foundBrand.stores.forEach(s=>{ const o=document.createElement('option'); o.value=s.id; o.textContent=s.name; sel.appendChild(o); });
+  sel.value=r.storeId||'';
+  goTo('s-edit-report');
+}
+function doEditReport(){
+  let foundBrand=null, r=null;
+  for(const b of DB.brands){ r=b.reports.find(rep=>rep.id===_editingReportId); if(r){foundBrand=b;break;} }
+  if(!r) return;
+  if(foundBrand) DB.currentBrandId=foundBrand.id;
+  const title=document.getElementById('er-title').value.trim();
+  const msg=document.getElementById('er-msg');
+  if(!title){ msg.innerHTML='<div class="alert alert-danger">Title is required.</div>'; return; }
+  r.title=title;
+  r.desc=document.getElementById('er-desc').value.trim();
+  r.storeId=document.getElementById('er-store').value;
+  r.inspection=r.inspection||{};
+  r.inspection.storeName=document.getElementById('er-store-name').value.trim();
+  r.inspection.date=document.getElementById('er-inspect-date').value;
+  r.inspection.checkedBy=document.getElementById('er-checked-by').value.trim();
+  r.inspection.score=document.getElementById('er-score').value.trim();
+  msg.innerHTML='<div class="alert alert-success">✓ Report updated!</div>';
+  setTimeout(()=>{ msg.innerHTML=''; viewFeedback(_editingReportId); },1200);
+}
+
+function confirmRemoveReport(rid){
+  if(!rid) return;
+  _removingReportId=rid;
+  let r=null;
+  for(const b of DB.brands){ r=b.reports.find(rep=>rep.id===rid); if(r) break; }
+  if(!r) return;
+  document.getElementById('remove-report-name').textContent=r.title+' — '+r.file;
+  document.getElementById('remove-report-confirm-input').value='';
+  document.getElementById('remove-report-confirm-btn').style.opacity='.4';
+  document.getElementById('remove-report-confirm-btn').style.pointerEvents='none';
+  document.getElementById('remove-report-overlay').style.display='flex';
+}
+function checkRemoveInput(){
+  const val=document.getElementById('remove-report-confirm-input').value;
+  const btn=document.getElementById('remove-report-confirm-btn');
+  const ok=val==='DELETE';
+  btn.style.opacity=ok?'1':'.4';
+  btn.style.pointerEvents=ok?'auto':'none';
+}
+function closeRemoveReport(){
+  document.getElementById('remove-report-overlay').style.display='none';
+}
+function doRemoveReport(){
+  for(const b of DB.brands){
+    const idx=b.reports.findIndex(r=>r.id===_removingReportId);
+    if(idx!==-1){ b.reports.splice(idx,1); DB.currentBrandId=b.id; break; }
+  }
+  closeRemoveReport();
+  renderBrandReports();
+  renderBrandHero();
+  showToast('Report removed');
+  goTo('s-brand');
+}
+
+/* ===== ALERT STORES ===== */
+function alertStores(rid){
+  const b=brand(), r=b.reports.find(r=>r.id===rid);
+  const responded=r.feedbacks.map(f=>f.storeId);
+  const targetStores=r.storeId?b.stores.filter(s=>s.id===r.storeId):b.stores;
+  const missing=targetStores.filter(s=>!responded.includes(s.id));
+  if(!missing.length){ showToast('✓ All stores have already responded!'); return; }
+  const names=missing.map(s=>s.name).join(', ');
+  showAlertConfirm(`Send reminder to all ${missing.length} store${missing.length>1?'s':''}?\n\n${names}`, ()=>{
+    missing.forEach(s=>sendReminder(s, r, b));
+  });
+}
+function alertOneStore(rid, sid){
+  const b=brand(), r=b.reports.find(r=>r.id===rid);
+  const s=b.stores.find(s=>s.id===sid);
+  if(!s) return;
+  showAlertConfirm(`Send reminder to ${s.name}?`, ()=>{ sendReminder(s, r, b); });
+}
+function sendReminder(store, report, brand){
+  // In production this sends an email/push — for now show a toast
+  showToast(`🔔 Reminder sent to ${store.name}`);
+}
+function showAlertConfirm(msg, onConfirm){
+  showGenericConfirm(msg, onConfirm);
+}
+function showToast(msg){
+  const t=document.createElement('div');
+  t.textContent=msg;
+  t.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1a1a2e;color:#fff;padding:11px 20px;border-radius:20px;font-size:13px;font-family:inherit;z-index:999;box-shadow:0 4px 20px rgba(0,0,0,.25);white-space:nowrap;';
+  document.body.appendChild(t);
+  setTimeout(()=>t.remove(), 2800);
+}
+
+/* ===== SETTINGS ===== */
+let SETTINGS = { notifEnabled: false, notifEmail: '', notifOnSubmit: true, notifAllDone: true };
+
+function toggleNotif(){
+  SETTINGS.notifEnabled = !SETTINGS.notifEnabled;
+  const knob = document.getElementById('notif-knob');
+  const track = document.getElementById('notif-toggle');
+  const section = document.getElementById('notif-email-section');
+  if(SETTINGS.notifEnabled){
+    track.style.background = 'var(--accent)';
+    knob.style.transform = 'translateX(16px)';
+    knob.style.background = '#fff';
+    section.style.display = '';
+  } else {
+    track.style.background = 'var(--bg3)';
+    knob.style.transform = '';
+    knob.style.background = 'var(--text3)';
+    section.style.display = 'none';
+  }
+}
+function saveNotifSettings(){
+  const email = document.getElementById('notif-email').value.trim();
+  const msg = document.getElementById('notif-msg');
+  if(!email || !email.includes('@')){ msg.innerHTML='<div class="alert alert-danger">Please enter a valid email.</div>'; return; }
+  SETTINGS.notifEmail = email;
+  SETTINGS.notifOnSubmit = document.getElementById('notif-on-submit').checked;
+  SETTINGS.notifAllDone = document.getElementById('notif-all-done').checked;
+  SETTINGS.notifBrandComplete = document.getElementById('notif-brand-complete').checked;
+  SETTINGS.notifStoreComplete = document.getElementById('notif-store-complete').checked;
+  msg.innerHTML='<div class="alert alert-success">✓ Email saved! Notifications will be sent to '+email+'</div>';
+  setTimeout(()=>{ msg.innerHTML=''; },3000);
+}
+function testNotif(){
+  const email = document.getElementById('notif-email').value.trim();
+  const msg = document.getElementById('notif-msg');
+  if(!email){ msg.innerHTML='<div class="alert alert-danger">Please enter an email first.</div>'; return; }
+  msg.innerHTML='<div class="alert alert-success">✓ Test notification sent to '+email+' (demo mode — connect a server to enable real emails)</div>';
+  setTimeout(()=>{ msg.innerHTML=''; },4000);
+}
+let ADMIN_CREDS = { username: 'admin', password: '1234' };
+
+function changeAdminUser(){
+  const newUser=document.getElementById('admin-new-user').value.trim();
+  const msg=document.getElementById('admin-user-msg');
+  if(!newUser){ msg.innerHTML='<div class="alert alert-danger">Please enter a new username.</div>'; return; }
+  // Check not taken by any store
+  const allStoreUsers=DB.brands.flatMap(b=>b.stores.map(s=>s.username));
+  if(allStoreUsers.includes(newUser)){ msg.innerHTML='<div class="alert alert-danger">Username already taken by a store.</div>'; return; }
+  ADMIN_CREDS.username=newUser;
+  document.getElementById('admin-new-user').value='';
+  msg.innerHTML='<div class="alert alert-success">✓ Username updated to "'+newUser+'"</div>';
+  setTimeout(()=>{ msg.innerHTML=''; },2500);
+}
+function changeAdminPass(){
+  const np=document.getElementById('admin-new-pass').value;
+  const cp=document.getElementById('admin-confirm-pass').value;
+  const msg=document.getElementById('admin-pass-msg');
+  if(!np){ msg.innerHTML='<div class="alert alert-danger">Please enter a new password.</div>'; return; }
+  if(np!==cp){ msg.innerHTML='<div class="alert alert-danger">Passwords do not match.</div>'; return; }
+  ADMIN_CREDS.password=np;
+  msg.innerHTML='<div class="alert alert-success">✓ Password updated!</div>';
+  document.getElementById('admin-new-pass').value='';
+  document.getElementById('admin-confirm-pass').value='';
+  setTimeout(()=>{ msg.innerHTML=''; },2500);
+}
+
+/* ===== REVIEWER EDIT RESPONSE ===== */
+function editAllResponses(rid){
+  const b=reviewerBrand(), s=reviewerStore();
+  const r=b.reports.find(r=>r.id===rid);
+  const myFb=r.feedbacks.find(f=>f.storeId===s.id);
+  if(!myFb) return;
+  // Pre-fill form with existing responses and re-open form
+  const refs=r.refs&&r.refs.length?r.refs:[{id:'general',desc:'',photos:[]}];
+  DB.itemFeedbacks=refs.map((ref,i)=>{
+    const existing=(myFb.itemFeedbacks||[])[i]||{refId:ref.id,note:'',photos:[]};
+    return {refId:ref.id, note:existing.note||'', photos:[...(existing.photos||[])]};
+  });
+  // Remove old feedback so form shows
+  r.feedbacks=r.feedbacks.filter(f=>f.storeId!==s.id);
+  document.getElementById('rv-submitted-view').style.display='none';
+  document.getElementById('rv-feedback-form').style.display='';
+  renderItemForms(r, b.color);
+  // Pre-fill existing notes and open dropdowns
+  setTimeout(()=>{
+    DB.itemFeedbacks.forEach((it,i)=>{
+      if(it.note){
+        const box=document.getElementById('rvtext_'+i);
+        const btn=document.getElementById('rvtextbtn_'+i);
+        if(box){ box.style.display=''; }
+        if(btn){ btn.style.background='var(--accent)'; btn.style.color='#fff'; btn.style.borderColor='var(--accent)'; }
+        const ta=document.getElementById('item-note-'+i);
+        if(ta) ta.value=it.note;
+      }
+      if(it.photos.length) renderItemPhotoGrid(i);
+      refreshReviewerItemStatus(i);
+    });
+  },60);
+}
+
+function editSingleResponse(rid, idx){
+  const editDiv=document.getElementById('rvs_edit_'+idx);
+  const viewDiv=document.getElementById('rvs_view_'+idx);
+  if(editDiv) editDiv.style.display='';
+  if(viewDiv) viewDiv.style.display='none';
+}
+function cancelEditResponse(idx){
+  const editDiv=document.getElementById('rvs_edit_'+idx);
+  const viewDiv=document.getElementById('rvs_view_'+idx);
+  if(editDiv) editDiv.style.display='none';
+  if(viewDiv) viewDiv.style.display='';
+}
+function saveEditedResponse(rid, idx){
+  const b=reviewerBrand(), s=reviewerStore();
+  const r=b.reports.find(r=>r.id===rid);
+  const myFb=r.feedbacks.find(f=>f.storeId===s.id);
+  if(!myFb||!myFb.itemFeedbacks) return;
+  const note=document.getElementById('rvs_note_'+idx)?.value.trim()||'';
+  myFb.itemFeedbacks[idx].note=note;
+  // Rebuild text line
+  myFb.text=myFb.itemFeedbacks.map((it,i)=>it.note?`${i+1}: ${it.note}`:'').filter(Boolean).join(' | ');
+  // Re-render submitted view
+  openReviewerReport(rid);
+}
+function addSubmittedPhoto(rid, idx, input){
+  const b=reviewerBrand(), s=reviewerStore();
+  const r=b.reports.find(r=>r.id===rid);
+  const myFb=r.feedbacks.find(f=>f.storeId===s.id);
+  if(!myFb||!myFb.itemFeedbacks) return;
+  Array.from(input.files).forEach(f=>{
+    const reader=new FileReader();
+    reader.onload=e=>{
+      myFb.itemFeedbacks[idx].photos.push(e.target.result);
+      // Refresh grid
+      const grid=document.getElementById('rvs_photogrid_'+idx);
+      if(grid){
+        const photos=myFb.itemFeedbacks[idx].photos;
+        grid.innerHTML=photos.map((p,pi)=>`<div style="position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;"><img src="${p}" style="width:100%;height:100%;object-fit:cover;cursor:pointer;" onclick="openLightbox('${p}')"/><button onclick="removeSubmittedPhoto('${rid}',${idx},${pi})" style="position:absolute;top:3px;right:3px;width:18px;height:18px;border-radius:50%;background:rgba(0,0,0,.65);color:#fff;font-size:9px;border:none;cursor:pointer;">✕</button></div>`).join('');
+      }
+    };
+    reader.readAsDataURL(f);
+  });
+  input.value='';
+}
+function removeSubmittedPhoto(rid, idx, pi){
+  const b=reviewerBrand(), s=reviewerStore();
+  const r=b.reports.find(r=>r.id===rid);
+  const myFb=r.feedbacks.find(f=>f.storeId===s.id);
+  if(!myFb||!myFb.itemFeedbacks) return;
+  myFb.itemFeedbacks[idx].photos.splice(pi,1);
+  const grid=document.getElementById('rvs_photogrid_'+idx);
+  if(grid){
+    const photos=myFb.itemFeedbacks[idx].photos;
+    grid.innerHTML=photos.map((p,pi2)=>`<div style="position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;"><img src="${p}" style="width:100%;height:100%;object-fit:cover;cursor:pointer;" onclick="openLightbox('${p}')"/><button onclick="removeSubmittedPhoto('${rid}',${idx},${pi2})" style="position:absolute;top:3px;right:3px;width:18px;height:18px;border-radius:50%;background:rgba(0,0,0,.65);color:#fff;font-size:9px;border:none;cursor:pointer;">✕</button></div>`).join('');
+  }
+}
+
+/* ===== OPEN PDF ===== */
+function openReportPDF(){
+  let r=null;
+  for(const b of DB.brands){ r=b.reports.find(rep=>rep.id===DB.currentReportId); if(r) break; }
+  if(!r) return;
+  if(r.fileURL){ window.open(r.fileURL,'_blank'); }
+  else { showToast('⚠️ PDF not available — connect a server to enable file storage'); }
+}
+
+/* ===== INLINE REF EDITING ===== */
+function toggleEditRef(refId, rid){
+  const staticEl=document.getElementById('refview_static_'+refId);
+  const editEl=document.getElementById('refview_edit_'+refId);
+  const isEditing=editEl.style.display!=='none';
+  staticEl.style.display=isEditing?'':'none';
+  editEl.style.display=isEditing?'none':'';
+}
+function saveRefEdit(refId, rid){
+  const b=brand(), r=b.reports.find(r=>r.id===rid);
+  const ref=r.refs.find(rf=>rf.id===refId);
+  if(!ref) return;
+  ref.desc=document.getElementById('refinput_'+refId).value.trim();
+  // re-render the feedback view to reflect changes
+  viewFeedback(rid);
+}
+function addRefPhotosInline(refId, rid, input){
+  const b=brand(), r=b.reports.find(r=>r.id===rid);
+  const ref=r.refs.find(rf=>rf.id===refId);
+  if(!ref) return;
+  Array.from(input.files).forEach(f=>{
+    const reader=new FileReader();
+    reader.onload=e=>{ ref.photos.push(e.target.result); rebuildRefPhotoGrid(refId, rid); };
+    reader.readAsDataURL(f);
+  });
+}
+function removeRefPhotoInline(refId, rid, idx){
+  const b=brand(), r=b.reports.find(r=>r.id===rid);
+  const ref=r.refs.find(rf=>rf.id===refId);
+  if(!ref) return;
+  ref.photos.splice(idx,1);
+  rebuildRefPhotoGrid(refId, rid);
+}
+function rebuildRefPhotoGrid(refId, rid){
+  const b=brand(), r=b.reports.find(r=>r.id===rid);
+  const ref=r.refs.find(rf=>rf.id===refId);
+  const grid=document.getElementById('refphotosgrid_inline_'+refId);
+  if(!grid||!ref) return;
+  grid.innerHTML=ref.photos.map((p,pi)=>`<div class="photo-thumb-wrap"><img src="${p}" class="photo-thumb" onclick="openLightbox('${p}')"/><button class="photo-remove" onclick="removeRefPhotoInline('${refId}','${rid}',${pi})">✕</button></div>`).join('');
+  // update count label
+  const countEl=grid.previousElementSibling?.querySelector('span');
+  if(countEl) countEl.textContent=`Photos (${ref.photos.length})`;
+}
+
+/* ===== LIGHTBOX ===== */
+function openLightbox(src){ document.getElementById('lightbox-img').src=src; document.getElementById('lightbox').classList.add('open'); }
+function closeLightbox(){ document.getElementById('lightbox').classList.remove('open'); }
+</script>
+</body>
+</html>
