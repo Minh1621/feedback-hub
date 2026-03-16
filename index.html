@@ -1133,9 +1133,11 @@ async function doLogin(){
   }
   await loadAllData();
   if(result.role==='admin'){
+    saveSession('admin', null, null);
     renderHome(); goTo('s-home');
   } else if(result.role==='reviewer'){
     DB.reviewerBrandId=result.brand_id; DB.reviewerStoreId=result.store_id;
+    saveSession('reviewer', result.brand_id, result.store_id);
     renderReviewerHome(); goTo('s-reviewer-home');
   }
 }
@@ -1143,8 +1145,52 @@ function doLogout(){
   document.getElementById('login-u').value='';
   document.getElementById('login-p').value='';
   DB.reviewerBrandId=null; DB.reviewerStoreId=null;
+  // Clear saved session
+  try{ localStorage.removeItem('fh_session'); }catch(e){}
   goTo('s-login');
 }
+
+// Save session to localStorage
+function saveSession(role, brandId, storeId){
+  try{
+    localStorage.setItem('fh_session', JSON.stringify({role, brandId, storeId, ts:Date.now()}));
+  }catch(e){}
+}
+
+// Auto-restore session on page load
+async function restoreSession(){
+  try{
+    const raw=localStorage.getItem('fh_session');
+    if(!raw) return false;
+    const session=JSON.parse(raw);
+    // Session expires after 30 days
+    if(Date.now()-session.ts > 30*24*60*60*1000){
+      localStorage.removeItem('fh_session');
+      return false;
+    }
+    await loadAllData();
+    if(session.role==='admin'){
+      renderHome();
+      goTo('s-home');
+      return true;
+    } else if(session.role==='reviewer' && session.brandId && session.storeId){
+      DB.reviewerBrandId=session.brandId;
+      DB.reviewerStoreId=session.storeId;
+      renderReviewerHome();
+      goTo('s-reviewer-home');
+      return true;
+    }
+  }catch(e){}
+  return false;
+}
+
+// Run on page load
+window.addEventListener('load', async ()=>{
+  const restored = await restoreSession();
+  if(!restored){
+    goTo('s-login');
+  }
+});
 
 /* ===== HOME ===== */
 function renderHome(){
