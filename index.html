@@ -1040,6 +1040,59 @@ function toggleTheme(){
   h.setAttribute('data-theme', h.getAttribute('data-theme')==='dark'?'light':'dark');
 }
 
+/* ===== CLOUDFLARE API ===== */
+const WORKER_URL = 'https://feedback-hub-api.liming6069.workers.dev';
+
+async function api(method, path, body=null){
+  const opts = { method, headers: {'Content-Type':'application/json'} };
+  if(body) opts.body = JSON.stringify(body);
+  try {
+    const res = await fetch(WORKER_URL + path, opts);
+    return await res.json();
+  } catch(e) {
+    console.error('API error:', e);
+    return { error: e.message };
+  }
+}
+
+async function uploadFile(file){
+  const form = new FormData();
+  form.append('file', file);
+  try {
+    const res = await fetch(WORKER_URL + '/api/upload', { method:'POST', body: form });
+    return await res.json();
+  } catch(e) { return { error: e.message }; }
+}
+
+async function loadAllData(){
+  showLoadingOverlay(true);
+  try {
+    // Init DB tables
+    await api('POST', '/api/init');
+    // Load all brands with stores, reports, feedbacks
+    const data = await api('GET', '/api/brands');
+    if(Array.isArray(data)) DB.brands = data;
+  } catch(e) {
+    console.error('Load error:', e);
+  }
+  showLoadingOverlay(false);
+}
+
+function showLoadingOverlay(show){
+  let el = document.getElementById('loading-overlay');
+  if(!el){
+    el = document.createElement('div');
+    el.id = 'loading-overlay';
+    el.style.cssText = 'position:fixed;inset:0;background:var(--bg);z-index:999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;';
+    el.innerHTML = `<div style="width:36px;height:36px;border:3px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;"></div><div style="font-size:13px;color:var(--text2);">Loading...</div>`;
+    document.body.appendChild(el);
+    const style = document.createElement('style');
+    style.textContent = '@keyframes spin{to{transform:rotate(360deg)}}';
+    document.head.appendChild(style);
+  }
+  el.style.display = show ? 'flex' : 'none';
+}
+
 /* ===== DATA ===== */
 const BRAND_COLORS=['#7c6fff','#20c070','#f5a623','#ff5252','#38bdf8','#f472b6','#fb923c','#a78bfa','#34d399'];
 const STORE_DOTS  =['#7c6fff','#20c070','#f5a623','#ff5252','#38bdf8','#f472b6','#fb923c','#a78bfa','#34d399','#f87171'];
@@ -1065,23 +1118,26 @@ function goTo(id){
 function brand(){ return DB.brands.find(b=>b.id===DB.currentBrandId); }
 
 /* ===== LOGIN ===== */
-function doLogin(){
+async function doLogin(){
   const u=document.getElementById('login-u').value.trim();
   const p=document.getElementById('login-p').value;
-  const err=document.getElementById('login-err');
-  err.style.display='none';
-  // Admin
-  if(u===ADMIN_CREDS.username&&p===ADMIN_CREDS.password){ renderHome(); goTo('s-home'); return; }
-  // Store reviewer
-  for(const brand of DB.brands){
-    const store=brand.stores.find(s=>s.username===u&&s.password===p);
-    if(store){
-      DB.reviewerBrandId=brand.id;
-      DB.reviewerStoreId=store.id;
-      renderReviewerHome(); goTo('s-reviewer-home'); return;
-    }
+  const errEl=document.getElementById('login-err');
+  errEl.style.display='none';
+  if(!u||!p){ errEl.style.display='block'; errEl.textContent='Please enter username and password.'; return; }
+  const btn=document.querySelector('#s-login .btn-primary');
+  if(btn){ btn.textContent='Signing in...'; btn.disabled=true; }
+  const result=await api('POST','/api/login',{username:u,password:p});
+  if(btn){ btn.textContent='Sign in →'; btn.disabled=false; }
+  if(result.error){
+    errEl.style.display='block'; errEl.textContent=result.error||'Incorrect username or password.'; return;
   }
-  err.textContent='Incorrect username or password.'; err.style.display='block';
+  await loadAllData();
+  if(result.role==='admin'){
+    renderHome(); goTo('s-home');
+  } else if(result.role==='reviewer'){
+    DB.reviewerBrandId=result.brand_id; DB.reviewerStoreId=result.store_id;
+    renderReviewerHome(); goTo('s-reviewer-home');
+  }
 }
 function doLogout(){
   document.getElementById('login-u').value='';
@@ -1278,7 +1334,7 @@ function openStoreDetail(sid){
 }
 
 function goAddStore(){ document.getElementById('add-store-brand-name').textContent=brand().name; goTo('s-add-store'); }
-function doAddStore(){
+async function doAddStore(){
   const name=document.getElementById('ns-name').value.trim();
   const phone=document.getElementById('ns-phone').value.trim();
   const location=document.getElementById('ns-location').value.trim();
@@ -1288,7 +1344,10 @@ function doAddStore(){
   if(!name||!user||!pass){ msg.innerHTML='<div class="alert alert-danger">Name, username and password are required.</div>'; return; }
   const all=DB.brands.flatMap(b=>b.stores.map(s=>s.username));
   if(all.includes(user)||user==='admin'){ msg.innerHTML='<div class="alert alert-danger">Username already taken.</div>'; return; }
-  brand().stores.push({id:'s'+Date.now(),name,username:user,password:pass,phone,location,logo:_nsLogoData||null,color:STORE_DOTS[brand().stores.length%STORE_DOTS.length]});
+  const b=brand();
+  const newStore={id:'s'+Date.now(),name,username:user,password:pass,phone,location,logo:_nsLogoData||null,color:STORE_DOTS[b.stores.length%STORE_DOTS.length]};
+  b.stores.push(newStore);
+  await api('POST','/api/stores',{...newStore, brand_id:b.id});
   ['ns-name','ns-phone','ns-location','ns-user','ns-pass'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('ns-logo-preview').innerHTML='🏷️';
   _nsLogoData=null;
@@ -1313,7 +1372,7 @@ function goEditStore(){
   document.getElementById('edit-store-msg').innerHTML='';
   goTo('s-edit-store');
 }
-function doEditStore(){
+async function doEditStore(){
   const sid = DB.currentStoreId;
   let s=null, foundBrand=null;
   for(const b of DB.brands){ s=b.stores.find(st=>st.id===sid); if(s){ foundBrand=b; break; } }
@@ -1330,27 +1389,21 @@ function doEditStore(){
   s.name=name; s.phone=phone; s.location=location; s.username=user;
   if(pass) s.password=pass;
   if(_esLogoData) s.logo=_esLogoData;
+  await api('PUT',`/api/stores/${sid}`,{name:s.name,username:s.username,password:s.password,phone:s.phone,location:s.location,logo:s.logo||null,color:s.color});
   msg.innerHTML='<div class="alert alert-success">✓ Changes saved!</div>';
-  setTimeout(()=>{
-    msg.innerHTML='';
-    document.getElementById('sd-store-name').textContent=s.name;
-    openStoreDetail(s.id);
-  },1000);
+  setTimeout(()=>{ msg.innerHTML=''; document.getElementById('sd-store-name').textContent=s.name; openStoreDetail(s.id); },1000);
 }
 function confirmRemoveStore(sid){
   const storeId = sid || DB.currentStoreId;
   if(!storeId){ showToast('⚠️ No store selected'); return; }
-
-  // Search ALL brands for this store
   let foundBrand=null, foundStore=null;
   for(const b of DB.brands){
     const s=b.stores.find(s=>s.id===storeId);
     if(s){ foundBrand=b; foundStore=s; break; }
   }
   if(!foundBrand||!foundStore){ showToast('⚠️ Store not found'); return; }
-
-  // Show inline confirm overlay instead of browser confirm()
-  showRemoveStoreConfirm(foundStore.name, ()=>{
+  showRemoveStoreConfirm(foundStore.name, async ()=>{
+    await api('DELETE',`/api/stores/${storeId}`);
     foundBrand.stores=foundBrand.stores.filter(s=>s.id!==storeId);
     foundBrand.reports.forEach(r=>{ r.feedbacks=r.feedbacks.filter(f=>f.storeId!==storeId); });
     DB.currentStoreId=null;
@@ -1492,7 +1545,7 @@ function updateAllStoresCheck(){
   if(allCb) allCb.checked=!any;
 }
 
-function doUpload(){
+async function doUpload(){
   const titleEl=document.getElementById('r-title');
   const descEl=document.getElementById('r-desc');
   const msg=document.getElementById('upload-msg');
@@ -1500,6 +1553,18 @@ function doUpload(){
   const desc=(descEl||{}).value?.trim()||'';
   if(!title){ msg.innerHTML='<div class="alert alert-danger">Please enter a title.</div>'; return; }
   if(!DB.pendingUpload){ msg.innerHTML='<div class="alert alert-danger">Please select a PDF file.</div>'; return; }
+  
+  msg.innerHTML='<div class="alert alert-success">⏳ Uploading file...</div>';
+  
+  // Upload PDF to R2
+  let fileURL=DB.pendingUploadURL||null;
+  let fileName=DB.pendingUpload.name;
+  const uploadResult=await uploadFile(DB.pendingUpload);
+  if(uploadResult.key){
+    fileURL=WORKER_URL+'/api/files/'+encodeURIComponent(uploadResult.key);
+    fileName=uploadResult.fileName||fileName;
+  }
+
   const storeIds=getSelectedStoreIds();
   const refs=DB.pendingRefs.map(r=>({...r,name:r.name||''}));
   const inspection={
@@ -1508,19 +1573,22 @@ function doUpload(){
     checkedBy:(document.getElementById('r-checked-by')||{}).value?.trim()||'',
     score:(document.getElementById('r-score')||{}).value?.trim()||'',
   };
-  brand().reports.unshift({
+  const newReport={
     id:'r'+Date.now(),title,desc,
-    file:DB.pendingUpload.name,
-    fileURL:DB.pendingUploadURL||null,
+    file:fileName,
+    fileURL,
     date:new Date().toISOString().slice(0,10),
     storeId:storeIds.length===1?storeIds[0]:'',
     storeIds,refs,inspection,feedbacks:[]
-  });
+  };
+  const b=brand();
+  b.reports.unshift(newReport);
+  await api('POST','/api/reports',{...newReport, brand_id:b.id});
+
   DB.pendingUpload=null; DB.pendingUploadURL=null; DB.pendingRefs=[];
   ['r-title','r-desc','r-store-name','r-checked-by','r-score'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
   const lbl=document.getElementById('pdf-lbl');
   if(lbl){ lbl.textContent='Tap to select PDF'; lbl.style.color=''; }
-  // Reset date to today
   const dateEl=document.getElementById('r-inspect-date');
   if(dateEl) dateEl.value=new Date().toISOString().slice(0,10);
   renderRefItems();
@@ -1734,7 +1802,7 @@ function editBrand(){
   buildSwatches(b.color);
   goTo('s-add-brand');
 }
-function saveBrand(){
+async function saveBrand(){
   const name=document.getElementById('nb-name').value.trim();
   const msg=document.getElementById('brand-form-msg');
   if(!name){ msg.innerHTML='<div class="alert alert-danger">Please enter a brand name.</div>'; return; }
@@ -1742,20 +1810,24 @@ function saveBrand(){
     const b=DB.brands.find(b=>b.id===DB.editingBrandId);
     b.name=name; b.color=DB.pickedColor;
     if(DB.pendingLogo) b.logo=DB.pendingLogo;
+    await api('PUT',`/api/brands/${b.id}`,{name:b.name,color:b.color,logo:b.logo||null,logoText:b.logoText||'🏷️'});
     msg.innerHTML='<div class="alert alert-success">✓ Brand updated!</div>';
     setTimeout(()=>{ msg.innerHTML=''; DB.currentBrandId=DB.editingBrandId; renderBrandHero(); document.getElementById('brand-topbar-title').textContent=name; renderHome(); goTo('s-brand'); },1200);
   } else {
-    DB.brands.push({id:'b'+Date.now(),name,color:DB.pickedColor,logo:DB.pendingLogo||null,logoText:'🏷️',stores:[],reports:[]});
+    const newBrand={id:'b'+Date.now(),name,color:DB.pickedColor,logo:DB.pendingLogo||null,logoText:'🏷️',stores:[],reports:[]};
+    DB.brands.push(newBrand);
+    await api('POST','/api/brands',newBrand);
     msg.innerHTML='<div class="alert alert-success">✓ Brand created!</div>';
     setTimeout(()=>{ msg.innerHTML=''; renderHome(); goTo('s-home'); },1200);
   }
 }
-function deleteBrand(){
+async function deleteBrand(){
   const b=brand();
   if(!b) return;
   showGenericConfirm(
     `Delete "${b.name}"?\n\nAll stores, reports and feedback will be permanently removed.`,
-    ()=>{
+    async ()=>{
+      await api('DELETE',`/api/brands/${b.id}`);
       DB.brands=DB.brands.filter(br=>br.id!==DB.currentBrandId);
       DB.currentBrandId=null;
       renderHome();
@@ -2075,19 +2147,23 @@ function removeItemPhoto(idx,pi){
   renderItemPhotoGrid(idx); refreshReviewerItemStatus(idx);
 }
 
-function submitReviewerFeedback(){
+async function submitReviewerFeedback(){
   const msg=document.getElementById('rv-fb-msg');
   const hasAny=DB.itemFeedbacks.some(it=>it.note.trim()||it.photos.length);
   if(!hasAny){ msg.innerHTML='<div class="alert alert-danger">Please add at least one note or photo.</div>'; return; }
   const b=reviewerBrand(), s=reviewerStore();
   const r=b.reports.find(r=>r.id===DB.reviewerReportId);
-  r.feedbacks.push({
+  const feedbackObj={
     storeId:s.id,
     text:DB.itemFeedbacks.map((it,i)=>it.note?`Item ${i+1}: ${it.note}`:'').filter(Boolean).join(' | '),
     itemFeedbacks:DB.itemFeedbacks.map(it=>({...it,photos:[...it.photos]})),
     photos:[],
     date:new Date().toISOString().slice(0,10)
-  });
+  };
+  msg.innerHTML='<div class="alert alert-success">⏳ Submitting...</div>';
+  const result=await api('POST','/api/feedbacks',{...feedbackObj, report_id:r.id});
+  if(result.id) feedbackObj.id=result.id;
+  r.feedbacks.push(feedbackObj);
   DB.itemFeedbacks=[];
   msg.innerHTML='<div class="alert alert-success">✓ Feedback submitted!</div>';
   setTimeout(()=>{ renderReviewerHome(); goTo('s-reviewer-home'); },1200);
@@ -2312,7 +2388,8 @@ function checkRemoveInput(){
 function closeRemoveReport(){
   document.getElementById('remove-report-overlay').style.display='none';
 }
-function doRemoveReport(){
+async function doRemoveReport(){
+  await api('DELETE',`/api/reports/${_removingReportId}`);
   for(const b of DB.brands){
     const idx=b.reports.findIndex(r=>r.id===_removingReportId);
     if(idx!==-1){ b.reports.splice(idx,1); DB.currentBrandId=b.id; break; }
@@ -2398,25 +2475,26 @@ function testNotif(){
 }
 let ADMIN_CREDS = { username: 'admin', password: '1234' };
 
-function changeAdminUser(){
+async function changeAdminUser(){
   const newUser=document.getElementById('admin-new-user').value.trim();
   const msg=document.getElementById('admin-user-msg');
   if(!newUser){ msg.innerHTML='<div class="alert alert-danger">Please enter a new username.</div>'; return; }
-  // Check not taken by any store
   const allStoreUsers=DB.brands.flatMap(b=>b.stores.map(s=>s.username));
   if(allStoreUsers.includes(newUser)){ msg.innerHTML='<div class="alert alert-danger">Username already taken by a store.</div>'; return; }
   ADMIN_CREDS.username=newUser;
+  await api('PUT','/api/admin/password',{username:newUser,password:ADMIN_CREDS.password});
   document.getElementById('admin-new-user').value='';
   msg.innerHTML='<div class="alert alert-success">✓ Username updated to "'+newUser+'"</div>';
   setTimeout(()=>{ msg.innerHTML=''; },2500);
 }
-function changeAdminPass(){
+async function changeAdminPass(){
   const np=document.getElementById('admin-new-pass').value;
   const cp=document.getElementById('admin-confirm-pass').value;
   const msg=document.getElementById('admin-pass-msg');
   if(!np){ msg.innerHTML='<div class="alert alert-danger">Please enter a new password.</div>'; return; }
   if(np!==cp){ msg.innerHTML='<div class="alert alert-danger">Passwords do not match.</div>'; return; }
   ADMIN_CREDS.password=np;
+  await api('PUT','/api/admin/password',{username:ADMIN_CREDS.username,password:np});
   msg.innerHTML='<div class="alert alert-success">✓ Password updated!</div>';
   document.getElementById('admin-new-pass').value='';
   document.getElementById('admin-confirm-pass').value='';
