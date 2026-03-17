@@ -2238,10 +2238,20 @@ function renderReviewerHome(){
   const sorted=[...reports].sort((a,bb)=>{
     // Use per-store status for reviewer sorting
     const getMyStatus=(r)=>{
-      const fb=r.feedbacks.find(f=>f.storeId===s.id);
+      // Dedup feedbacks — latest per store
+      const _fbMapSort={};
+      r.feedbacks.forEach(f=>{ if(!_fbMapSort[f.storeId]||f.date>=_fbMapSort[f.storeId].date) _fbMapSort[f.storeId]=f; });
+      const fb=_fbMapSort[s.id];
       if(!fb) return 0;
-      const total=r.refs&&r.refs.length?r.refs.length:1;
-      const responded=(fb.itemFeedbacks||[]).filter(it=>it.note||(it.photos&&it.photos.length)).length;
+      const total=r.refs&&r.refs.length?r.refs.length:0;
+      if(total===0) return (fb.text||(fb.itemFeedbacks&&fb.itemFeedbacks.length))?2:0;
+      // Count by refId first
+      const _fbByRef={};
+      (fb.itemFeedbacks||[]).forEach(it=>{ if(it.refId) _fbByRef[it.refId]=it; });
+      let responded=0;
+      r.refs.forEach(ref=>{ const it=_fbByRef[ref.id]; if(it&&(it.note||(it.photos&&it.photos.length))) responded++; });
+      // Fallback to direct count
+      if(responded===0) responded=Math.min((fb.itemFeedbacks||[]).filter(it=>it.note||(it.photos&&it.photos.length)).length,total);
       if(responded===0) return 0;
       if(responded<total) return 1;
       return 2;
@@ -2259,16 +2269,27 @@ function renderReviewerHome(){
     const totalItems=r.refs&&r.refs.length?r.refs.length:0;
     // Count responded items using refId lookup
     let respondedItems=0;
-    if(myFb&&totalItems>0){
-      const fbByRef={};
-      (myFb.itemFeedbacks||[]).forEach(it=>{ if(it.refId) fbByRef[it.refId]=it; });
-      r.refs.forEach(ref=>{ const it=fbByRef[ref.id]; if(it&&(it.note||(it.photos&&it.photos.length))) respondedItems++; });
+    if(myFb){
+      if(totalItems>0){
+        const fbByRef={};
+        (myFb.itemFeedbacks||[]).forEach(it=>{ if(it.refId) fbByRef[it.refId]=it; });
+        r.refs.forEach(ref=>{ const it=fbByRef[ref.id]; if(it&&(it.note||(it.photos&&it.photos.length))) respondedItems++; });
+        // Fallback: if no refId matches but itemFeedbacks exist with content, count them
+        if(respondedItems===0){
+          respondedItems=(myFb.itemFeedbacks||[]).filter(it=>it.note||(it.photos&&it.photos.length)).length;
+          respondedItems=Math.min(respondedItems,totalItems);
+        }
+      } else {
+        // No refs — mark as done if feedback exists with any content
+        respondedItems = (myFb.text||(myFb.itemFeedbacks&&myFb.itemFeedbacks.length)) ? 1 : 0;
+      }
     }
-    const itemPct=totalItems?Math.round(respondedItems/totalItems*100):0;
+    const effectiveTotal=totalItems||1;
+    const itemPct=Math.round(respondedItems/effectiveTotal*100);
     // Status badge
     let statusBadge, statusClass;
     if(!myFb||respondedItems===0){ statusBadge='Pending'; statusClass='badge-pending'; }
-    else if(respondedItems<totalItems){ statusBadge='Partial'; statusClass='badge-partial'; }
+    else if(totalItems>0&&respondedItems<totalItems){ statusBadge='Partial'; statusClass='badge-partial'; }
     else { statusBadge='✓ Done'; statusClass='badge-done'; }
     return `<div class="card card-click" onclick="openReviewerReport('${r.id}')">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
