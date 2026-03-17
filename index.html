@@ -805,6 +805,17 @@ label{
       <button class="btn btn-primary btn-sm" style="width:100%;" onclick="changeAdminPass()">Update password</button>
     </div>
 
+    <!-- Export Data -->
+    <div class="sec-label" style="margin-bottom:10px;margin-top:24px;">Data Export</div>
+    <div class="card" style="margin-bottom:18px;">
+      <div style="font-size:14px;font-weight:500;margin-bottom:6px;">Download store credentials</div>
+      <div style="font-size:12px;color:var(--text2);margin-bottom:14px;line-height:1.6;">Export all store usernames, passwords, emails, phone numbers and locations as a text file. Requires admin password verification.</div>
+      <button class="btn btn-primary btn-sm" style="width:100%;" onclick="openExportVerify()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px;vertical-align:middle;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Download store data
+      </button>
+    </div>
+
     <!-- Support -->
     <div style="margin-top:24px;margin-bottom:8px;">
       <a href="https://t.me/lmig25" target="_blank" style="display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);text-decoration:none;">
@@ -921,6 +932,17 @@ label{
       </div>
     </div>
 
+    <!-- Export Data -->
+    <div class="sec-label" style="margin-bottom:10px;margin-top:24px;">Data Export</div>
+    <div class="card" style="margin-bottom:18px;">
+      <div style="font-size:14px;font-weight:500;margin-bottom:6px;">Download store credentials</div>
+      <div style="font-size:12px;color:var(--text2);margin-bottom:14px;line-height:1.6;">Export all store usernames, passwords, emails, phone numbers and locations as a text file. Requires admin password verification.</div>
+      <button class="btn btn-primary btn-sm" style="width:100%;" onclick="openExportVerify()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px;vertical-align:middle;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Download store data
+      </button>
+    </div>
+
     <!-- Support -->
     <div style="margin-top:24px;margin-bottom:8px;">
       <a href="https://t.me/lmig25" target="_blank" style="display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);text-decoration:none;">
@@ -1027,6 +1049,30 @@ label{
     <div style="display:flex;gap:10px;">
       <button class="btn btn-full" style="flex:1;" onclick="closeRemoveStoreOverlay()">Cancel</button>
       <button class="btn btn-danger btn-full" style="flex:1;border-color:var(--danger);" onclick="doRemoveStoreConfirmed()">Remove store</button>
+    </div>
+  </div>
+</div>
+
+<!-- EXPORT VERIFY OVERLAY -->
+<div id="export-verify-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:70;align-items:flex-end;justify-content:center;">
+  <div style="background:var(--bg2);border-radius:20px 20px 0 0;padding:24px 20px 36px;width:100%;max-width:440px;border-top:1px solid var(--border);">
+    <div style="width:36px;height:4px;border-radius:2px;background:var(--border2);margin:0 auto 20px;"></div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      <div style="font-size:16px;font-weight:700;">Verify to download</div>
+    </div>
+    <div style="font-size:13px;color:var(--text2);margin-bottom:18px;">Enter your admin password to download the store credentials file.</div>
+    <div class="field">
+      <label>Admin password</label>
+      <input type="password" id="export-admin-pass" placeholder="Enter admin password" onkeydown="if(event.key==='Enter')doExportVerify()"/>
+    </div>
+    <div id="export-verify-msg" style="margin-bottom:10px;"></div>
+    <div style="display:flex;gap:10px;">
+      <button class="btn btn-full" style="flex:1;" onclick="closeExportVerify()">Cancel</button>
+      <button class="btn btn-primary btn-full" style="flex:1;" onclick="doExportVerify()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px;vertical-align:middle;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Verify & Download
+      </button>
     </div>
   </div>
 </div>
@@ -1517,11 +1563,11 @@ function openStoreDetail(sid){
       </div>
       <div style="border-top:1px solid ${s.color}25;padding:12px 16px;display:flex;flex-direction:column;gap:10px;">
         <div style="display:flex;align-items:center;gap:10px;">
-          <span style="font-size:15px;width:22px;text-align:center;flex-shrink:0;">📞</span>
+          <span style="font-size:15px;width:22px;text-align:center;flex-shrink:0;"><span style="width:20px;display:flex;align-items:center;flex-shrink:0;color:var(--text2);"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13.5 19.79 19.79 0 0 1 1.72 4.9 2 2 0 0 1 3.71 2.72h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 10.36a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg></span></span>
           <span style="font-size:13px;color:${s.phone?'var(--text)':'var(--text3)'};">${s.phone||'No phone number added'}</span>
         </div>
         <div style="display:flex;align-items:flex-start;gap:10px;">
-          <span style="font-size:15px;width:22px;text-align:center;flex-shrink:0;margin-top:1px;">📍</span>
+          <span style="font-size:15px;width:22px;text-align:center;flex-shrink:0;margin-top:1px;"><span style="width:20px;display:flex;align-items:center;flex-shrink:0;color:var(--text2);"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></span></span>
           <span style="font-size:13px;color:${s.location?'var(--text)':'var(--text3)'};">${s.location||'No location added'}</span>
         </div>
       </div>
@@ -2168,8 +2214,8 @@ function renderReviewerHome(){
         </div>
       </div>
       ${s.phone||s.location?`<div style="border-top:1px solid ${b.color}20;padding:10px 15px;display:flex;flex-direction:column;gap:6px;">
-        ${s.phone?`<div style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2);">📞 ${s.phone}</div>`:''}
-        ${s.location?`<div style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2);">📍 ${s.location}</div>`:''}
+        ${s.phone?`<div style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2);"><span style="width:20px;display:flex;align-items:center;flex-shrink:0;color:var(--text2);"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13.5 19.79 19.79 0 0 1 1.72 4.9 2 2 0 0 1 3.71 2.72h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 10.36a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg></span> ${s.phone}</div>`:''}
+        ${s.location?`<div style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2);"><span style="width:20px;display:flex;align-items:center;flex-shrink:0;color:var(--text2);"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></span> ${s.location}</div>`:''}
       </div>`:''}
     </div>`;
 
@@ -3350,6 +3396,110 @@ function rebuildRefPhotoGrid(refId, rid){
   // update count label
   const countEl=grid.previousElementSibling?.querySelector('span');
   if(countEl) countEl.textContent=`Photos (${ref.photos.length})`;
+}
+
+/* ===== EXPORT DATA ===== */
+function openExportVerify(){
+  document.getElementById('export-admin-pass').value='';
+  document.getElementById('export-verify-msg').innerHTML='';
+  document.getElementById('export-verify-overlay').style.display='flex';
+  setTimeout(()=>document.getElementById('export-admin-pass').focus(),100);
+}
+function closeExportVerify(){
+  document.getElementById('export-verify-overlay').style.display='none';
+}
+function doExportVerify(){
+  const pass=document.getElementById('export-admin-pass').value;
+  const msg=document.getElementById('export-verify-msg');
+  if(pass!==ADMIN_CREDS.password){
+    msg.innerHTML='<div class="alert alert-danger">Incorrect password. Please try again.</div>';
+    return;
+  }
+  closeExportVerify();
+  doExportData();
+}
+function doExportData(){
+  const now=new Date();
+  const dateStr=now.toLocaleDateString('en-GB').replace(/\//g,'-');
+  const timeStr=now.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+  let txt='';
+  txt+='========================================
+';
+  txt+='  FEEDBACK HUB — Store Credentials
+';
+  txt+='  Exported: '+dateStr+' '+timeStr+'
+';
+  txt+='  By: '+ADMIN_CREDS.username+' (Admin)
+';
+  txt+='========================================
+
+';
+
+  DB.brands.forEach((b,bi)=>{
+    txt+='----------------------------------------
+';
+    txt+='BRAND '+(bi+1)+': '+b.name.toUpperCase()+'
+';
+    txt+='----------------------------------------
+';
+    if(!b.stores.length){
+      txt+='  No stores yet.
+
+';
+      return;
+    }
+    b.stores.forEach((s,si)=>{
+      txt+='  Store '+(si+1)+': '+s.name+'
+';
+      txt+='  Username    : '+(s.username||'-')+'
+';
+      txt+='  Password    : '+(s.password||'-')+'
+';
+      txt+='  Email       : '+(s.email||s.notif_email||'-')+'
+';
+      txt+='  Notif Email : '+(s.notif_email||'-')+'
+';
+      txt+='  Phone       : '+(s.phone||'-')+'
+';
+      txt+='  Location    : '+(s.location||'-')+'
+';
+      txt+='
+';
+    });
+  });
+
+  txt+='========================================
+';
+  txt+='  Admin Account
+';
+  txt+='========================================
+';
+  txt+='  Username    : '+ADMIN_CREDS.username+'
+';
+  txt+='  Password    : '+ADMIN_CREDS.password+'
+';
+  txt+='  Notif Email : '+(SETTINGS.notifEmail||'-')+'
+';
+  txt+='
+';
+  txt+='========================================
+';
+  txt+='  END OF FILE
+';
+  txt+='========================================
+';
+
+  // Download as .txt file
+  const blob=new Blob([txt],{type:'text/plain;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  a.download='feedback-hub-credentials-'+dateStr+'.txt';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('✓ File downloaded successfully');
 }
 
 /* ===== LIGHTBOX ===== */
