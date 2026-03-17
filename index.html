@@ -3411,59 +3411,124 @@ function doExportVerify(){
   closeExportVerify();
   doExportData();
 }
-function doExportData(){
-  var now=new Date();
-  var dd=String(now.getDate()).padStart(2,'0');
-  var mm=String(now.getMonth()+1).padStart(2,'0');
-  var yyyy=now.getFullYear();
-  var dateStr=dd+'-'+mm+'-'+yyyy;
-  var timeStr=now.getHours()+':'+String(now.getMinutes()).padStart(2,'0');
-  var nl=String.fromCharCode(10);
-  var sep1='========================================'+nl;
-  var sep2='----------------------------------------'+nl;
-  var txt='';
-  txt+=sep1;
-  txt+='  FEEDBACK HUB - Store Credentials'+nl;
-  txt+='  Exported: '+dateStr+' '+timeStr+nl;
-  txt+='  By: '+ADMIN_CREDS.username+' (Admin)'+nl;
-  txt+=sep1+nl;
-  DB.brands.forEach(function(b,bi){
-    txt+=sep2;
-    txt+='BRAND '+(bi+1)+': '+b.name.toUpperCase()+nl;
-    txt+=sep2;
-    if(!b.stores.length){ txt+='  No stores yet.'+nl+nl; return; }
-    b.stores.forEach(function(s,si){
-      txt+='  Store '+(si+1)+': '+s.name+nl;
-      txt+='  Username    : '+(s.username||'-')+nl;
-      txt+='  Password    : '+(s.password||'-')+nl;
-      txt+='  Email       : '+(s.email||s.notif_email||'-')+nl;
-      txt+='  Notif Email : '+(s.notif_email||'-')+nl;
-      txt+='  Phone       : '+(s.phone||'-')+nl;
-      txt+='  Location    : '+(s.location||'-')+nl+nl;
+async function doExportData(){
+  showToast('Fetching data...');
+  var nl = String.fromCharCode(10);
+  var data;
+  try {
+    data = await api('GET', '/api/export-data');
+    if(data.error) throw new Error(data.error);
+  } catch(e) {
+    showToast('Export failed: ' + e.message);
+    return;
+  }
+
+  var now  = new Date(data.exported_at || Date.now());
+  var dd   = String(now.getDate()).padStart(2,'0');
+  var mm   = String(now.getMonth()+1).padStart(2,'0');
+  var yyyy = now.getFullYear();
+  var hh   = String(now.getHours()).padStart(2,'0');
+  var min  = String(now.getMinutes()).padStart(2,'0');
+  var dateStr = dd+'-'+mm+'-'+yyyy;
+  var timeStr = hh+':'+min;
+
+  var L = [];
+  var line = function(t){ L.push(t||''); };
+
+  line('========================================');
+  line('  FEEDBACK HUB — Full Data Export');
+  line('  Exported : ' + dateStr + ' ' + timeStr);
+  line('  Admin    : ' + data.admin.username);
+  line('========================================');
+  line();
+
+  // ── ADMIN ACCOUNT ──────────────────────────────
+  line('[ ADMIN ACCOUNT ]');
+  line('  Username          : ' + (data.admin.username || '-'));
+  line('  Password          : ' + (data.admin.password || '-'));
+  line('  Notification email: ' + (data.admin.notif_email || '-'));
+  line('  Notify on submit  : ' + (data.admin.notif_on_submit  ? 'Yes' : 'No'));
+  line('  Notify all done   : ' + (data.admin.notif_all_done   ? 'Yes' : 'No'));
+  line();
+
+  // ── BRANDS & STORES ────────────────────────────
+  line('========================================');
+  line('  BRANDS & STORES');
+  line('========================================');
+  line();
+
+  data.brands.forEach(function(b, bi){
+    line('BRAND ' + (bi+1) + ': ' + (b.name || '').toUpperCase());
+    line('  ID    : ' + b.id);
+    line('  Color : ' + (b.color || '-'));
+    line('  Created: ' + (b.created_at || '-'));
+    line();
+
+    var brandStores = data.stores.filter(function(s){ return s.brand_id === b.id; });
+    if(!brandStores.length){
+      line('  (no stores)');
+      line();
+      return;
+    }
+
+    brandStores.forEach(function(s, si){
+      line('  -- Store ' + (si+1) + ': ' + s.name + ' --');
+      line('  Store ID          : ' + (s.id            || '-'));
+      line('  Username          : ' + (s.username       || '-'));
+      line('  Password          : ' + (s.password       || '-'));
+      line('  Login email       : ' + (s.email          || '-'));
+      line('  Notification email: ' + (s.notif_email    || '-'));
+      line('  Notifications on  : ' + (s.notif_enabled  ? 'Yes' : 'No'));
+      line('  Phone             : ' + (s.phone          || '-'));
+      line('  Location          : ' + (s.location       || '-'));
+      line('  Color             : ' + (s.color          || '-'));
+      line('  Created           : ' + (s.created_at     || '-'));
+
+      // Reports for this store
+      var storeReports = data.reports.filter(function(r){
+        return r.brand_id === b.id && (!r.store_id || r.store_id === s.id);
+      });
+      if(storeReports.length){
+        line();
+        line('  Reports assigned (' + storeReports.length + '):');
+        storeReports.forEach(function(r, ri){
+          line('    ' + (ri+1) + '. ' + (r.title || '-') + ' (' + (r.date || r.created_at || '-') + ')');
+          // Check if store submitted feedback
+          var fb = data.feedbacks.find(function(f){ return f.report_id === r.id && f.store_id === s.id; });
+          line('       Status: ' + (fb ? 'Responded on ' + (fb.date || fb.created_at || '-') : 'No response yet'));
+        });
+      }
+      line();
     });
   });
-  txt+=sep1;
-  txt+='  Admin Account'+nl;
-  txt+=sep1;
-  txt+='  Username    : '+ADMIN_CREDS.username+nl;
-  txt+='  Password    : '+ADMIN_CREDS.password+nl;
-  txt+='  Notif Email : '+(SETTINGS.notifEmail||'-')+nl+nl;
-  txt+=sep1;
-  txt+='  END OF FILE'+nl;
-  txt+=sep1;
-  var blob=new Blob([txt],{type:'text/plain;charset=utf-8'});
-  var url=URL.createObjectURL(blob);
-  var a=document.createElement('a');
-  a.href=url;
-  a.download='feedback-hub-credentials-'+dateStr+'.txt';
+
+  // ── SUMMARY ────────────────────────────────────
+  line('========================================');
+  line('  SUMMARY');
+  line('========================================');
+  line('  Total brands  : ' + data.brands.length);
+  line('  Total stores  : ' + data.stores.length);
+  line('  Total reports : ' + data.reports.length);
+  line('  Total feedbacks: '+ data.feedbacks.length);
+  line();
+  line('========================================');
+  line('  END OF EXPORT');
+  line('========================================');
+
+  var txt  = L.join(nl);
+  var blob = new Blob([txt], {type:'text/plain;charset=utf-8'});
+  var url  = URL.createObjectURL(blob);
+  var a    = document.createElement('a');
+  a.href   = url;
+  a.download = 'feedback-hub-export-' + dateStr + '.txt';
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
-  showToast('File downloaded!');
+  showToast('Downloaded!');
 }
 
-/* ===== LIGHTBOX ===== */
+
 function openLightbox(src){ document.getElementById('lightbox-img').src=src; document.getElementById('lightbox').classList.add('open'); }
 function closeLightbox(){ document.getElementById('lightbox').classList.remove('open'); }
 </script>
