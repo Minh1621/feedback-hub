@@ -1172,6 +1172,16 @@ async function doLogin(){
   } else if(result.role==='reviewer'){
     DB.reviewerBrandId=result.brand_id; DB.reviewerStoreId=result.store_id;
     saveSession('reviewer', result.brand_id, result.store_id);
+    // Immediately save notif_email from login response to localStorage
+    if(result.notif_email){
+      const sid=result.store_id;
+      const raw=localStorage.getItem('fh_rv_settings_'+sid);
+      let local={};
+      try{ local=raw?JSON.parse(raw):{} }catch(e){}
+      local.notifEnabled=true;
+      local.notifEmail=result.notif_email;
+      localStorage.setItem('fh_rv_settings_'+sid, JSON.stringify(local));
+    }
     await loadRvSettingsFromDB(result.store_id);
     renderReviewerHome(); goTo('s-reviewer-home');
   }
@@ -1267,6 +1277,18 @@ async function restoreSession(){
     } else if(session.role==='reviewer' && session.brandId && session.storeId){
       DB.reviewerBrandId=session.brandId;
       DB.reviewerStoreId=session.storeId;
+      // Find store record and save notif_email if available
+      let storeRecord=null;
+      for(const b of DB.brands){ storeRecord=b.stores.find(s=>s.id===session.storeId); if(storeRecord) break; }
+      if(storeRecord && storeRecord.notif_email){
+        const sid=session.storeId;
+        const raw=localStorage.getItem('fh_rv_settings_'+sid);
+        let local={};
+        try{ local=raw?JSON.parse(raw):{} }catch(e){}
+        local.notifEnabled=true;
+        local.notifEmail=storeRecord.notif_email;
+        localStorage.setItem('fh_rv_settings_'+sid, JSON.stringify(local));
+      }
       await loadRvSettingsFromDB(session.storeId);
       renderReviewerHome();
       goTo('s-reviewer-home');
