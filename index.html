@@ -1152,10 +1152,13 @@ async function doLogin(){
   await loadAllData();
   if(result.role==='admin'){
     saveSession('admin', null, null);
+    // Load notif settings from DB into local SETTINGS
+    await loadAdminSettingsFromDB();
     renderHome(); goTo('s-home');
   } else if(result.role==='reviewer'){
     DB.reviewerBrandId=result.brand_id; DB.reviewerStoreId=result.store_id;
     saveSession('reviewer', result.brand_id, result.store_id);
+    await loadRvSettingsFromDB(result.store_id);
     renderReviewerHome(); goTo('s-reviewer-home');
   }
 }
@@ -1243,12 +1246,14 @@ async function restoreSession(){
     }
     await loadAllData();
     if(session.role==='admin'){
+      await loadAdminSettingsFromDB();
       renderHome();
       goTo('s-home');
       return true;
     } else if(session.role==='reviewer' && session.brandId && session.storeId){
       DB.reviewerBrandId=session.brandId;
       DB.reviewerStoreId=session.storeId;
+      await loadRvSettingsFromDB(session.storeId);
       renderReviewerHome();
       goTo('s-reviewer-home');
       return true;
@@ -1333,28 +1338,42 @@ function renderBrandReports(){
   let list=[...b.reports];
   const ts=b.stores.length;
 
-  // Sort: pending (0 feedback) → partial → complete
-  list.sort((a,b)=>{
-    const statusScore=(r)=>{
-      const n=r.feedbacks.length, t=r.storeId?1:ts;
-      if(n===0) return 0;
-      if(n>=t) return 2;
-      return 1;
-    };
-    return statusScore(a)-statusScore(b);
-  });
+  // Helper: get report status based on item responses
+  function reportItemStatus(r){
+    const targetStores=r.storeId?b.stores.filter(s=>s.id===r.storeId):b.stores;
+    const totalItems=r.refs&&r.refs.length?r.refs.length:1;
+    if(!r.feedbacks.length) return 0; // no feedback at all → pending
+    let allDone=true, anyDone=false;
+    for(const s of targetStores){
+      const fb=r.feedbacks.find(f=>f.storeId===s.id);
+      if(!fb){ allDone=false; continue; }
+      const responded=(fb.itemFeedbacks||[]).filter(it=>it.note||(it.photos&&it.photos.length)).length;
+      if(responded===0){ allDone=false; }
+      else if(responded<totalItems){ allDone=false; anyDone=true; }
+      else { anyDone=true; }
+    }
+    if(allDone) return 2;
+    if(anyDone) return 1;
+    return 0;
+  }
 
-  if(DB.brandFilter==='pending') list=list.filter(r=>r.feedbacks.length===0);
-  if(DB.brandFilter==='partial') list=list.filter(r=>{ const t=r.storeId?1:b.stores.length; return r.feedbacks.length>0&&r.feedbacks.length<t; });
-  if(DB.brandFilter==='done')    list=list.filter(r=>{ const t=r.storeId?1:b.stores.length; return t>0&&r.feedbacks.length>=t; });
+  // Sort: pending → partial → complete
+  list.sort((a,b)=> reportItemStatus(a)-reportItemStatus(b));
+
+  if(DB.brandFilter==='pending') list=list.filter(r=>reportItemStatus(r)===0);
+  if(DB.brandFilter==='partial') list=list.filter(r=>reportItemStatus(r)===1);
+  if(DB.brandFilter==='done')    list=list.filter(r=>reportItemStatus(r)===2);
+
   const el=document.getElementById('brand-report-list');
   if(!list.length){ el.innerHTML='<div class="empty">No reports</div>'; return; }
   el.innerHTML=list.map(r=>{
     const ts=r.storeId?1:b.stores.length;
     const n=r.feedbacks.length, pct=ts?Math.round(n/ts*100):0;
-    let bc='badge-none', bt='No feedback';
-    if(n>0&&n<ts){bc='badge-partial';bt=`${n}/${ts}`;}
-    else if(ts>0&&n>=ts){bc='badge-done';bt='All done';}
+    const _rStatus=reportItemStatus(r);
+    let bc, bt;
+    if(_rStatus===0){ bc='badge-none'; bt='Pending'; }
+    else if(_rStatus===1){ bc='badge-partial'; bt='Partial'; }
+    else { bc='badge-done'; bt='Complete'; }
     const targetStore=r.storeId?b.stores.find(s=>s.id===r.storeId):null;
     return `<div class="card card-click" style="margin-bottom:10px;" onclick="viewFeedback('${r.id}')">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
@@ -2030,8 +2049,21 @@ function renderReviewerHome(){
 
   // Stats
   const reports=b.reports.filter(r=>reportVisibleToStore(r,s.id));
-  const done=reports.filter(r=>r.feedbacks.find(f=>f.storeId===s.id)).length;
-  const pending=reports.length-done;
+  // Count based on item responses
+  const done=reports.filter(r=>{
+    const fb=r.feedbacks.find(f=>f.storeId===s.id);
+    if(!fb) return false;
+    const totalItems=r.refs&&r.refs.length?r.refs.length:1;
+    const responded=(fb.itemFeedbacks||[]).filter(it=>it.note||(it.photos&&it.photos.length)).length;
+    return responded>=totalItems;
+  }).length;
+  const pending=reports.filter(r=>{
+    const fb=r.feedbacks.find(f=>f.storeId===s.id);
+    if(!fb) return true;
+    const totalItems=r.refs&&r.refs.length?r.refs.length:1;
+    const responded=(fb.itemFeedbacks||[]).filter(it=>it.note||(it.photos&&it.photos.length)).length;
+    return responded<totalItems;
+  }).length;
   document.getElementById('rv-stats-row').innerHTML=`
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);padding:13px 14px;">
       <div style="font-size:24px;font-weight:700;color:var(--warn);">${pending}</div>
@@ -2488,11 +2520,18 @@ async function saveRvNotif(){
   if(!email||!email.includes('@')){ msg.innerHTML='<div class="alert alert-danger">Please enter a valid email.</div>'; return; }
   const s=reviewerStore();
   if(s){
-    s.email=email;
-    await api('PUT',`/api/stores/${s.id}`,{...s});
+    s.notif_email=email;
+    s.notif_enabled=1;
+    // Save notif_email to DB so it persists across all devices
+    await api('PUT',`/api/stores/${s.id}`,{
+      name:s.name, username:s.username, password:s.password,
+      phone:s.phone||'', location:s.location||'', logo:s.logo||null,
+      color:s.color||'#7c6fff', email:s.email||null,
+      notif_email:email, notif_enabled:1
+    });
   }
   saveRvSettingsToStorage();
-  msg.innerHTML='<div class="alert alert-success">✓ Email saved! You will receive alerts at '+email+'</div>';
+  msg.innerHTML='<div class="alert alert-success">✓ Email saved! Notifications will work on all your devices.</div>';
   setTimeout(()=>{ msg.innerHTML=''; },3000);
 }
 
@@ -2720,6 +2759,43 @@ function showToast(msg){
   setTimeout(()=>t.remove(), 2800);
 }
 
+/* ===== DB SETTINGS SYNC ===== */
+async function loadAdminSettingsFromDB(){
+  try{
+    const data=await api('GET','/api/admin/settings');
+    if(data && !data.error){
+      SETTINGS.notifEnabled=!!(data.notif_email);
+      SETTINGS.notifEmail=data.notif_email||'';
+      SETTINGS.notifOnSubmit=data.notif_on_submit!==false;
+      SETTINGS.notifAllDone=data.notif_all_done!==false;
+      SETTINGS.notifBrandComplete=data.notif_brand_complete!==false;
+      SETTINGS.notifStoreComplete=data.notif_store_complete!==false;
+      saveSettingsToStorage();
+    }
+  }catch(e){}
+}
+
+async function loadRvSettingsFromDB(storeId){
+  if(!storeId) return;
+  try{
+    // Find store from DB.brands
+    let store=null;
+    for(const b of DB.brands){ store=b.stores.find(s=>s.id===storeId); if(store) break; }
+    if(!store) return;
+    // Load from store record
+    const sid=storeId;
+    const raw=localStorage.getItem('fh_rv_settings_'+sid);
+    let local={};
+    try{ local=raw?JSON.parse(raw):{} }catch(e){}
+    // Prefer DB notif_email over local if set
+    if(store.notif_email){
+      local.notifEnabled=true;
+      local.notifEmail=store.notif_email;
+      localStorage.setItem('fh_rv_settings_'+sid, JSON.stringify(local));
+    }
+  }catch(e){}
+}
+
 /* ===== SETTINGS ===== */
 let SETTINGS = {
   notifEnabled: false, notifEmail: '',
@@ -2784,13 +2860,23 @@ async function saveNotifSettings(){
   const msg=document.getElementById('notif-msg');
   if(!email||!email.includes('@')){ msg.innerHTML='<div class="alert alert-danger">Please enter a valid email.</div>'; return; }
   SETTINGS.notifEmail=email;
+  SETTINGS.notifEnabled=true;
   SETTINGS.notifOnSubmit=document.getElementById('notif-on-submit').checked;
   SETTINGS.notifAllDone=document.getElementById('notif-all-done').checked;
   SETTINGS.notifBrandComplete=document.getElementById('notif-brand-complete').checked;
   SETTINGS.notifStoreComplete=document.getElementById('notif-store-complete').checked;
   saveSettingsToStorage();
-  await api('PUT','/api/admin/password',{username:ADMIN_CREDS.username,password:ADMIN_CREDS.password,notif_email:email});
-  msg.innerHTML='<div class="alert alert-success">✓ Settings saved!</div>';
+  // Save to DB so it persists across devices
+  await api('PUT','/api/admin/password',{
+    username:ADMIN_CREDS.username,
+    password:ADMIN_CREDS.password,
+    notif_email:email,
+    notif_on_submit:SETTINGS.notifOnSubmit,
+    notif_all_done:SETTINGS.notifAllDone,
+    notif_brand_complete:SETTINGS.notifBrandComplete,
+    notif_store_complete:SETTINGS.notifStoreComplete,
+  });
+  msg.innerHTML='<div class="alert alert-success">✓ Settings saved! Email will work on all devices.</div>';
   setTimeout(()=>{ msg.innerHTML=''; },3000);
 }
 
