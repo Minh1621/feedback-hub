@@ -737,7 +737,11 @@ label{
     <div id="rv-feedback-form">
       <div id="rv-items-form"></div>
       <div id="rv-fb-msg" style="margin-top:4px;"></div>
-      <button class="btn btn-primary btn-full" style="margin-top:12px;margin-bottom:24px;" onclick="submitReviewerFeedback()">Submit feedback</button>
+      <div style="display:flex;gap:10px;margin-top:12px;margin-bottom:24px;">
+        <button class="btn btn-full" style="flex:1;" onclick="saveReviewerDraft()">Save</button>
+        <button id="rv-submit-btn" class="btn btn-primary btn-full" style="flex:1;display:none;" onclick="submitReviewerFeedback()">Submit feedback</button>
+      </div>
+      <div id="rv-all-done-hint" style="display:none;text-align:center;font-size:12px;color:var(--text3);margin-top:-8px;margin-bottom:16px;">Fill all items to unlock Submit</div>
     </div>
   </div>
 </div>
@@ -2517,6 +2521,8 @@ function renderItemForms(r, brandColor){
       </div>
     </div>`).join('');
   refs.forEach((_,i)=>renderItemPhotoGrid(i));
+  // Set initial Submit button visibility
+  checkAllItemsDone();
 }
 
 function toggleRvText(idx){
@@ -2586,6 +2592,15 @@ function refreshReviewerItemStatus(idx){
     btn.style.color='#fff';
     btn.style.borderColor='var(--accent)';
   }
+  // Update Submit button visibility — show only when ALL items have content
+  checkAllItemsDone();
+}
+function checkAllItemsDone(){
+  const allDone=DB.itemFeedbacks.length>0 && DB.itemFeedbacks.every(it=>it.note.trim()||it.photos.length);
+  const submitBtn=document.getElementById('rv-submit-btn');
+  const hint=document.getElementById('rv-all-done-hint');
+  if(submitBtn) submitBtn.style.display=allDone?'':'none';
+  if(hint) hint.style.display=allDone?'none':'';
 }
 function getTimestamp(){
   const now=new Date();
@@ -2644,10 +2659,42 @@ function removeItemPhoto(idx,pi){
   renderItemPhotoGrid(idx); refreshReviewerItemStatus(idx);
 }
 
-async function submitReviewerFeedback(){
+async function saveReviewerDraft(){
   const msg=document.getElementById('rv-fb-msg');
   const hasAny=DB.itemFeedbacks.some(it=>it.note.trim()||it.photos.length);
-  if(!hasAny){ msg.innerHTML='<div class="alert alert-danger">Please add at least one note or photo.</div>'; return; }
+  if(!hasAny){ msg.innerHTML='<div class="alert alert-danger">Please add at least one response first.</div>'; setTimeout(()=>msg.innerHTML='',2500); return; }
+  const b=reviewerBrand(), s=reviewerStore();
+  const r=b.reports.find(r=>r.id===DB.reviewerReportId);
+  const feedbackObj={
+    storeId:s.id,
+    text:DB.itemFeedbacks.map((it,i)=>it.note?`Item ${i+1}: ${it.note}`:'').filter(Boolean).join(' | '),
+    itemFeedbacks:DB.itemFeedbacks.map(it=>({...it,photos:[...it.photos]})),
+    photos:[],
+    date:new Date().toISOString().slice(0,10),
+    draft:true
+  };
+  msg.innerHTML='<div class="alert alert-success">⏳ Saving...</div>';
+  // Check if feedback already exists for this store/report
+  const existing=r.feedbacks.find(f=>f.storeId===s.id);
+  if(existing){
+    // Update existing — no notification sent
+    await api('PUT',`/api/feedbacks/${existing.id}`,{text:feedbackObj.text,itemFeedbacks:feedbackObj.itemFeedbacks,photos:[]});
+    existing.itemFeedbacks=feedbackObj.itemFeedbacks;
+    existing.text=feedbackObj.text;
+  } else {
+    // Create new draft — use special endpoint that skips notification
+    const result=await api('POST','/api/feedbacks/draft',{...feedbackObj, report_id:r.id});
+    if(result.id) feedbackObj.id=result.id;
+    r.feedbacks.push(feedbackObj);
+  }
+  msg.innerHTML='<div class="alert alert-success">✓ Progress saved! Admin can see your partial responses.</div>';
+  setTimeout(()=>{ msg.innerHTML=''; },2500);
+}
+
+async function submitReviewerFeedback(){
+  const msg=document.getElementById('rv-fb-msg');
+  const allDone=DB.itemFeedbacks.every(it=>it.note.trim()||it.photos.length);
+  if(!allDone){ msg.innerHTML='<div class="alert alert-danger">Please complete all items before submitting.</div>'; return; }
   const b=reviewerBrand(), s=reviewerStore();
   const r=b.reports.find(r=>r.id===DB.reviewerReportId);
   const feedbackObj={
@@ -2658,9 +2705,21 @@ async function submitReviewerFeedback(){
     date:new Date().toISOString().slice(0,10)
   };
   msg.innerHTML='<div class="alert alert-success">⏳ Submitting...</div>';
-  const result=await api('POST','/api/feedbacks',{...feedbackObj, report_id:r.id});
-  if(result.id) feedbackObj.id=result.id;
-  r.feedbacks.push(feedbackObj);
+  // Check if draft already exists — update it and trigger notification
+  const existing=r.feedbacks.find(f=>f.storeId===s.id);
+  if(existing){
+    await api('PUT',`/api/feedbacks/${existing.id}`,{text:feedbackObj.text,itemFeedbacks:feedbackObj.itemFeedbacks,photos:[]});
+    existing.itemFeedbacks=feedbackObj.itemFeedbacks;
+    existing.text=feedbackObj.text;
+    existing.date=feedbackObj.date;
+    // Trigger notification via separate endpoint
+    await api('POST','/api/feedbacks/notify',{feedback_id:existing.id, report_id:r.id, store_id:s.id});
+  } else {
+    // New submission — normal POST which triggers notification
+    const result=await api('POST','/api/feedbacks',{...feedbackObj, report_id:r.id});
+    if(result.id) feedbackObj.id=result.id;
+    r.feedbacks.push(feedbackObj);
+  }
   DB.itemFeedbacks=[];
   msg.innerHTML='<div class="alert alert-success">✓ Feedback submitted!</div>';
   setTimeout(()=>{ renderReviewerHome(); goTo('s-reviewer-home'); },1200);
