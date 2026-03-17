@@ -412,8 +412,11 @@ label{
 
 <!-- ======= HOME ======= -->
 <div class="screen" id="s-home">
-  <div class="topbar">
-    <div class="topbar-title">All Brands</div>
+  <div class="topbar" style="padding:8px 14px;">
+    <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;">
+      <div id="home-app-logo" style="width:32px;height:32px;border-radius:8px;overflow:hidden;background:var(--accent);display:flex;align-items:center;justify-content:center;flex-shrink:0;"></div>
+      <div style="font-size:15px;font-weight:800;color:var(--text);letter-spacing:-.01em;white-space:nowrap;">FEEDBACK HUB</div>
+    </div>
     <button class="btn btn-sm btn-primary" onclick="openAddBrand()">+ Brand</button>
     <button class="btn btn-ghost btn-sm" onclick="applySettingsToUI();goTo('s-settings')" style="padding:6px 8px;">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -427,6 +430,15 @@ label{
     <div id="global-stats" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:20px;"></div>
     <div class="sec-label">Brands</div>
     <div id="brand-list"></div>
+    <!-- Refresh bar -->
+    <div style="height:80px;"></div>
+  </div>
+  <!-- Floating refresh button -->
+  <div style="position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:20;pointer-events:none;width:100%;max-width:440px;display:flex;justify-content:center;">
+    <button id="admin-refresh-btn" onclick="doAdminRefresh()" style="pointer-events:all;display:flex;align-items:center;gap:8px;background:var(--bg2);border:1.5px solid var(--border);border-radius:30px;padding:10px 22px;font-size:13px;font-weight:600;color:var(--text2);cursor:pointer;box-shadow:0 4px 20px rgba(0,0,0,.12);transition:all .2s;">
+      <svg id="admin-refresh-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+      Refresh
+    </button>
   </div>
 </div>
 
@@ -693,6 +705,14 @@ label{
     <!-- Report list -->
     <div class="sec-label" style="margin-bottom:10px;">Reports</div>
     <div id="rv-report-list"></div>
+    <div style="height:80px;"></div>
+  </div>
+  <!-- Floating refresh button -->
+  <div style="position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:20;pointer-events:none;width:100%;max-width:440px;display:flex;justify-content:center;">
+    <button id="rv-refresh-btn" onclick="doRvRefresh()" style="pointer-events:all;display:flex;align-items:center;gap:8px;background:var(--bg2);border:1.5px solid var(--border);border-radius:30px;padding:10px 22px;font-size:13px;font-weight:600;color:var(--text2);cursor:pointer;box-shadow:0 4px 20px rgba(0,0,0,.12);transition:all .2s;">
+      <svg id="rv-refresh-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+      Refresh
+    </button>
   </div>
 </div>
 
@@ -1202,7 +1222,7 @@ async function doLogin(){
     saveSession('admin', null, null);
     // Load notif settings from DB into local SETTINGS
     await loadAdminSettingsFromDB();
-    renderHome(); goTo('s-home');
+    renderHome(); renderHomeAppLogo(); goTo('s-home');
   } else if(result.role==='reviewer'){
     DB.reviewerBrandId=result.brand_id; DB.reviewerStoreId=result.store_id;
     saveSession('reviewer', result.brand_id, result.store_id);
@@ -1305,7 +1325,7 @@ async function restoreSession(){
     await loadAllData();
     if(session.role==='admin'){
       await loadAdminSettingsFromDB();
-      renderHome();
+      renderHome(); renderHomeAppLogo();
       goTo('s-home');
       return true;
     } else if(session.role==='reviewer' && session.brandId && session.storeId){
@@ -3405,6 +3425,51 @@ function rebuildRefPhotoGrid(refId, rid){
   // update count label
   const countEl=grid.previousElementSibling?.querySelector('span');
   if(countEl) countEl.textContent=`Photos (${ref.photos.length})`;
+}
+
+/* ===== HOME LOGO ===== */
+function renderHomeAppLogo(){
+  const el=document.getElementById('home-app-logo');
+  if(!el) return;
+  // Use first brand logo or FEEDBACK HUB initials
+  const b=DB.brands&&DB.brands[0];
+  if(b&&b.logo){
+    el.style.background='transparent';
+    el.innerHTML=`<img src="${b.logo}" style="width:100%;height:100%;object-fit:cover;"/>`;
+  } else {
+    el.style.background='var(--accent)';
+    el.innerHTML=`<span style="font-size:13px;font-weight:800;color:#fff;">FH</span>`;
+  }
+}
+
+/* ===== REFRESH ===== */
+async function doAdminRefresh(){
+  const btn=document.getElementById('admin-refresh-btn');
+  const icon=document.getElementById('admin-refresh-icon');
+  if(btn) btn.disabled=true;
+  if(icon) icon.style.animation='spin .7s linear infinite';
+  try{
+    await loadAllData();
+    renderHome();
+    renderHomeAppLogo();
+    showToast('Updated!');
+  }catch(e){ showToast('Refresh failed'); }
+  if(icon) icon.style.animation='';
+  if(btn) btn.disabled=false;
+}
+
+async function doRvRefresh(){
+  const btn=document.getElementById('rv-refresh-btn');
+  const icon=document.getElementById('rv-refresh-icon');
+  if(btn) btn.disabled=true;
+  if(icon) icon.style.animation='spin .7s linear infinite';
+  try{
+    await loadAllData();
+    renderReviewerHome();
+    showToast('Updated!');
+  }catch(e){ showToast('Refresh failed'); }
+  if(icon) icon.style.animation='';
+  if(btn) btn.disabled=false;
 }
 
 /* ===== EXPORT DATA ===== */
