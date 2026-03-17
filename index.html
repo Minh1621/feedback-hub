@@ -504,6 +504,13 @@ label{
       </div>
       <div id="es-pass-shown" style="display:none;margin-top:8px;padding:9px 12px;background:var(--bg3);border-radius:var(--r);font-size:14px;font-family:'DM Mono',monospace;letter-spacing:.08em;color:var(--text);"></div>
     </div>
+    <div style="border-top:1px solid var(--border);margin:4px 0 14px;"></div>
+    <div style="font-size:14px;font-weight:600;margin-bottom:12px;">🔔 Notification email</div>
+    <div class="field" style="margin-bottom:4px;">
+      <label>Notification email for this store</label>
+      <input type="email" id="es-notif-email" placeholder="e.g. store@gmail.com"/>
+      <div style="font-size:11px;color:var(--text3);margin-top:5px;">Store will receive report & alert notifications at this email on all devices</div>
+    </div>
     <div id="edit-store-msg"></div>
     <button class="btn btn-primary btn-full" onclick="doEditStore()">Save changes</button>
     <div style="border-top:1px solid var(--border);margin:20px 0 14px;"></div>
@@ -1272,6 +1279,28 @@ window.addEventListener('load', async ()=>{
 });
 
 /* ===== HOME ===== */
+// Helper: get report completion status based on item responses
+function getReportStatus(r, stores){
+  const targetStores=r.storeId?stores.filter(s=>s.id===r.storeId):stores;
+  const totalItems=r.refs&&r.refs.length?r.refs.length:1;
+  if(!r.feedbacks.length) return 'pending';
+  // Dedup feedbacks — latest per store
+  const fbMap={};
+  r.feedbacks.forEach(f=>{ if(!fbMap[f.storeId]||f.date>=fbMap[f.storeId].date) fbMap[f.storeId]=f; });
+  let allDone=true, anyDone=false;
+  for(const s of targetStores){
+    const fb=fbMap[s.id];
+    if(!fb){ allDone=false; continue; }
+    const responded=(fb.itemFeedbacks||[]).filter(it=>it.note||(it.photos&&it.photos.length)).length;
+    if(responded===0){ allDone=false; }
+    else if(responded<totalItems){ allDone=false; anyDone=true; }
+    else { anyDone=true; }
+  }
+  if(allDone) return 'complete';
+  if(anyDone) return 'partial';
+  return 'pending';
+}
+
 function renderHome(){
   const tb=DB.brands.length, tr=DB.brands.reduce((a,b)=>a+b.reports.length,0), ts=DB.brands.reduce((a,b)=>a+b.stores.length,0);
   document.getElementById('global-stats').innerHTML=[{v:tb,l:'Brands'},{v:tr,l:'Reports'},{v:ts,l:'Stores'}].map(s=>`
@@ -1282,23 +1311,45 @@ function renderHome(){
   const el=document.getElementById('brand-list');
   if(!DB.brands.length){ el.innerHTML='<div class="empty">No brands yet</div>'; return; }
   el.innerHTML=DB.brands.map(b=>{
-    const totalFB=b.reports.reduce((a,r)=>a+r.feedbacks.length,0);
-    const maxFB=b.reports.reduce((a,r)=>a+(r.storeId?1:b.stores.length),0)||1;
-    const pct=Math.round(totalFB/maxFB*100);
+    // Count reports by status using item-based logic
+    let nComplete=0, nPartial=0, nPending=0;
+    b.reports.forEach(r=>{
+      const st=getReportStatus(r,b.stores);
+      if(st==='complete') nComplete++;
+      else if(st==='partial') nPartial++;
+      else nPending++;
+    });
+    const totalReports=b.reports.length||1;
+    const completePct=Math.round(nComplete/totalReports*100);
     const logoEl=b.logo?`<img src="${b.logo}" style="width:100%;height:100%;object-fit:cover;border-radius:10px;"/>`:`<span>${b.logoText||'🏷️'}</span>`;
     return `<div class="brand-card" onclick="openBrand('${b.id}')">
       <div class="brand-header">
         <div class="brand-logo" style="background:${b.color}22;border:1px solid ${b.color}44;">${logoEl}</div>
         <div style="flex:1;min-width:0;">
           <div style="font-size:15px;font-weight:600;">${b.name}</div>
-          <div style="font-size:12px;color:var(--text2);margin-top:2px;">${b.stores.length} stores &bull; ${b.reports.length} reports</div>
+          <div style="font-size:12px;color:var(--text2);margin-top:2px;">${b.stores.length} store${b.stores.length!==1?'s':''} &bull; ${b.reports.length} report${b.reports.length!==1?'s':''}</div>
         </div>
         <div style="width:11px;height:11px;border-radius:50%;background:${b.color};flex-shrink:0;"></div>
       </div>
-      <div class="brand-stats">
-        <div class="brand-stat">Feedback: <strong>${totalFB}</strong></div>
-        <div style="flex:1;align-self:center;padding:0 10px;"><div class="prog-wrap"><div class="prog-bar" style="width:${pct}%;background:${b.color};"></div></div></div>
-        <div style="font-size:12px;font-weight:600;color:${b.color};">${pct}%</div>
+      <div style="padding:12px 16px;border-top:1px solid var(--border);background:var(--bg3);">
+        <!-- Report status pills -->
+        <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;">
+          ${nComplete?`<span style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;background:var(--badge-done-bg);color:var(--success);">✓ ${nComplete} Complete</span>`:''}
+          ${nPartial?`<span style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;background:var(--badge-partial-bg);color:var(--accent);">⏳ ${nPartial} Partial</span>`:''}
+          ${nPending?`<span style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;background:var(--badge-none-bg);color:var(--text3);">○ ${nPending} Pending</span>`:''}
+          ${b.reports.length===0?`<span style="font-size:11px;color:var(--text3);">No reports yet</span>`:''}
+        </div>
+        <!-- Progress bar — based on complete reports -->
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div style="flex:1;background:var(--bg4);border-radius:4px;height:6px;overflow:hidden;">
+            <div style="display:flex;height:6px;">
+              <div style="width:${completePct}%;background:var(--success);transition:width .5s;border-radius:4px 0 0 4px;"></div>
+              <div style="width:${Math.round(nPartial/totalReports*100)}%;background:var(--warn);transition:width .5s;"></div>
+            </div>
+          </div>
+          <span style="font-size:12px;font-weight:700;color:${completePct===100?'var(--success)':completePct>0?'var(--accent)':'var(--text3)'};min-width:36px;text-align:right;">${completePct}%</span>
+        </div>
+        <div style="font-size:10px;color:var(--text3);margin-top:4px;">${nComplete}/${b.reports.length} reports complete</div>
       </div>
     </div>`;
   }).join('');
@@ -1339,35 +1390,20 @@ function renderBrandReports(){
   const ts=b.stores.length;
 
   // Helper: get report status based on item responses
-  function reportItemStatus(r){
-    const targetStores=r.storeId?b.stores.filter(s=>s.id===r.storeId):b.stores;
-    const totalItems=r.refs&&r.refs.length?r.refs.length:1;
-    if(!r.feedbacks.length) return 0; // no feedback at all → pending
-    let allDone=true, anyDone=false;
-    for(const s of targetStores){
-      const fb=r.feedbacks.find(f=>f.storeId===s.id);
-      if(!fb){ allDone=false; continue; }
-      const responded=(fb.itemFeedbacks||[]).filter(it=>it.note||(it.photos&&it.photos.length)).length;
-      if(responded===0){ allDone=false; }
-      else if(responded<totalItems){ allDone=false; anyDone=true; }
-      else { anyDone=true; }
-    }
-    if(allDone) return 2;
-    if(anyDone) return 1;
-    return 0;
-  }
+  // Use shared getReportStatus — 0=pending, 1=partial, 2=complete
+  function rStatusNum(r){ const s=getReportStatus(r,b.stores); return s==='complete'?2:s==='partial'?1:0; }
 
   // Sort: pending → partial → complete
-  list.sort((a,b)=> reportItemStatus(a)-reportItemStatus(b));
+  list.sort((a,bb)=> rStatusNum(a)-rStatusNum(bb));
 
-  if(DB.brandFilter==='pending') list=list.filter(r=>reportItemStatus(r)===0);
-  if(DB.brandFilter==='partial') list=list.filter(r=>reportItemStatus(r)===1);
-  if(DB.brandFilter==='done')    list=list.filter(r=>reportItemStatus(r)===2);
+  if(DB.brandFilter==='pending') list=list.filter(r=>rStatusNum(r)===0);
+  if(DB.brandFilter==='partial') list=list.filter(r=>rStatusNum(r)===1);
+  if(DB.brandFilter==='done')    list=list.filter(r=>rStatusNum(r)===2);
 
   const el=document.getElementById('brand-report-list');
   if(!list.length){ el.innerHTML='<div class="empty">No reports</div>'; return; }
   el.innerHTML=list.map(r=>{
-    const _rStatus=reportItemStatus(r);
+    const _rStatus=rStatusNum(r);
     let bc, bt;
     if(_rStatus===0){ bc='badge-none'; bt='Pending'; }
     else if(_rStatus===1){ bc='badge-partial'; bt='Partial'; }
@@ -1376,9 +1412,12 @@ function renderBrandReports(){
     const _targetStoresCard=r.storeId?b.stores.filter(s=>s.id===r.storeId):b.stores;
     const _totalItemsCard=r.refs&&r.refs.length?r.refs.length:1;
     const _totalPossCard=_targetStoresCard.length*_totalItemsCard;
+    // Deduplicate feedbacks — keep only latest per store
+    const _fbMapCard={};
+    r.feedbacks.forEach(f=>{ if(!_fbMapCard[f.storeId]||f.date>=_fbMapCard[f.storeId].date) _fbMapCard[f.storeId]=f; });
     let _totalRespCard=0;
     _targetStoresCard.forEach(s=>{
-      const fb=r.feedbacks.find(f=>f.storeId===s.id);
+      const fb=_fbMapCard[s.id];
       if(fb) _totalRespCard+=(fb.itemFeedbacks||[]).filter(it=>it.note||(it.photos&&it.photos.length)).length;
     });
     const _itemPctCard=_totalPossCard?Math.round(_totalRespCard/_totalPossCard*100):0;
@@ -1523,6 +1562,7 @@ function goEditStore(){
   document.getElementById('es-location').value=s.location||'';
   document.getElementById('es-user').value=s.username||'';
   document.getElementById('es-pass').value='';
+  document.getElementById('es-notif-email').value=s.notif_email||s.email||'';
   _esLogoData=s.logo||null;
   const prev=document.getElementById('es-logo-preview');
   prev.innerHTML=s.logo?`<img src="${s.logo}" style="width:100%;height:100%;object-fit:cover;border-radius:9px;"/>`:'🏷️';
@@ -1539,6 +1579,7 @@ async function doEditStore(){
   const location=document.getElementById('es-location').value.trim();
   const user=document.getElementById('es-user').value.trim();
   const pass=document.getElementById('es-pass').value;
+  const notifEmail=document.getElementById('es-notif-email').value.trim();
   const msg=document.getElementById('edit-store-msg');
   if(!name||!user){ msg.innerHTML='<div class="alert alert-danger">Name and username are required.</div>'; return; }
   const allOther=DB.brands.flatMap(b=>b.stores.filter(st=>st.id!==s.id).map(st=>st.username));
@@ -1546,7 +1587,15 @@ async function doEditStore(){
   s.name=name; s.phone=phone; s.location=location; s.username=user;
   if(pass) s.password=pass;
   if(_esLogoData) s.logo=_esLogoData;
-  await api('PUT',`/api/stores/${sid}`,{name:s.name,username:s.username,password:s.password,phone:s.phone,location:s.location,logo:s.logo||null,color:s.color});
+  if(notifEmail) s.notif_email=notifEmail;
+  // Save to DB including notif_email so it persists across all reviewer devices
+  await api('PUT',`/api/stores/${sid}`,{
+    name:s.name, username:s.username, password:s.password,
+    phone:s.phone, location:s.location, logo:s.logo||null,
+    color:s.color, email:s.email||null,
+    notif_email:notifEmail||s.notif_email||null,
+    notif_enabled:notifEmail?1:0,
+  });
   msg.innerHTML='<div class="alert alert-success">✓ Changes saved!</div>';
   setTimeout(()=>{ msg.innerHTML=''; document.getElementById('sd-store-name').textContent=s.name; openStoreDetail(s.id); },1000);
 }
@@ -1825,8 +1874,11 @@ function viewFeedback(rid){
   const totalItems=r.refs&&r.refs.length?r.refs.length:1;
   const totalPossible=ts*totalItems;
   let totalResponded=0;
+  // Deduplicate feedbacks — keep only latest per store
+  const _fbMapDetail={};
+  r.feedbacks.forEach(f=>{ if(!_fbMapDetail[f.storeId]||f.date>=_fbMapDetail[f.storeId].date) _fbMapDetail[f.storeId]=f; });
   const storeItemStatus=targetStores.map(s=>{
-    const fb=r.feedbacks.find(f=>f.storeId===s.id);
+    const fb=_fbMapDetail[s.id];
     if(!fb) return {store:s,responded:0,total:totalItems,pct:0};
     const responded=(fb.itemFeedbacks||[]).filter(it=>it.note||(it.photos&&it.photos.length)).length;
     totalResponded+=responded;
@@ -1862,8 +1914,12 @@ function viewFeedback(rid){
   if(r.refs&&r.refs.length){
     rw.innerHTML=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;"><div class="sec-label" style="margin-bottom:0;">Items (${r.refs.length})</div></div>`+
     r.refs.map((ref,i)=>{
+      // Deduplicate feedbacks — keep only latest per store
+      const latestFbMap={};
+      r.feedbacks.forEach(f=>{ if(!latestFbMap[f.storeId]||f.date>=latestFbMap[f.storeId].date) latestFbMap[f.storeId]=f; });
+      const latestFbs=Object.values(latestFbMap);
       // Collect responses for this ref — only count items with actual note or photo
-      const responses=r.feedbacks.map(f=>{
+      const responses=latestFbs.map(f=>{
         const s=b.stores.find(s=>s.id===f.storeId);
         const it=f.itemFeedbacks?f.itemFeedbacks.find(it=>it.refId===ref.id):null;
         return {store:s, item:it, date:f.date};
@@ -2100,17 +2156,18 @@ function renderReviewerHome(){
     </div>`;
 
   // Report list — pending first then done
-  const sorted=[...reports].sort((a,b)=>{
-    const getStatus=(r)=>{
+  const sorted=[...reports].sort((a,bb)=>{
+    // Use per-store status for reviewer sorting
+    const getMyStatus=(r)=>{
       const fb=r.feedbacks.find(f=>f.storeId===s.id);
-      if(!fb) return 0; // pending first
+      if(!fb) return 0;
       const total=r.refs&&r.refs.length?r.refs.length:1;
       const responded=(fb.itemFeedbacks||[]).filter(it=>it.note||(it.photos&&it.photos.length)).length;
       if(responded===0) return 0;
-      if(responded<total) return 1; // partial
-      return 2; // done last
+      if(responded<total) return 1;
+      return 2;
     };
-    return getStatus(a)-getStatus(b);
+    return getMyStatus(a)-getMyStatus(bb);
   });
   const el=document.getElementById('rv-report-list');
   if(!sorted.length){ el.innerHTML='<div class="empty">No reports assigned yet</div>'; return; }
