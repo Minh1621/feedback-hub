@@ -1629,8 +1629,16 @@ function renderRefItems(){
       <textarea id="refdesc_${ref.id}" placeholder="Description / note for reviewers..." style="min-height:60px;margin-bottom:8px;" oninput="updateRefDesc('${ref.id}',this.value)">${ref.desc}</textarea>
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
         <span style="font-size:11px;color:var(--text2);">Photos (${ref.photos.length})</span>
-        <button class="btn btn-xs" onclick="document.getElementById('refphotos_${ref.id}').click()">+ Photo</button>
+        <div style="display:flex;gap:8px;">
+          <button onclick="document.getElementById('refphotos_${ref.id}').click()" title="Upload photo" style="width:38px;height:38px;border-radius:10px;border:1.5px solid var(--border2);background:var(--bg2);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text2);">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+          </button>
+          <button onclick="document.getElementById('refphotoscam_${ref.id}').click()" title="Take photo" style="width:38px;height:38px;border-radius:10px;border:1.5px solid var(--border2);background:var(--bg2);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text2);">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+          </button>
+        </div>
         <input type="file" id="refphotos_${ref.id}" accept="image/*" multiple style="display:none;" onchange="addRefPhotos('${ref.id}',this)"/>
+        <input type="file" id="refphotoscam_${ref.id}" accept="image/*" capture="environment" style="display:none;" onchange="addRefPhotos('${ref.id}',this)"/>
       </div>
       <div class="photo-grid" id="refphotosgrid_${ref.id}">
         ${ref.photos.map((p,pi)=>`<div class="photo-thumb-wrap"><img src="${p}" class="photo-thumb" onclick="openLightbox('${p}')"/><button class="photo-remove" onclick="removeRefPhoto('${ref.id}',${pi})">✕</button></div>`).join('')}
@@ -1828,8 +1836,16 @@ function viewFeedback(rid){
             <textarea id="refinput_${ref.id}" style="min-height:60px;margin-bottom:8px;">${ref.desc}</textarea>
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
               <span style="font-size:11px;color:var(--text2);">Photos (${ref.photos.length})</span>
-              <button class="btn btn-xs" onclick="document.getElementById('refphotosedit_${ref.id}').click()">+ Photo</button>
+              <div style="display:flex;gap:8px;">
+                <button onclick="document.getElementById('refphotosedit_${ref.id}').click()" title="Upload photo" style="width:36px;height:36px;border-radius:9px;border:1.5px solid var(--border2);background:var(--bg3);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text2);">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                </button>
+                <button onclick="document.getElementById('refphotoseditcam_${ref.id}').click()" title="Take photo" style="width:36px;height:36px;border-radius:9px;border:1.5px solid var(--border2);background:var(--bg3);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text2);">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                </button>
+              </div>
               <input type="file" id="refphotosedit_${ref.id}" accept="image/*" multiple style="display:none;" onchange="addRefPhotosInline('${ref.id}','${rid}',this)"/>
+              <input type="file" id="refphotoseditcam_${ref.id}" accept="image/*" capture="environment" style="display:none;" onchange="addRefPhotosInline('${ref.id}','${rid}',this)"/>
             </div>
             <div class="photo-grid" id="refphotosgrid_inline_${ref.id}">${ref.photos.map((p,pi)=>`<div class="photo-thumb-wrap"><img src="${p}" class="photo-thumb" onclick="openLightbox('${p}')"/><button class="photo-remove" onclick="removeRefPhotoInline('${ref.id}','${rid}',${pi})">✕</button></div>`).join('')}</div>
             <div style="display:flex;gap:8px;margin-top:10px;">
@@ -2032,12 +2048,15 @@ function renderReviewerHome(){
         <span class="badge ${myFb?'badge-done':'badge-pending'}" style="flex-shrink:0;">${myFb?'✓ Done':'Pending'}</span>
       </div>
       <div style="font-size:12px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:4px;">${r.file}</div>
-        ${insp.date||insp.score?`<div style="display:flex;gap:10px;margin-top:6px;flex-wrap:wrap;">
-        ${insp.date?`<span style="font-size:12px;color:var(--text2);">📅 ${insp.date}</span>`:''}
-        ${insp.score?scoreHTML(insp.score,12):''}
+      ${insp.score?`<div style="margin-top:10px;display:flex;flex-direction:column;align-items:flex-start;gap:4px;">
+        <div style="font-size:28px;font-weight:800;line-height:1;">${scoreHTML(insp.score,28)}</div>
+        ${insp.checkedBy?`<div style="font-size:12px;color:var(--text2);">Checked by: <strong>${insp.checkedBy}</strong></div>`:''}
+        ${insp.date?`<div style="font-size:11px;color:var(--text3);">${insp.date}</div>`:''}
       </div>`:''}
-      ${itemCount?`<div style="font-size:12px;color:var(--accent);margin-top:5px;">📎 ${itemCount} item${itemCount>1?'s':''} to review</div>`:''}
-      ${myFb?`<div style="margin-top:8px;padding:8px 11px;background:var(--bg3);border-radius:8px;font-size:12px;color:var(--text2);">Submitted ${myFb.date}</div>`:''}
+      ${!insp.score&&insp.date?`<div style="font-size:12px;color:var(--text2);margin-top:6px;">${insp.date}${insp.checkedBy?' · Checked by: '+insp.checkedBy:''}
+      </div>`:''}
+      ${itemCount?`<div style="font-size:12px;color:var(--accent);margin-top:8px;display:flex;align-items:center;gap:5px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>${itemCount} item${itemCount>1?'s':''} to review</div>`:''}
+      ${myFb?`<div style="margin-top:8px;padding:8px 11px;background:var(--bg3);border-radius:8px;font-size:12px;color:var(--text2);">✓ Submitted ${myFb.date}</div>`:''}
     </div>`;
   }).join('');
 }
@@ -2114,8 +2133,12 @@ function openReviewerReport(rid){
                   ${item.photos&&item.photos.length?item.photos.map((p,pi)=>`<div style="position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;"><img src="${p}" style="width:100%;height:100%;object-fit:cover;cursor:pointer;" onclick="openLightbox('${p}')"/><button onclick="removeSubmittedPhoto('${rid}',${i},${pi})" style="position:absolute;top:3px;right:3px;width:18px;height:18px;border-radius:50%;background:rgba(0,0,0,.65);color:#fff;font-size:9px;border:none;cursor:pointer;">✕</button></div>`).join(''):''}
                 </div>
                 <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap;">
-                  <button onclick="document.getElementById('rvs_photoinput_${i}').click()" class="btn btn-xs">+ Photo</button>
-                  <button onclick="document.getElementById('rvs_camerainput_${i}').click()" class="btn btn-xs">📷 Camera</button>
+                  <button onclick="document.getElementById('rvs_photoinput_${i}').click()" title="Upload photo" style="width:40px;height:40px;border-radius:10px;border:1.5px solid var(--border2);background:var(--bg3);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text2);">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                  </button>
+                  <button onclick="document.getElementById('rvs_camerainput_${i}').click()" title="Take photo" style="width:40px;height:40px;border-radius:10px;border:1.5px solid var(--border2);background:var(--bg3);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text2);">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                  </button>
                   <input type="file" id="rvs_photoinput_${i}" accept="image/*" multiple style="display:none;" onchange="addSubmittedPhoto('${rid}',${i},this)"/>
                   <input type="file" id="rvs_camerainput_${i}" accept="image/*" capture="environment" style="display:none;" onchange="addSubmittedPhoto('${rid}',${i},this)"/>
                 </div>
@@ -2161,16 +2184,16 @@ function renderItemForms(r, brandColor){
         <!-- Response area -->
         <div style="padding:13px 14px;">
           <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:10px;">Your response</div>
-          <!-- Compact action buttons -->
-          <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
-            <button onclick="toggleRvText(${i})" id="rvtextbtn_${i}" style="padding:7px 18px;border-radius:20px;border:1px solid var(--border2);background:var(--bg3);font-size:13px;font-weight:500;color:var(--text2);cursor:pointer;font-family:inherit;transition:all .15s;">
-              Text
+          <!-- Compact action buttons — icons -->
+          <div style="display:flex;gap:10px;margin-bottom:10px;">
+            <button onclick="toggleRvText(${i})" id="rvtextbtn_${i}" title="Add text note" style="width:46px;height:46px;border-radius:12px;border:1.5px solid var(--border2);background:var(--bg3);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0;color:var(--text2);">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
             </button>
-            <button onclick="document.getElementById('item-photo-input-${i}').click()" style="padding:7px 18px;border-radius:20px;border:1px solid var(--border2);background:var(--bg3);font-size:13px;font-weight:500;color:var(--text2);cursor:pointer;font-family:inherit;transition:all .15s;">
-              Photo
+            <button onclick="document.getElementById('item-photo-input-${i}').click()" title="Upload photo" style="width:46px;height:46px;border-radius:12px;border:1.5px solid var(--border2);background:var(--bg3);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0;color:var(--text2);">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
             </button>
-            <button onclick="document.getElementById('item-camera-input-${i}').click()" style="padding:7px 18px;border-radius:20px;border:1px solid var(--border2);background:var(--bg3);font-size:13px;font-weight:500;color:var(--text2);cursor:pointer;font-family:inherit;transition:all .15s;">
-              📷 Camera
+            <button onclick="document.getElementById('item-camera-input-${i}').click()" title="Take photo with camera" style="width:46px;height:46px;border-radius:12px;border:1.5px solid var(--border2);background:var(--bg3);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0;color:var(--text2);">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
             </button>
             <input type="file" id="item-photo-input-${i}" accept="image/*" multiple style="display:none;" onchange="addItemPhoto(${i},this)"/>
             <input type="file" id="item-camera-input-${i}" accept="image/*" capture="environment" style="display:none;" onchange="addItemPhoto(${i},this)"/>
@@ -2255,10 +2278,54 @@ function refreshReviewerItemStatus(idx){
     btn.style.borderColor='var(--accent)';
   }
 }
+function getTimestamp(){
+  const now=new Date();
+  const d=now.toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit',year:'numeric'});
+  const t=now.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+  return d+' '+t;
+}
+function stampPhoto(dataURL, label){
+  return new Promise(resolve=>{
+    const img=new Image();
+    img.onload=()=>{
+      const c=document.createElement('canvas');
+      c.width=img.width; c.height=img.height;
+      const ctx=c.getContext('2d');
+      ctx.drawImage(img,0,0);
+      const ts=getTimestamp();
+      const takenBy=label||'Quality Control';
+      const line1='Date: '+ts;
+      const line2='Take by: '+takenBy;
+      const fontSize=Math.max(14,Math.round(img.width/30));
+      ctx.font='bold '+fontSize+'px sans-serif';
+      const pad=10, lineH=fontSize+6;
+      const w1=ctx.measureText(line1).width, w2=ctx.measureText(line2).width;
+      const bw=Math.max(w1,w2)+pad*2, bh=lineH*2+pad*2;
+      const bx=img.width-bw-10, by=img.height-bh-10;
+      ctx.fillStyle='rgba(0,0,0,0.6)';
+      ctx.fillRect(bx,by,bw,bh);
+      ctx.fillStyle='#ffffff';
+      ctx.fillText(line1,bx+pad,by+pad+fontSize);
+      ctx.fillText(line2,bx+pad,by+pad+fontSize+lineH);
+      resolve(c.toDataURL('image/jpeg',0.88));
+    };
+    img.src=dataURL;
+  });
+}
+function getReviewerName(){
+  const s=reviewerStore();
+  return s?s.name:'Quality Control';
+}
 function addItemPhoto(idx,input){
+  const label=getReviewerName();
   Array.from(input.files).forEach(f=>{
     const reader=new FileReader();
-    reader.onload=e=>{ DB.itemFeedbacks[idx].photos.push(e.target.result); renderItemPhotoGrid(idx); refreshReviewerItemStatus(idx); };
+    reader.onload=async e=>{
+      const stamped=await stampPhoto(e.target.result, label);
+      DB.itemFeedbacks[idx].photos.push(stamped);
+      renderItemPhotoGrid(idx);
+      refreshReviewerItemStatus(idx);
+    };
     reader.readAsDataURL(f);
   });
   input.value='';
@@ -2806,10 +2873,12 @@ function addSubmittedPhoto(rid, idx, input){
   const r=b.reports.find(r=>r.id===rid);
   const myFb=r.feedbacks.find(f=>f.storeId===s.id);
   if(!myFb||!myFb.itemFeedbacks) return;
+  const label=s?s.name:'Quality Control';
   Array.from(input.files).forEach(f=>{
     const reader=new FileReader();
-    reader.onload=e=>{
-      myFb.itemFeedbacks[idx].photos.push(e.target.result);
+    reader.onload=async e=>{
+      const stamped=await stampPhoto(e.target.result, label);
+      myFb.itemFeedbacks[idx].photos.push(stamped);
       // Refresh grid
       const grid=document.getElementById('rvs_photogrid_'+idx);
       if(grid){
