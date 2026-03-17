@@ -2693,31 +2693,43 @@ async function testRvNotif(){
 async function saveRvNotif(){
   const email=document.getElementById('rv-notif-email').value.trim();
   const msg=document.getElementById('rv-notif-msg');
-  if(!email||!email.includes('@')){ msg.innerHTML='<div class="alert alert-danger">Please enter a valid email.</div>'; return; }
+  if(!email||!email.includes('@')){
+    msg.innerHTML='<div class="alert alert-danger">Please enter a valid email.</div>';
+    return;
+  }
+  msg.innerHTML='<div class="alert alert-success">⏳ Saving...</div>';
   const s=reviewerStore();
   if(s){
+    // Update in-memory store record immediately
     s.notif_email=email;
     s.notif_enabled=1;
-    // Save to DB — persists across all devices
-    await api('PUT',`/api/stores/${s.id}`,{
+    // Save to DB — this is the key step that makes it work on ALL devices
+    const result=await api('PUT',`/api/stores/${s.id}`,{
       name:s.name, username:s.username, password:s.password,
       phone:s.phone||'', location:s.location||'', logo:s.logo||null,
       color:s.color||'#7c6fff', email:s.email||null,
       notif_email:email, notif_enabled:1
     });
+    if(!result || result.error){
+      msg.innerHTML='<div class="alert alert-danger">Failed to save — please try again.</div>';
+      setTimeout(()=>{ msg.innerHTML=''; },3000);
+      return;
+    }
   }
-  // Save to localStorage too
+  // Save to localStorage on this device too
   const sid=s?s.id:'';
   if(sid){
     const raw=localStorage.getItem('fh_rv_settings_'+sid);
     let local={};
     try{ local=raw?JSON.parse(raw):{} }catch(e){}
-    local.notifEnabled=true; local.notifEmail=email;
+    local.notifEnabled=true;
+    local.notifEmail=email;
     localStorage.setItem('fh_rv_settings_'+sid, JSON.stringify(local));
   }
   // Apply to UI
-  applyRvSettingsToUI({notifEnabled:true, notifEmail:email});
-  msg.innerHTML='<div class="alert alert-success">✓ Email saved! Notifications will work on all your devices.</div>';
+  applyRvSettingsToUI({notifEnabled:true, notifEmail:email,
+    notifNewReport:true, notifReminder:true, notifAlert:true});
+  msg.innerHTML='<div class="alert alert-success">✓ Email saved! Works on all devices now.</div>';
   setTimeout(()=>{ msg.innerHTML=''; },3000);
 }
 
@@ -2943,6 +2955,7 @@ async function loadAdminSettingsFromDB(){
   try{
     const data=await api('GET','/api/admin/settings');
     if(data && !data.error){
+      // DB is source of truth — always overwrite local settings
       SETTINGS.notifEnabled=!!(data.notif_email);
       SETTINGS.notifEmail=data.notif_email||'';
       SETTINGS.notifOnSubmit=data.notif_on_submit!==false;
@@ -2950,37 +2963,53 @@ async function loadAdminSettingsFromDB(){
       SETTINGS.notifBrandComplete=data.notif_brand_complete!==false;
       SETTINGS.notifStoreComplete=data.notif_store_complete!==false;
       saveSettingsToStorage();
+      // Apply to UI immediately so it shows on any device
+      applySettingsToUI();
     }
-  }catch(e){}
+  }catch(e){
+    // Fallback to localStorage if DB fails
+    loadSettingsFromStorage();
+    applySettingsToUI();
+  }
 }
 
 async function loadRvSettingsFromDB(storeId){
   if(!storeId) return;
+  const sid=storeId;
   try{
-    // Call API directly — most reliable cross-device approach
-    const dbSettings = await api('GET', `/api/store-settings/${storeId}`);
-    const sid=storeId;
+    // Step 1: Call dedicated API endpoint — always gets fresh data from D1
+    const dbSettings = await api('GET', `/api/store-settings/${sid}`);
+
+    // Step 2: Also check store record in brands (has notif_email from GET /api/brands)
+    let storeRecord=null;
+    for(const b of DB.brands){ storeRecord=b.stores.find(s=>s.id===sid); if(storeRecord) break; }
+
+    // Step 3: Build final settings — DB always wins over localStorage
+    const finalEmail = (dbSettings && dbSettings.notif_email)
+      || (storeRecord && storeRecord.notif_email)
+      || '';
+    const finalEnabled = !!(finalEmail) || (dbSettings && dbSettings.notif_enabled);
+
+    // Step 4: Load local prefs (checkboxes) from localStorage
     const raw=localStorage.getItem('fh_rv_settings_'+sid);
     let local={};
     try{ local=raw?JSON.parse(raw):{} }catch(e){}
-    // DB notif_email always wins — sync from server to this device
-    if(dbSettings && dbSettings.notif_email){
-      local.notifEnabled=true;
-      local.notifEmail=dbSettings.notif_email;
-    }
-    if(dbSettings && dbSettings.notif_enabled) local.notifEnabled=true;
-    // Also check DB.brands store record as fallback
-    let store=null;
-    for(const b of DB.brands){ store=b.stores.find(s=>s.id===storeId); if(store) break; }
-    if(store && store.notif_email && !local.notifEmail){
-      local.notifEnabled=true;
-      local.notifEmail=store.notif_email;
-    }
+
+    // Step 5: Merge — DB email always overrides local email
+    if(finalEmail){ local.notifEnabled=true; local.notifEmail=finalEmail; }
+    if(finalEnabled) local.notifEnabled=true;
+
+    // Step 6: Save merged result back to localStorage for offline use
     localStorage.setItem('fh_rv_settings_'+sid, JSON.stringify(local));
+
+    // Step 7: Apply to UI immediately
     applyRvSettingsToUI(local);
   }catch(e){
-    // Fallback to localStorage only
-    loadRvSettingsFromStorage();
+    // Fallback: at least load from localStorage
+    const raw=localStorage.getItem('fh_rv_settings_'+sid);
+    let local={};
+    try{ local=raw?JSON.parse(raw):{} }catch(e2){}
+    applyRvSettingsToUI(local);
   }
 }
 
@@ -3069,15 +3098,17 @@ async function saveNotifSettings(){
   const email=document.getElementById('notif-email').value.trim();
   const msg=document.getElementById('notif-msg');
   if(!email||!email.includes('@')){ msg.innerHTML='<div class="alert alert-danger">Please enter a valid email.</div>'; return; }
+  // Update SETTINGS object
   SETTINGS.notifEmail=email;
   SETTINGS.notifEnabled=true;
   SETTINGS.notifOnSubmit=document.getElementById('notif-on-submit').checked;
   SETTINGS.notifAllDone=document.getElementById('notif-all-done').checked;
   SETTINGS.notifBrandComplete=document.getElementById('notif-brand-complete').checked;
   SETTINGS.notifStoreComplete=document.getElementById('notif-store-complete').checked;
+  // Save to localStorage (this device)
   saveSettingsToStorage();
-  // Save to DB so it persists across devices
-  await api('PUT','/api/admin/password',{
+  // Save to DB (ALL devices) — this is the key step
+  const result=await api('PUT','/api/admin/password',{
     username:ADMIN_CREDS.username,
     password:ADMIN_CREDS.password,
     notif_email:email,
@@ -3086,7 +3117,11 @@ async function saveNotifSettings(){
     notif_brand_complete:SETTINGS.notifBrandComplete,
     notif_store_complete:SETTINGS.notifStoreComplete,
   });
-  msg.innerHTML='<div class="alert alert-success">✓ Settings saved! Email will work on all devices.</div>';
+  if(result && result.ok){
+    msg.innerHTML='<div class="alert alert-success">✓ Email saved! Works on all devices now.</div>';
+  } else {
+    msg.innerHTML='<div class="alert alert-danger">Failed to save — please try again.</div>';
+  }
   setTimeout(()=>{ msg.innerHTML=''; },3000);
 }
 
