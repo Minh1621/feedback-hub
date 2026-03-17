@@ -506,11 +506,15 @@ label{
     </div>
     <div style="border-top:1px solid var(--border);margin:4px 0 14px;"></div>
     <div style="font-size:14px;font-weight:600;margin-bottom:12px;">🔔 Notification email</div>
-    <div class="field" style="margin-bottom:4px;">
+    <div class="field" style="margin-bottom:8px;">
       <label>Notification email for this store</label>
       <input type="email" id="es-notif-email" placeholder="e.g. store@gmail.com"/>
-      <div style="font-size:11px;color:var(--text3);margin-top:5px;">Store will receive report & alert notifications at this email on all devices</div>
+      <div style="font-size:11px;color:var(--text3);margin-top:5px;">Store receives all notifications at this email on every device</div>
     </div>
+    <button class="btn btn-sm" style="width:100%;margin-bottom:4px;" onclick="testStoreNotifEmail()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;vertical-align:middle;"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13.5 19.79 19.79 0 0 1 1.72 4.9 2 2 0 0 1 3.71 2.72h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 10.36a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+      Send test email to this store
+    </button>
     <div id="edit-store-msg"></div>
     <button class="btn btn-primary btn-full" onclick="doEditStore()">Save changes</button>
     <div style="border-top:1px solid var(--border);margin:20px 0 14px;"></div>
@@ -860,9 +864,15 @@ label{
         <div class="field" style="margin-bottom:10px;">
           <label>Your notification email</label>
           <input type="email" id="rv-notif-email" placeholder="e.g. store@company.com"/>
-          <div style="font-size:11px;color:var(--text3);margin-top:5px;">You will receive alerts and reminders at this email</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:5px;">You will receive alerts and reminders at this email on all devices</div>
         </div>
-        <button class="btn btn-primary btn-sm" style="width:100%;margin-bottom:4px;" onclick="saveRvNotif()">Save email</button>
+        <div style="display:flex;gap:8px;margin-bottom:4px;">
+          <button class="btn btn-primary btn-sm" style="flex:1;" onclick="saveRvNotif()">Save email</button>
+          <button class="btn btn-sm" style="flex-shrink:0;" onclick="testRvNotif()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;vertical-align:middle;"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13.5 19.79 19.79 0 0 1 1.72 4.9 2 2 0 0 1 3.71 2.72h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 10.36a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+            Send test
+          </button>
+        </div>
         <div id="rv-notif-msg" style="margin-top:8px;"></div>
       </div>
     </div>
@@ -1550,6 +1560,27 @@ async function doAddStore(){
   msg.innerHTML='<div class="alert alert-success">✓ Store added!</div>';
   setTimeout(()=>{ msg.innerHTML=''; renderBrandHero(); brandTab('stores'); goTo('s-brand'); },1200);
 }
+async function testStoreNotifEmail(){
+  const email=document.getElementById('es-notif-email').value.trim();
+  const msg=document.getElementById('edit-store-msg');
+  if(!email||!email.includes('@')){
+    msg.innerHTML='<div class="alert alert-danger">Please enter a notification email first.</div>';
+    setTimeout(()=>{ msg.innerHTML=''; },3000);
+    return;
+  }
+  const sid=DB.currentStoreId;
+  let storeName='Store';
+  for(const b of DB.brands){ const s=b.stores.find(s=>s.id===sid); if(s){ storeName=s.name; break; } }
+  msg.innerHTML='<div class="alert alert-success">⏳ Sending test...</div>';
+  const result=await api('POST','/api/test-reviewer-email',{store_id:sid, email});
+  if(result.ok){
+    msg.innerHTML=`<div class="alert alert-success">✓ Test sent to <strong>${result.sent_to}</strong></div>`;
+  } else {
+    msg.innerHTML=`<div class="alert alert-danger">Failed: ${result.error||'check email address'}</div>`;
+  }
+  setTimeout(()=>{ msg.innerHTML=''; },5000);
+}
+
 function goEditStore(){
   const sid = DB.currentStoreId;
   if(!sid){ showToast('⚠️ No store selected'); return; }
@@ -2626,6 +2657,25 @@ function loadRvSettingsFromStorage(){
   }catch(e){}
 }
 
+async function testRvNotif(){
+  const email=document.getElementById('rv-notif-email').value.trim();
+  const msg=document.getElementById('rv-notif-msg');
+  if(!email||!email.includes('@')){
+    msg.innerHTML='<div class="alert alert-danger">Please enter and save your email first.</div>';
+    setTimeout(()=>{ msg.innerHTML=''; },3000);
+    return;
+  }
+  const s=reviewerStore();
+  msg.innerHTML='<div class="alert alert-success">⏳ Sending test email...</div>';
+  const result=await api('POST','/api/test-reviewer-email',{store_id:s?s.id:'', email});
+  if(result.ok){
+    msg.innerHTML=`<div class="alert alert-success">✓ Test email sent to <strong>${result.sent_to}</strong></div>`;
+  } else {
+    msg.innerHTML=`<div class="alert alert-danger">Failed: ${result.error||'Unknown error'}</div>`;
+  }
+  setTimeout(()=>{ msg.innerHTML=''; },5000);
+}
+
 async function saveRvNotif(){
   const email=document.getElementById('rv-notif-email').value.trim();
   const msg=document.getElementById('rv-notif-msg');
@@ -2893,23 +2943,31 @@ async function loadAdminSettingsFromDB(){
 async function loadRvSettingsFromDB(storeId){
   if(!storeId) return;
   try{
-    let store=null;
-    for(const b of DB.brands){ store=b.stores.find(s=>s.id===storeId); if(store) break; }
-    if(!store) return;
-    // Merge DB values into localStorage — DB wins for notif_email
+    // Call API directly — most reliable cross-device approach
+    const dbSettings = await api('GET', `/api/store-settings/${storeId}`);
     const sid=storeId;
     const raw=localStorage.getItem('fh_rv_settings_'+sid);
     let local={};
     try{ local=raw?JSON.parse(raw):{} }catch(e){}
-    if(store.notif_email){
+    // DB notif_email always wins — sync from server to this device
+    if(dbSettings && dbSettings.notif_email){
+      local.notifEnabled=true;
+      local.notifEmail=dbSettings.notif_email;
+    }
+    if(dbSettings && dbSettings.notif_enabled) local.notifEnabled=true;
+    // Also check DB.brands store record as fallback
+    let store=null;
+    for(const b of DB.brands){ store=b.stores.find(s=>s.id===storeId); if(store) break; }
+    if(store && store.notif_email && !local.notifEmail){
       local.notifEnabled=true;
       local.notifEmail=store.notif_email;
     }
-    if(store.notif_enabled) local.notifEnabled=true;
     localStorage.setItem('fh_rv_settings_'+sid, JSON.stringify(local));
-    // Apply immediately to UI if settings screen is open
     applyRvSettingsToUI(local);
-  }catch(e){}
+  }catch(e){
+    // Fallback to localStorage only
+    loadRvSettingsFromStorage();
+  }
 }
 
 function applyRvSettingsToUI(settings){
