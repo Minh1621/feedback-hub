@@ -1247,6 +1247,97 @@ label{
   </div>
 </div>
 
+
+<!-- ======= STAFF SETTINGS ======= -->
+<div class="screen" id="s-staff-settings">
+  <div class="topbar">
+    <button class="back-btn" onclick="goTo('s-home')">&#8592; Back</button>
+    <div class="topbar-title">Settings</div>
+  </div>
+  <div class="content">
+
+    <!-- Appearance -->
+    <div class="sec-label" style="margin-bottom:10px;">Appearance</div>
+    <div class="card" style="margin-bottom:18px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <div>
+          <div style="font-size:14px;font-weight:500;">Dark mode</div>
+          <div style="font-size:12px;color:var(--text2);margin-top:2px;">Switch between dark and light</div>
+        </div>
+        <div class="theme-toggle" onclick="toggleTheme()"></div>
+      </div>
+    </div>
+
+    <!-- Notifications -->
+    <div class="sec-label" style="margin-bottom:10px;">Notifications</div>
+    <div class="card" style="margin-bottom:10px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+        <div>
+          <div style="font-size:14px;font-weight:500;">Enable notifications</div>
+          <div style="font-size:12px;color:var(--text2);margin-top:2px;">Get notified about reports</div>
+        </div>
+        <div id="sf-notif-toggle-btn" onclick="toggleStaffNotif()" style="width:36px;height:20px;border-radius:10px;background:var(--bg3);border:1px solid var(--border2);cursor:pointer;position:relative;flex-shrink:0;transition:background .2s;">
+          <div id="sf-notif-knob-btn" style="position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:var(--text3);transition:all .2s;"></div>
+        </div>
+      </div>
+      <div id="sf-notif-email-section" style="display:none;">
+        <div class="field" style="margin-bottom:10px;">
+          <label>Your notification email</label>
+          <input type="email" id="sf-notif-email-input" placeholder="e.g. staff@company.com"/>
+          <div style="font-size:11px;color:var(--text3);margin-top:5px;">You will receive report notifications at this email on all devices</div>
+        </div>
+        <button class="btn btn-primary btn-sm" style="width:100%;margin-bottom:4px;" onclick="saveStaffNotif()">Save email</button>
+        <div id="sf-notif-save-msg" style="margin-top:8px;"></div>
+      </div>
+    </div>
+    <div class="card" style="margin-bottom:18px;">
+      <div style="font-size:13px;font-weight:500;margin-bottom:10px;">Notify me when:</div>
+      <label style="display:flex;align-items:center;gap:10px;font-size:13px;color:var(--text);margin-bottom:12px;cursor:pointer;">
+        <input type="checkbox" id="sf-notif-submit" checked style="width:16px;height:16px;"/> Store submits feedback
+      </label>
+      <label style="display:flex;align-items:center;gap:10px;font-size:13px;color:var(--text);margin-bottom:12px;cursor:pointer;">
+        <input type="checkbox" id="sf-notif-all-done" checked style="width:16px;height:16px;"/> All stores in a report have responded
+      </label>
+      <label style="display:flex;align-items:center;gap:10px;font-size:13px;color:var(--text);margin-bottom:12px;cursor:pointer;">
+        <input type="checkbox" id="sf-notif-brand" checked style="width:16px;height:16px;"/> All reports in a brand are complete
+      </label>
+      <label style="display:flex;align-items:center;gap:10px;font-size:13px;color:var(--text);margin-bottom:4px;cursor:pointer;">
+        <input type="checkbox" id="sf-notif-store" checked style="width:16px;height:16px;"/> A specific store completes all their reports
+      </label>
+    </div>
+
+    <!-- Account -->
+    <div class="sec-label" style="margin-bottom:10px;">Account</div>
+    <div class="card" style="margin-bottom:18px;">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+        <div id="sf-settings-avatar" style="width:46px;height:46px;border-radius:50%;overflow:hidden;flex-shrink:0;background:var(--accent);display:flex;align-items:center;justify-content:center;"></div>
+        <div>
+          <div style="font-size:15px;font-weight:700;" id="sf-settings-name"></div>
+          <div style="font-size:12px;color:var(--text2);" id="sf-settings-position"></div>
+          <div style="font-size:12px;color:var(--text3);font-family:'DM Mono',monospace;" id="sf-settings-username"></div>
+        </div>
+      </div>
+      <div style="border-top:1px solid var(--border);margin:0 0 12px;"></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <div>
+          <div style="font-size:13px;font-weight:500;">Login password</div>
+          <div style="font-size:12px;color:var(--text3);" id="sf-pass-masked">••••••••</div>
+        </div>
+        <button class="btn btn-sm" onclick="sfViewPass()">View</button>
+      </div>
+      <div id="sf-pass-revealed" style="display:none;margin-bottom:10px;padding:10px 12px;background:var(--bg3);border-radius:var(--r);font-size:14px;font-family:'DM Mono',monospace;letter-spacing:.08em;"></div>
+    </div>
+
+    <!-- Support -->
+    <div style="margin-top:8px;margin-bottom:8px;">
+      <a href="https://t.me/lmig25" target="_blank" style="display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);text-decoration:none;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="#2AABEE"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12L7.88 13.264l-2.962-.924c-.643-.204-.657-.643.136-.953l11.57-4.461c.537-.194 1.006.131.27.295z"/></svg>
+        <div style="font-size:13px;font-weight:600;color:var(--text);">Contact Support</div>
+      </a>
+    </div>
+  </div>
+</div>
+
 </div><!-- /wrap -->
 <script>
 /* ===== SCORE HELPER ===== */
@@ -3937,61 +4028,117 @@ async function doRvRefresh(){
 /* ===== STAFF HOME ===== */
 function renderStaffHome(){
   const staff=DB.staffData||{};
-  const perm=staff.permission||'view';
   const allowedBrands=staff.brand_ids&&staff.brand_ids.length>0
     ? DB.brands.filter(b=>staff.brand_ids.includes(b.id))
     : DB.brands;
 
-  // Update topbar — show staff name instead of admin controls
-  const topbarTitle=document.querySelector('#s-home .topbar-title');
-  if(topbarTitle) topbarTitle.textContent=''; // clear
-
-  // Update global stats
-  const tb=allowedBrands.length;
-  const tr=allowedBrands.reduce((a,b)=>a+b.reports.length,0);
-  const ts=allowedBrands.reduce((a,b)=>a+b.stores.length,0);
-  document.getElementById('global-stats').innerHTML=[{v:tb,l:'Brands'},{v:tr,l:'Reports'},{v:ts,l:'Stores'}].map(s=>`
-    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);padding:13px 14px;">
-      <div style="font-size:24px;font-weight:700;line-height:1;">${s.v}</div>
-      <div style="font-size:12px;color:var(--text2);margin-top:3px;">${s.l}</div>
-    </div>`).join('');
-
-  // Render only allowed brands
-  const el=document.getElementById('brand-list');
-  if(!allowedBrands.length){ el.innerHTML='<div class="empty">No brands assigned</div>'; }
-  else {
-    // Temporarily override DB.brands for renderHome logic
-    const orig=DB.brands;
-    DB.brands=allowedBrands;
-    renderHome();
-    DB.brands=orig;
-  }
-
-  // Hide + Brand and Settings buttons for non-admin
-  const addBrandBtn=document.querySelector('#s-home .btn-primary');
-  if(addBrandBtn) addBrandBtn.style.display='none';
-
-  // Update topbar with staff profile
+  // ── Rebuild topbar for staff ───────────────────────────────────────────────
   const topbar=document.querySelector('#s-home .topbar');
   if(topbar){
-    const existing=document.getElementById('staff-home-topbar');
-    if(!existing){
-      const staffBar=document.createElement('div');
-      staffBar.id='staff-home-topbar';
-      staffBar.style.cssText='display:flex;align-items:center;gap:8px;flex:1;min-width:0;';
-      staffBar.innerHTML=`
-        <div style="width:32px;height:32px;border-radius:50%;overflow:hidden;flex-shrink:0;background:var(--accent);display:flex;align-items:center;justify-content:center;">
-          ${staff.avatar?`<img src="${staff.avatar}" style="width:100%;height:100%;object-fit:cover;"/>`:`<span style="font-size:13px;font-weight:800;color:#fff;">${(staff.name||'S').charAt(0).toUpperCase()}</span>`}
+    topbar.innerHTML=`
+      <div id="home-app-logo" style="width:32px;height:32px;border-radius:8px;overflow:hidden;flex-shrink:0;"></div>
+      <div style="font-size:15px;font-weight:800;color:var(--text);letter-spacing:-.01em;flex:1;">FEEDBACK HUB</div>
+      <button class="btn btn-ghost btn-sm" onclick="openStaffSettings()" style="padding:6px 8px;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      </button>
+      <button class="btn btn-ghost btn-sm" onclick="doLogout()">Sign out</button>`;
+    renderHomeAppLogo();
+  }
+
+  // ── Staff info card (like reviewer store card — picture 3) ─────────────────
+  // Insert staff card before global-stats
+  let staffCard=document.getElementById('staff-info-card');
+  if(!staffCard){
+    staffCard=document.createElement('div');
+    staffCard.id='staff-info-card';
+    staffCard.style.marginBottom='16px';
+    const statsEl=document.getElementById('global-stats');
+    if(statsEl) statsEl.parentNode.insertBefore(staffCard, statsEl);
+  }
+  const initials=(staff.name||'S').split(' ').map(w=>w[0]).filter(Boolean).slice(0,2).join('').toUpperCase();
+  staffCard.innerHTML=`
+    <div style="background:var(--accent)12;border:1px solid var(--accent)30;border-radius:var(--rl);overflow:hidden;">
+      <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;">
+        <div style="width:48px;height:48px;border-radius:50%;overflow:hidden;flex-shrink:0;background:var(--accent)25;border:2px solid var(--accent)40;display:flex;align-items:center;justify-content:center;">
+          ${staff.avatar?`<img src="${staff.avatar}" style="width:100%;height:100%;object-fit:cover;"/>`:`<span style="font-size:16px;font-weight:700;color:var(--accent);">${initials}</span>`}
         </div>
-        <div style="min-width:0;">
-          <div style="font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${staff.name||'Staff'}</div>
-          <div style="font-size:11px;color:var(--text2);">${staff.position||''}</div>
-        </div>`;
-      // Replace logo+title area
-      const logoEl=document.getElementById('home-app-logo');
-      const titleEl=topbar.querySelector('.topbar-title')||topbar.querySelector('[style*="font-weight:800"]');
-      if(logoEl&&logoEl.parentNode===topbar) topbar.replaceChild(staffBar, logoEl);
-    }
+        <div style="flex:1;">
+          <div style="font-size:17px;font-weight:700;">${staff.name||'Staff'}</div>
+          <div style="font-size:12px;color:var(--text2);margin-top:1px;">${staff.position||''}</div>
+        </div>
+      </div>
+      ${staff.phone||staff.location?`<div style="border-top:1px solid var(--accent)20;padding:10px 16px;display:flex;flex-direction:column;gap:8px;">
+        ${staff.phone?`<div style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2);"><span style="width:20px;display:flex;align-items:center;color:var(--text2);"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13.5 19.79 19.79 0 0 1 1.72 4.9 2 2 0 0 1 3.71 2.72h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 10.36a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg></span>${staff.phone}</div>`:''} 
+        ${staff.location?`<div style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2);"><span style="width:20px;display:flex;align-items:center;color:var(--text2);"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></span>${staff.location}</div>`:''} 
+      </div>`:''} 
+    </div>`;
+
+  // ── Stats & brand list ─────────────────────────────────────────────────────
+  const orig=DB.brands;
+  DB.brands=allowedBrands;
+  renderHome();
+  DB.brands=orig;
+}
+
+function openStaffSettings(){
+  const staff=DB.staffData||{};
+  // Populate settings screen
+  const avatarEl=document.getElementById('sf-settings-avatar');
+  if(avatarEl){
+    const initials=(staff.name||'S').split(' ').map(w=>w[0]).filter(Boolean).slice(0,2).join('').toUpperCase();
+    avatarEl.innerHTML=staff.avatar?`<img src="${staff.avatar}" style="width:100%;height:100%;object-fit:cover;"/>`:`<span style="font-size:16px;font-weight:700;color:#fff;">${initials}</span>`;
+  }
+  if(document.getElementById('sf-settings-name')) document.getElementById('sf-settings-name').textContent=staff.name||'Staff';
+  if(document.getElementById('sf-settings-position')) document.getElementById('sf-settings-position').textContent=staff.position||'';
+  if(document.getElementById('sf-settings-username')) document.getElementById('sf-settings-username').textContent=staff.username||'';
+  if(document.getElementById('sf-pass-revealed')) document.getElementById('sf-pass-revealed').style.display='none';
+  // Load saved notif email
+  if(document.getElementById('sf-notif-email-input')) document.getElementById('sf-notif-email-input').value=staff.notif_email||'';
+  if(staff.notif_email){
+    const track=document.getElementById('sf-notif-toggle-btn');
+    const knob=document.getElementById('sf-notif-knob-btn');
+    const sec=document.getElementById('sf-notif-email-section');
+    if(track){ track.style.background='var(--accent)'; }
+    if(knob){ knob.style.transform='translateX(16px)'; knob.style.background='#fff'; }
+    if(sec) sec.style.display='';
+  }
+  goTo('s-staff-settings');
+}
+
+function toggleStaffNotif(){
+  const track=document.getElementById('sf-notif-toggle-btn');
+  const knob=document.getElementById('sf-notif-knob-btn');
+  const sec=document.getElementById('sf-notif-email-section');
+  const on=knob.style.transform!=='translateX(16px)';
+  track.style.background=on?'var(--accent)':'var(--bg3)';
+  knob.style.transform=on?'translateX(16px)':'';
+  knob.style.background=on?'#fff':'var(--text3)';
+  if(sec) sec.style.display=on?'':'none';
+}
+
+async function saveStaffNotif(){
+  const email=document.getElementById('sf-notif-email-input').value.trim();
+  const msg=document.getElementById('sf-notif-save-msg');
+  if(!email||!email.includes('@')){ msg.innerHTML='<div class="alert alert-danger">Please enter a valid email.</div>'; setTimeout(()=>msg.innerHTML='',2500); return; }
+  msg.innerHTML='<div class="alert alert-success">⏳ Saving...</div>';
+  const staff=DB.staffData||{};
+  await api('PUT',`/api/staff/${staff.staff_id}`,{...staff, notif_email:email, brand_ids:staff.brand_ids||[]});
+  if(DB.staffData) DB.staffData.notif_email=email;
+  // Update session
+  const raw=localStorage.getItem('fh_session');
+  if(raw){ try{ const s=JSON.parse(raw); if(s.staffData) s.staffData.notif_email=email; localStorage.setItem('fh_session',JSON.stringify(s)); }catch(e){} }
+  msg.innerHTML='<div class="alert alert-success">✓ Email saved!</div>';
+  setTimeout(()=>msg.innerHTML='',2500);
+}
+
+function sfViewPass(){
+  const el=document.getElementById('sf-pass-revealed');
+  const staff=DB.staffData||{};
+  if(el.style.display==='none'||!el.style.display){
+    el.textContent=staff.password||'';
+    el.style.display='';
+  } else {
+    el.style.display='none';
   }
 }
 
