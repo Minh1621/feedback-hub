@@ -396,8 +396,8 @@ label{
       </div>
     </div>
     <div id="login-err" class="alert alert-danger" style="display:none;"></div>
-    <div class="field"><label>Username</label><input type="text" id="login-u" placeholder="Username"/></div>
-    <div class="field"><label>Password</label><input type="password" id="login-p" placeholder="••••"/></div>
+    <div class="field"><label>Email or Username</label><input type="email" id="login-u" placeholder="e.g. store@company.com or admin" autocomplete="email"/></div>
+    <div class="field"><label>Password</label><input type="password" id="login-p" placeholder="••••" autocomplete="current-password"/></div>
     <button class="btn btn-primary btn-full" onclick="doLogin()">Sign in →</button>
 
   </div>
@@ -496,7 +496,7 @@ label{
     </div>
     <div class="field"><label>Phone number</label><input type="tel" id="es-phone" placeholder="e.g. +855 12 345 678"/></div>
     <div class="field"><label>Location / address</label><textarea id="es-location" placeholder="e.g. St. 271, Toul Kork, Phnom Penh" style="min-height:60px;"></textarea></div>
-    <div class="field"><label>Username</label><input type="text" id="es-user" placeholder="e.g. coffee_central"/></div>
+    <div class="field"><label>Login Email</label><input type="email" id="es-user" placeholder="e.g. store@company.com" autocomplete="off"/></div>
     <div class="field"><label>New password (leave blank to keep current)</label>
       <div style="display:flex;gap:8px;">
         <input type="password" id="es-pass" placeholder="Enter new password" style="flex:1;"/>
@@ -565,7 +565,7 @@ label{
     </div>
     <div class="field"><label>Phone number</label><input type="tel" id="ns-phone" placeholder="e.g. +855 12 345 678"/></div>
     <div class="field"><label>Location / address</label><textarea id="ns-location" placeholder="e.g. St. 271, Toul Kork, Phnom Penh" style="min-height:60px;"></textarea></div>
-    <div class="field"><label>Username</label><input type="text" id="ns-user" placeholder="e.g. coffee_central"/></div>
+    <div class="field"><label>Login Email</label><input type="email" id="ns-user" placeholder="e.g. store@company.com" autocomplete="off"/></div>
     <div class="field"><label>Password</label><input type="password" id="ns-pass" placeholder="Set a password"/></div>
     <div id="add-store-msg"></div>
     <button class="btn btn-primary btn-full" onclick="doAddStore()">Add store</button>
@@ -862,13 +862,13 @@ label{
     <div class="card" style="margin-bottom:18px;">
       <div style="font-size:13px;font-weight:500;margin-bottom:10px;">Notify me when:</div>
       <label style="display:flex;align-items:center;gap:10px;text-transform:none;font-size:13px;color:var(--text);margin-bottom:12px;cursor:pointer;">
-        <input type="checkbox" id="rv-notif-new-report" checked/> A new report is assigned to my store
+        <input type="checkbox" id="rv-notif-new-report" checked onchange="saveRvSettingsToStorage()"/> A new report is assigned to my store
       </label>
       <label style="display:flex;align-items:center;gap:10px;text-transform:none;font-size:13px;color:var(--text);margin-bottom:12px;cursor:pointer;">
-        <input type="checkbox" id="rv-notif-reminder" checked/> Reminder when I haven't responded
+        <input type="checkbox" id="rv-notif-reminder" checked onchange="saveRvSettingsToStorage()"/> Reminder when I haven't responded
       </label>
       <label style="display:flex;align-items:center;gap:10px;text-transform:none;font-size:13px;color:var(--text);margin-bottom:4px;cursor:pointer;">
-        <input type="checkbox" id="rv-notif-alert" checked/> Admin sends me an alert
+        <input type="checkbox" id="rv-notif-alert" checked onchange="saveRvSettingsToStorage()"/> Admin sends me an alert
       </label>
     </div>
 
@@ -1044,6 +1044,18 @@ function toggleTheme(){
 /* ===== CLOUDFLARE API ===== */
 const WORKER_URL = 'https://feedback-hub-api.liming6069.workers.dev';
 
+// Generate or retrieve unique device ID
+function getDeviceId(){
+  try {
+    let did = localStorage.getItem('fh_device_id');
+    if(!did){
+      did = 'dev_' + Date.now() + '_' + Math.random().toString(36).slice(2,9);
+      localStorage.setItem('fh_device_id', did);
+    }
+    return did;
+  } catch(e){ return 'dev_unknown'; }
+}
+
 async function api(method, path, body=null){
   const opts = { method, headers: {'Content-Type':'application/json'} };
   if(body) opts.body = JSON.stringify(body);
@@ -1127,7 +1139,7 @@ async function doLogin(){
   if(!u||!p){ errEl.style.display='block'; errEl.textContent='Please enter username and password.'; return; }
   const btn=document.querySelector('#s-login .btn-primary');
   if(btn){ btn.textContent='Signing in...'; btn.disabled=true; }
-  const result=await api('POST','/api/login',{username:u,password:p});
+  const result=await api('POST','/api/login',{username:u, password:p, device_id:getDeviceId()});
   if(btn){ btn.textContent='Sign in →'; btn.disabled=false; }
   if(result.error){
     errEl.style.display='block'; errEl.textContent=result.error||'Incorrect username or password.'; return;
@@ -1145,10 +1157,54 @@ async function doLogin(){
 function doLogout(){
   document.getElementById('login-u').value='';
   document.getElementById('login-p').value='';
+  // Clear device session from worker for reviewer
+  try{
+    const raw=localStorage.getItem('fh_session');
+    if(raw){
+      const session=JSON.parse(raw);
+      if(session.role==='reviewer' && session.storeId){
+        api('POST','/api/logout',{store_id:session.storeId, device_id:getDeviceId()});
+      }
+    }
+  }catch(e){}
   DB.reviewerBrandId=null; DB.reviewerStoreId=null;
-  // Clear saved session
   try{ localStorage.removeItem('fh_session'); }catch(e){}
   goTo('s-login');
+}
+
+// ── DEVICE SESSION MANAGEMENT (max 2 devices) ──────────────────────────────
+const MAX_DEVICES = 2;
+
+async function registerDevice(storeId){
+  return getDeviceId(); // device registered on login via /api/login
+}
+
+async function checkSessionStillValid(){
+  try{
+    const raw = localStorage.getItem('fh_session');
+    if(!raw) return false;
+    const session = JSON.parse(raw);
+    if(session.role !== 'reviewer') return true; // admin always valid
+    const deviceId = getDeviceId();
+    // Check with worker if session still valid (not kicked out)
+    const result = await api('POST', '/api/check-session', {store_id: session.storeId, device_id: deviceId});
+    return result && result.valid;
+  }catch(e){ return true; }
+}
+
+async function checkSessionStillValid(){
+  try{
+    const raw = localStorage.getItem('fh_session');
+    if(!raw) return false;
+    const session = JSON.parse(raw);
+    if(session.role !== 'reviewer') return true; // admin always valid
+    const deviceId = getDeviceId();
+    const result = await api('GET', `/api/devices/${session.storeId}`);
+    if(!result || !Array.isArray(result.devices)) return true;
+    // Check if our device is still in the list
+    const found = result.devices.find(d => d.device_id === deviceId);
+    return !!found;
+  }catch(e){ return true; }
 }
 
 // Save session to localStorage
@@ -1168,6 +1224,17 @@ async function restoreSession(){
     if(Date.now()-session.ts > 30*24*60*60*1000){
       localStorage.removeItem('fh_session');
       return false;
+    }
+    // For reviewer — check if device session still valid (not kicked by 3rd device)
+    if(session.role==='reviewer' && session.storeId){
+      const deviceId=getDeviceId();
+      const check=await api('POST','/api/check-session',{store_id:session.storeId, device_id:deviceId});
+      if(check && check.valid===false){
+        // Kicked out by another device
+        localStorage.removeItem('fh_session');
+        showToast('⚠️ Logged out — another device signed in');
+        return false;
+      }
     }
     await loadAllData();
     if(session.role==='admin'){
@@ -2270,17 +2337,54 @@ function toggleRvNotif(){
   } else {
     track.style.background='var(--bg3)'; knob.style.transform=''; knob.style.background='var(--text3)'; section.style.display='none';
   }
+  saveRvSettingsToStorage();
 }
+
+function saveRvSettingsToStorage(){
+  const sid=DB.reviewerStoreId||'';
+  if(!sid) return;
+  try{
+    const settings={
+      notifEnabled: document.getElementById('rv-notif-knob')?.style.transform==='translateX(16px)',
+      notifEmail: document.getElementById('rv-notif-email')?.value||'',
+      notifNewReport: document.getElementById('rv-notif-new-report')?.checked??true,
+      notifReminder: document.getElementById('rv-notif-reminder')?.checked??true,
+      notifAlert: document.getElementById('rv-notif-alert')?.checked??true,
+    };
+    localStorage.setItem('fh_rv_settings_'+sid, JSON.stringify(settings));
+  }catch(e){}
+}
+
+function loadRvSettingsFromStorage(){
+  const sid=DB.reviewerStoreId||'';
+  if(!sid) return;
+  try{
+    const raw=localStorage.getItem('fh_rv_settings_'+sid);
+    if(!raw) return;
+    const s=JSON.parse(raw);
+    const track=document.getElementById('rv-notif-toggle');
+    const knob=document.getElementById('rv-notif-knob');
+    const section=document.getElementById('rv-notif-email-section');
+    if(s.notifEnabled && track && knob){
+      track.style.background='var(--accent)'; knob.style.transform='translateX(16px)'; knob.style.background='#fff'; if(section) section.style.display='';
+    }
+    const emailEl=document.getElementById('rv-notif-email');
+    if(emailEl && s.notifEmail) emailEl.value=s.notifEmail;
+    const boxes={'rv-notif-new-report':s.notifNewReport,'rv-notif-reminder':s.notifReminder,'rv-notif-alert':s.notifAlert};
+    Object.entries(boxes).forEach(([id,val])=>{ const el=document.getElementById(id); if(el) el.checked=val??true; });
+  }catch(e){}
+}
+
 async function saveRvNotif(){
   const email=document.getElementById('rv-notif-email').value.trim();
   const msg=document.getElementById('rv-notif-msg');
   if(!email||!email.includes('@')){ msg.innerHTML='<div class="alert alert-danger">Please enter a valid email.</div>'; return; }
-  // Save email to store record
   const s=reviewerStore();
   if(s){
     s.email=email;
     await api('PUT',`/api/stores/${s.id}`,{...s});
   }
+  saveRvSettingsToStorage();
   msg.innerHTML='<div class="alert alert-success">✓ Email saved! You will receive alerts at '+email+'</div>';
   setTimeout(()=>{ msg.innerHTML=''; },3000);
 }
@@ -2304,21 +2408,25 @@ function openRvSettings(){
   const s=reviewerStore();
   if(!s) return;
   document.getElementById('rv-settings-name').textContent=s.name;
-  document.getElementById('rv-settings-user').textContent=s.username;
+  document.getElementById('rv-settings-user').textContent=s.username||s.email||'';
   document.getElementById('rv-pass-revealed').style.display='none';
   document.getElementById('rv-pass-masked').style.display='';
   document.getElementById('rv-change-pass-form').style.display='none';
-  // Pre-fill email if already saved
+  // Load saved settings first
+  loadRvSettingsFromStorage();
+  // Then override email from store record if set
   if(s.email){
-    document.getElementById('rv-notif-email').value=s.email;
-    // Auto-enable toggle if email exists
+    const emailEl=document.getElementById('rv-notif-email');
+    if(emailEl && !emailEl.value) emailEl.value=s.email;
     const track=document.getElementById('rv-notif-toggle');
     const knob=document.getElementById('rv-notif-knob');
     const section=document.getElementById('rv-notif-email-section');
-    track.style.background='var(--accent)';
-    knob.style.transform='translateX(16px)';
-    knob.style.background='#fff';
-    section.style.display='';
+    if(track && knob){
+      track.style.background='var(--accent)';
+      knob.style.transform='translateX(16px)';
+      knob.style.background='#fff';
+      if(section) section.style.display='';
+    }
   }
   goTo('s-rv-settings');
 }
