@@ -1196,8 +1196,17 @@ label{
       </div>
     </div>
 
-    <!-- Permissions -->
+    <!-- Notification email -->
     <div style="border-top:1px solid var(--border);margin:4px 0 16px;"></div>
+    <div class="sec-label" style="margin-bottom:10px;">Notification email</div>
+    <div class="field" style="margin-bottom:4px;">
+      <label>Email for notifications</label>
+      <input type="email" id="sf-notif-email" placeholder="e.g. staff@company.com"/>
+      <div style="font-size:11px;color:var(--text3);margin-top:5px;">Staff receives report notifications at this email</div>
+    </div>
+
+    <!-- Permissions -->
+    <div style="border-top:1px solid var(--border);margin:14px 0 16px;"></div>
     <div class="sec-label" style="margin-bottom:10px;">Permissions</div>
     <div class="card" style="margin-bottom:14px;">
       <div style="font-size:13px;font-weight:500;margin-bottom:12px;">Access level</div>
@@ -1376,6 +1385,11 @@ async function doLogin(){
     // Load notif settings from DB into local SETTINGS
     await loadAdminSettingsFromDB();
     renderHome(); renderHomeAppLogo(); goTo('s-home');
+  } else if(result.role==='staff'){
+    DB.staffData=result;
+    saveSession('staff', null, null, result);
+    renderStaffHome();
+    goTo('s-home'); // staff uses admin home but with limited access
   } else if(result.role==='reviewer'){
     DB.reviewerBrandId=result.brand_id; DB.reviewerStoreId=result.store_id;
     saveSession('reviewer', result.brand_id, result.store_id);
@@ -1476,6 +1490,13 @@ async function restoreSession(){
       }
     }
     await loadAllData();
+    if(session.role==='staff'){
+      DB.staffData=session.staffData||{};
+      await loadAllData();
+      renderStaffHome();
+      goTo('s-home');
+      return true;
+    }
     if(session.role==='admin'){
       await loadAdminSettingsFromDB();
       renderHome(); renderHomeAppLogo();
@@ -3913,6 +3934,67 @@ async function doRvRefresh(){
 }
 
 
+/* ===== STAFF HOME ===== */
+function renderStaffHome(){
+  const staff=DB.staffData||{};
+  const perm=staff.permission||'view';
+  const allowedBrands=staff.brand_ids&&staff.brand_ids.length>0
+    ? DB.brands.filter(b=>staff.brand_ids.includes(b.id))
+    : DB.brands;
+
+  // Update topbar — show staff name instead of admin controls
+  const topbarTitle=document.querySelector('#s-home .topbar-title');
+  if(topbarTitle) topbarTitle.textContent=''; // clear
+
+  // Update global stats
+  const tb=allowedBrands.length;
+  const tr=allowedBrands.reduce((a,b)=>a+b.reports.length,0);
+  const ts=allowedBrands.reduce((a,b)=>a+b.stores.length,0);
+  document.getElementById('global-stats').innerHTML=[{v:tb,l:'Brands'},{v:tr,l:'Reports'},{v:ts,l:'Stores'}].map(s=>`
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);padding:13px 14px;">
+      <div style="font-size:24px;font-weight:700;line-height:1;">${s.v}</div>
+      <div style="font-size:12px;color:var(--text2);margin-top:3px;">${s.l}</div>
+    </div>`).join('');
+
+  // Render only allowed brands
+  const el=document.getElementById('brand-list');
+  if(!allowedBrands.length){ el.innerHTML='<div class="empty">No brands assigned</div>'; }
+  else {
+    // Temporarily override DB.brands for renderHome logic
+    const orig=DB.brands;
+    DB.brands=allowedBrands;
+    renderHome();
+    DB.brands=orig;
+  }
+
+  // Hide + Brand and Settings buttons for non-admin
+  const addBrandBtn=document.querySelector('#s-home .btn-primary');
+  if(addBrandBtn) addBrandBtn.style.display='none';
+
+  // Update topbar with staff profile
+  const topbar=document.querySelector('#s-home .topbar');
+  if(topbar){
+    const existing=document.getElementById('staff-home-topbar');
+    if(!existing){
+      const staffBar=document.createElement('div');
+      staffBar.id='staff-home-topbar';
+      staffBar.style.cssText='display:flex;align-items:center;gap:8px;flex:1;min-width:0;';
+      staffBar.innerHTML=`
+        <div style="width:32px;height:32px;border-radius:50%;overflow:hidden;flex-shrink:0;background:var(--accent);display:flex;align-items:center;justify-content:center;">
+          ${staff.avatar?`<img src="${staff.avatar}" style="width:100%;height:100%;object-fit:cover;"/>`:`<span style="font-size:13px;font-weight:800;color:#fff;">${(staff.name||'S').charAt(0).toUpperCase()}</span>`}
+        </div>
+        <div style="min-width:0;">
+          <div style="font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${staff.name||'Staff'}</div>
+          <div style="font-size:11px;color:var(--text2);">${staff.position||''}</div>
+        </div>`;
+      // Replace logo+title area
+      const logoEl=document.getElementById('home-app-logo');
+      const titleEl=topbar.querySelector('.topbar-title')||topbar.querySelector('[style*="font-weight:800"]');
+      if(logoEl&&logoEl.parentNode===topbar) topbar.replaceChild(staffBar, logoEl);
+    }
+  }
+}
+
 /* ===== STAFF USER MANAGEMENT ===== */
 let _sfAvatarData=null, _sfEditingId=null;
 let DB_STAFF=[];
@@ -3977,6 +4059,7 @@ function openAddStaff(){
   document.getElementById('sf-position').value='';
   document.getElementById('sf-phone').value='';
   document.getElementById('sf-location').value='';
+  document.getElementById('sf-notif-email').value='';
   document.getElementById('sf-username').value='';
   document.getElementById('sf-password').value='';
   document.getElementById('sf-pass-label').textContent='Password';
@@ -3999,6 +4082,7 @@ function openEditStaff(id){
   document.getElementById('sf-position').value=s.position||'';
   document.getElementById('sf-phone').value=s.phone||'';
   document.getElementById('sf-location').value=s.location||'';
+  document.getElementById('sf-notif-email').value=s.notif_email||'';
   document.getElementById('sf-username').value=s.username||'';
   document.getElementById('sf-password').value='';
   document.getElementById('sf-pass-label').textContent='New password (leave blank to keep)';
@@ -4081,7 +4165,8 @@ async function doSaveStaff(){
 
   msg.innerHTML='<div class="alert alert-success">⏳ Saving...</div>';
   const location=document.getElementById('sf-location').value.trim();
-  const payload={name, position, phone, location, avatar:_sfAvatarData||null, username, permission:perm, brand_ids:brandIds};
+  const notifEmail=document.getElementById('sf-notif-email').value.trim();
+  const payload={name, position, phone, location, notif_email:notifEmail||null, avatar:_sfAvatarData||null, username, permission:perm, brand_ids:brandIds};
   if(password) payload.password=password;
 
   let result;
