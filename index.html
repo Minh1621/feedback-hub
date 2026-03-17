@@ -1365,7 +1365,7 @@ window.addEventListener('load', async ()=>{
 // Helper: get report completion status based on item responses
 function getReportStatus(r, stores){
   const targetStores=r.storeId?stores.filter(s=>s.id===r.storeId):stores;
-  const totalItems=r.refs&&r.refs.length?r.refs.length:1;
+  const totalItems=r.refs&&r.refs.length?r.refs.length:0;
   if(!r.feedbacks.length) return 'pending';
   // Dedup feedbacks — latest per store
   const fbMap={};
@@ -1374,9 +1374,20 @@ function getReportStatus(r, stores){
   for(const s of targetStores){
     const fb=fbMap[s.id];
     if(!fb){ allDone=false; continue; }
-    const responded=(fb.itemFeedbacks||[]).filter(it=>it.note||(it.photos&&it.photos.length)).length;
+    let responded=0;
+    if(totalItems>0){
+      // Use refId-based count
+      const refMap={};
+      (fb.itemFeedbacks||[]).forEach(it=>{ if(it.refId) refMap[it.refId]=it; });
+      r.refs.forEach(ref=>{ const it=refMap[ref.id]; if(it&&(it.note||(it.photos&&it.photos.length))) responded++; });
+      // Fallback to direct count
+      if(responded===0) responded=Math.min((fb.itemFeedbacks||[]).filter(it=>it.note||(it.photos&&it.photos.length)).length, totalItems);
+    } else {
+      // No refs — check if feedback has any content
+      responded=(fb.itemFeedbacks||[]).filter(it=>it.note||(it.photos&&it.photos.length)).length + (fb.text?1:0);
+    }
     if(responded===0){ allDone=false; }
-    else if(responded<totalItems){ allDone=false; anyDone=true; }
+    else if(totalItems>0&&responded<totalItems){ allDone=false; anyDone=true; }
     else { anyDone=true; }
   }
   if(allDone) return 'complete';
@@ -3318,8 +3329,17 @@ function saveEditedResponse(rid, idx){
     const it=myFb.itemFeedbacks.find(x=>x.refId===rf.id);
     return it&&it.note?`${i+1}: ${it.note}`:'';
   }).filter(Boolean).join(' | ');
-  // Persist update to server
-  api('PUT',`/api/feedbacks/${myFb.id}`,{text:myFb.text,itemFeedbacks:myFb.itemFeedbacks,photos:myFb.photos||[]});
+  // Check if ALL items are now empty (no note, no photos)
+  const hasAnyContent=(myFb.itemFeedbacks||[]).some(it=>it.note||(it.photos&&it.photos.length));
+  if(!hasAnyContent){
+    // All empty — remove feedback from memory so status shows Pending
+    r.feedbacks=r.feedbacks.filter(f=>f.id!==myFb.id);
+    // Delete from DB
+    api('DELETE',`/api/feedbacks/${myFb.id}`);
+  } else {
+    // Persist update to server
+    api('PUT',`/api/feedbacks/${myFb.id}`,{text:myFb.text,itemFeedbacks:myFb.itemFeedbacks,photos:myFb.photos||[]});
+  }
   // Re-render submitted view
   openReviewerReport(rid);
 }
