@@ -3019,17 +3019,28 @@ function addReviewerPhotos(){}
 function removeReviewerPhoto(){}
 
 let _nsLogoData=null, _esLogoData=null;
+function compressImage(file, maxSize, quality, callback){
+  const img=new Image();
+  const url=URL.createObjectURL(file);
+  img.onload=()=>{
+    URL.revokeObjectURL(url);
+    let w=img.width, h=img.height;
+    if(w>h){ h=Math.round(h*maxSize/w); w=maxSize; } else { w=Math.round(w*maxSize/h); h=maxSize; }
+    const canvas=document.createElement('canvas');
+    canvas.width=w; canvas.height=h;
+    canvas.getContext('2d').drawImage(img,0,0,w,h);
+    callback(canvas.toDataURL('image/jpeg', quality));
+  };
+  img.src=url;
+}
+
 function onNsLogoPick(input){
   if(!input.files[0]) return;
-  const reader=new FileReader();
-  reader.onload=e=>{ _nsLogoData=e.target.result; document.getElementById('ns-logo-preview').innerHTML=`<img src="${e.target.result}" style="width:100%;height:100%;object-fit:cover;border-radius:9px;"/>`; };
-  reader.readAsDataURL(input.files[0]);
+  compressImage(input.files[0], 300, 0.8, data=>{ _nsLogoData=data; document.getElementById('ns-logo-preview').innerHTML=`<img src="${data}" style="width:100%;height:100%;object-fit:cover;border-radius:9px;"/>`; });
 }
 function onEsLogoPick(input){
   if(!input.files[0]) return;
-  const reader=new FileReader();
-  reader.onload=e=>{ _esLogoData=e.target.result; document.getElementById('es-logo-preview').innerHTML=`<img src="${e.target.result}" style="width:100%;height:100%;object-fit:cover;border-radius:9px;"/>`; };
-  reader.readAsDataURL(input.files[0]);
+  compressImage(input.files[0], 300, 0.8, data=>{ _esLogoData=data; document.getElementById('es-logo-preview').innerHTML=`<img src="${data}" style="width:100%;height:100%;object-fit:cover;border-radius:9px;"/>`; });
 }
 
 let _genericConfirmAction=null;
@@ -4034,13 +4045,24 @@ function sfTogglePass(){
 
 function onSfAvatarPick(input){
   if(!input.files[0]) return;
-  const reader=new FileReader();
-  reader.onload=e=>{
-    _sfAvatarData=e.target.result;
+  const file=input.files[0];
+  // Compress image to max 200x200px and quality 0.7 before saving to D1
+  const img=new Image();
+  const url=URL.createObjectURL(file);
+  img.onload=()=>{
+    URL.revokeObjectURL(url);
+    const MAX=200;
+    let w=img.width, h=img.height;
+    if(w>h){ h=Math.round(h*MAX/w); w=MAX; } else { w=Math.round(w*MAX/h); h=MAX; }
+    const canvas=document.createElement('canvas');
+    canvas.width=w; canvas.height=h;
+    canvas.getContext('2d').drawImage(img,0,0,w,h);
+    const compressed=canvas.toDataURL('image/jpeg',0.7);
+    _sfAvatarData=compressed;
     const prev=document.getElementById('sf-avatar-preview');
-    prev.innerHTML=`<img src="${e.target.result}" style="width:100%;height:100%;object-fit:cover;"/><div style="position:absolute;bottom:0;right:0;width:24px;height:24px;background:var(--accent);border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid var(--bg);"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></div>`;
+    prev.innerHTML=`<img src="${compressed}" style="width:100%;height:100%;object-fit:cover;"/><div style="position:absolute;bottom:0;right:0;width:24px;height:24px;background:var(--accent);border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid var(--bg);"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></div>`;
   };
-  reader.readAsDataURL(input.files[0]);
+  img.src=url;
 }
 
 async function doSaveStaff(){
