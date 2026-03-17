@@ -466,7 +466,7 @@ label{
       <div id="brand-report-list"></div>
     </div>
     <div id="bpane-stores" style="display:none;">
-      <button class="btn btn-primary btn-sm" style="width:100%;margin-bottom:14px;" onclick="goAddStore()">+ Add store</button>
+      ${DB.role==='admin'?`<button class="btn btn-primary btn-sm" style="width:100%;margin-bottom:14px;" onclick="goAddStore()">+ Add store</button>`:''}
       <div id="brand-store-list"></div>
     </div>
   </div>
@@ -1182,6 +1182,7 @@ label{
     <div class="sec-label" style="margin-bottom:10px;">Personal info</div>
     <div class="field"><label>Full name</label><input type="text" id="sf-name" placeholder="e.g. Leang Minh"/></div>
     <div class="field"><label>Position / Title</label><input type="text" id="sf-position" placeholder="e.g. QC Inspector, Supervisor"/></div>
+    <div class="field"><label>Company / Organization</label><input type="text" id="sf-company" placeholder="e.g. Eatmeout Group"/></div>
     <div class="field"><label>Phone number</label><input type="tel" id="sf-phone" placeholder="e.g. +855 12 345 678"/></div>
     <div class="field"><label>Location / address</label><textarea id="sf-location" placeholder="e.g. Phnom Penh, Cambodia" style="min-height:60px;"></textarea></div>
 
@@ -1314,6 +1315,7 @@ label{
         <div>
           <div style="font-size:15px;font-weight:700;" id="sf-settings-name"></div>
           <div style="font-size:12px;color:var(--text2);" id="sf-settings-position"></div>
+          <div style="font-size:12px;color:var(--accent);font-weight:600;" id="sf-settings-company"></div>
           <div style="font-size:12px;color:var(--text3);font-family:'DM Mono',monospace;" id="sf-settings-username"></div>
         </div>
       </div>
@@ -1471,6 +1473,7 @@ async function doLogin(){
     errEl.style.display='block'; errEl.textContent=result.error||'Incorrect username or password.'; return;
   }
   await loadAllData();
+  DB.role=result.role;
   if(result.role==='admin'){
     saveSession('admin', null, null);
     // Load notif settings from DB into local SETTINGS
@@ -2401,23 +2404,30 @@ function viewFeedback(rid){
             <button class="btn btn-xs" onclick="toggleEditRef('${ref.id}','${rid}')">Edit item</button>
           </div>
           <!-- Edit form -->
-          <div id="refview_edit_${ref.id}" style="display:none;padding:12px 14px;border-top:1px solid var(--border);">
-            <textarea id="refinput_${ref.id}" style="min-height:60px;margin-bottom:8px;">${ref.desc}</textarea>
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
-              <span style="font-size:11px;color:var(--text2);">Photos (${ref.photos.length})</span>
-              <div style="display:flex;gap:8px;">
-                <button onclick="document.getElementById('refphotosedit_${ref.id}').click()" title="Upload photo" style="width:36px;height:36px;border-radius:9px;border:1.5px solid var(--border2);background:var(--bg3);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text2);">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-                </button>
-                <button onclick="document.getElementById('refphotoseditcam_${ref.id}').click()" title="Take photo" style="width:36px;height:36px;border-radius:9px;border:1.5px solid var(--border2);background:var(--bg3);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text2);">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
-                </button>
-              </div>
+          <div id="refview_edit_${ref.id}" style="display:none;padding:14px;border-top:1px solid var(--border);background:var(--bg2);">
+            <div class="field" style="margin-bottom:10px;">
+              <label style="font-size:11px;">Item name</label>
+              <input type="text" id="refinput_name_${ref.id}" value="${ref.name||''}" placeholder="Item name" style="font-size:13px;"/>
+            </div>
+            <div class="field" style="margin-bottom:10px;">
+              <label style="font-size:11px;">Description (optional)</label>
+              <textarea id="refinput_${ref.id}" placeholder="Description..." style="min-height:56px;font-size:13px;">${ref.desc||''}</textarea>
+            </div>
+            <!-- Action buttons: text shown, photo, camera -->
+            <div style="display:flex;gap:8px;margin-bottom:10px;">
+              <button onclick="document.getElementById('refphotosedit_${ref.id}').click()" style="flex:1;height:40px;border-radius:10px;border:1.5px solid var(--border2);background:var(--bg3);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;font-size:12px;color:var(--text2);">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                Photo
+              </button>
+              <button onclick="document.getElementById('refphotoseditcam_${ref.id}').click()" style="flex:1;height:40px;border-radius:10px;border:1.5px solid var(--border2);background:var(--bg3);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;font-size:12px;color:var(--text2);">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                Camera
+              </button>
               <input type="file" id="refphotosedit_${ref.id}" accept="image/*" multiple style="display:none;" onchange="addRefPhotosInline('${ref.id}','${rid}',this)"/>
               <input type="file" id="refphotoseditcam_${ref.id}" accept="image/*" capture="environment" style="display:none;" onchange="addRefPhotosInline('${ref.id}','${rid}',this)"/>
             </div>
             <div class="photo-grid" id="refphotosgrid_inline_${ref.id}">${ref.photos.map((p,pi)=>`<div class="photo-thumb-wrap"><img src="${p}" class="photo-thumb" onclick="openLightbox('${p}')"/><button class="photo-remove" onclick="removeRefPhotoInline('${ref.id}','${rid}',${pi})">✕</button></div>`).join('')}</div>
-            <div style="display:flex;gap:8px;margin-top:10px;">
+            <div style="display:flex;gap:8px;margin-top:12px;">
               <button class="btn btn-primary btn-sm" style="flex:1;" onclick="saveRefEdit('${ref.id}','${rid}')">Save</button>
               <button class="btn btn-sm" onclick="toggleEditRef('${ref.id}','${rid}')">Cancel</button>
             </div>
@@ -3437,11 +3447,33 @@ function renderErRefs(){
   el.innerHTML=_erRefs.map((ref,i)=>`
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);padding:12px 14px;margin-bottom:8px;">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-        <span style="font-size:13px;font-weight:700;color:var(--accent);min-width:20px;">${i+1}.</span>
+        <span style="font-size:13px;font-weight:700;color:var(--accent);min-width:22px;">${i+1}.</span>
         <input type="text" value="${ref.name||''}" placeholder="Item name" style="flex:1;font-size:13px;" oninput="_erRefs[${i}].name=this.value"/>
-        <button onclick="erRemoveRef(${i})" style="width:28px;height:28px;border-radius:8px;border:1px solid var(--border2);background:var(--bg3);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--danger);font-size:14px;flex-shrink:0;">✕</button>
+        <button onclick="erRemoveRef(${i})" style="width:28px;height:28px;border-radius:8px;border:1px solid var(--border2);background:var(--bg3);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--danger);flex-shrink:0;">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
       </div>
-      <input type="text" value="${ref.desc||''}" placeholder="Description (optional)" style="width:100%;font-size:12px;box-sizing:border-box;" oninput="_erRefs[${i}].desc=this.value"/>
+      <input type="text" value="${ref.desc||''}" placeholder="Description (optional)" style="width:100%;font-size:12px;box-sizing:border-box;margin-bottom:10px;" oninput="_erRefs[${i}].desc=this.value"/>
+      <!-- Photo + Camera buttons -->
+      <div style="display:flex;gap:8px;margin-bottom:8px;">
+        <button onclick="document.getElementById('er_ref_photo_${i}').click()" style="flex:1;height:38px;border-radius:10px;border:1.5px solid var(--border2);background:var(--bg3);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;font-size:12px;color:var(--text2);">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+          Photo
+        </button>
+        <button onclick="document.getElementById('er_ref_cam_${i}').click()" style="flex:1;height:38px;border-radius:10px;border:1.5px solid var(--border2);background:var(--bg3);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;font-size:12px;color:var(--text2);">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+          Camera
+        </button>
+        <input type="file" id="er_ref_photo_${i}" accept="image/*" multiple style="display:none;" onchange="erAddRefPhoto(${i},this)"/>
+        <input type="file" id="er_ref_cam_${i}" accept="image/*" capture="environment" style="display:none;" onchange="erAddRefPhoto(${i},this)"/>
+      </div>
+      <!-- Photo grid -->
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:5px;" id="er_ref_grid_${i}">
+        ${(ref.photos||[]).map((p,pi)=>`<div style="position:relative;aspect-ratio:1;border-radius:7px;overflow:hidden;">
+          <img src="${p}" style="width:100%;height:100%;object-fit:cover;cursor:pointer;" onclick="openLightbox('${p}')"/>
+          <button onclick="erRemoveRefPhoto(${i},${pi})" style="position:absolute;top:2px;right:2px;width:18px;height:18px;border-radius:50%;background:rgba(0,0,0,.6);border:none;color:#fff;font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;">✕</button>
+        </div>`).join('')}
+      </div>
     </div>`).join('');
 }
 
@@ -3458,6 +3490,26 @@ function erAddRef(){
 function erRemoveRef(i){
   _erRefs.splice(i,1);
   renderErRefs();
+}
+
+function erAddRefPhoto(i, input){
+  if(!_erRefs[i]) return;
+  if(!_erRefs[i].photos) _erRefs[i].photos=[];
+  Array.from(input.files).forEach(f=>{
+    compressImage(f, 800, 0.8, data=>{
+      _erRefs[i].photos.push(data);
+      // Rebuild just the grid for this item
+      const grid=document.getElementById('er_ref_grid_'+i);
+      if(grid) grid.innerHTML=(_erRefs[i].photos||[]).map((p,pi)=>`<div style="position:relative;aspect-ratio:1;border-radius:7px;overflow:hidden;"><img src="${p}" style="width:100%;height:100%;object-fit:cover;cursor:pointer;" onclick="openLightbox('${p}')"/><button onclick="erRemoveRefPhoto(${i},${pi})" style="position:absolute;top:2px;right:2px;width:18px;height:18px;border-radius:50%;background:rgba(0,0,0,.6);border:none;color:#fff;font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;">✕</button></div>`).join('');
+    });
+  });
+}
+
+function erRemoveRefPhoto(i, pi){
+  if(!_erRefs[i]||!_erRefs[i].photos) return;
+  _erRefs[i].photos.splice(pi,1);
+  const grid=document.getElementById('er_ref_grid_'+i);
+  if(grid) grid.innerHTML=(_erRefs[i].photos||[]).map((p,pj)=>`<div style="position:relative;aspect-ratio:1;border-radius:7px;overflow:hidden;"><img src="${p}" style="width:100%;height:100%;object-fit:cover;cursor:pointer;" onclick="openLightbox('${p}')"/><button onclick="erRemoveRefPhoto(${i},${pj})" style="position:absolute;top:2px;right:2px;width:18px;height:18px;border-radius:50%;background:rgba(0,0,0,.6);border:none;color:#fff;font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;">✕</button></div>`).join('');
 }
 
 async function doEditReport(){
@@ -3945,16 +3997,33 @@ function openReportPDF(){
 function toggleEditRef(refId, rid){
   const staticEl=document.getElementById('refview_static_'+refId);
   const editEl=document.getElementById('refview_edit_'+refId);
+  if(!editEl) return;
   const isEditing=editEl.style.display!=='none';
-  staticEl.style.display=isEditing?'':'none';
+  if(staticEl) staticEl.style.display=isEditing?'':'none';
   editEl.style.display=isEditing?'none':'';
+  // Pre-fill text when opening
+  if(!isEditing){
+    const b=brand(), r=b&&b.reports.find(r=>r.id===rid);
+    const ref=r&&r.refs.find(rf=>rf.id===refId);
+    const inp=document.getElementById('refinput_name_'+refId);
+    const inpDesc=document.getElementById('refinput_'+refId);
+    if(inp&&ref) inp.value=ref.name||'';
+    if(inpDesc&&ref) inpDesc.value=ref.desc||'';
+  }
 }
 function saveRefEdit(refId, rid){
   const b=brand(), r=b.reports.find(r=>r.id===rid);
   const ref=r.refs.find(rf=>rf.id===refId);
   if(!ref) return;
+  const nameInp=document.getElementById('refinput_name_'+refId);
+  if(nameInp) ref.name=nameInp.value.trim()||ref.name;
   ref.desc=document.getElementById('refinput_'+refId).value.trim();
-  // re-render the feedback view to reflect changes
+  // Persist to server
+  api('PUT',`/api/reports/${rid}`,{
+    title:r.title, desc:r.desc, storeId:r.storeId||'',
+    file:r.file, fileURL:r.fileURL||null,
+    inspection:r.inspection, refs:r.refs, date:r.date
+  });
   viewFeedback(rid);
 }
 function addRefPhotosInline(refId, rid, input){
@@ -4057,20 +4126,23 @@ function renderStaffHome(){
   }
   const initials=(staff.name||'S').split(' ').map(w=>w[0]).filter(Boolean).slice(0,2).join('').toUpperCase();
   staffCard.innerHTML=`
-    <div style="background:var(--accent)12;border:1px solid var(--accent)30;border-radius:var(--rl);overflow:hidden;">
-      <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;">
-        <div style="width:48px;height:48px;border-radius:50%;overflow:hidden;flex-shrink:0;background:var(--accent)25;border:2px solid var(--accent)40;display:flex;align-items:center;justify-content:center;">
-          ${staff.avatar?`<img src="${staff.avatar}" style="width:100%;height:100%;object-fit:cover;"/>`:`<span style="font-size:16px;font-weight:700;color:var(--accent);">${initials}</span>`}
-        </div>
-        <div style="flex:1;">
-          <div style="font-size:17px;font-weight:700;">${staff.name||'Staff'}</div>
-          <div style="font-size:12px;color:var(--text2);margin-top:1px;">${staff.position||''}</div>
+    <div style="border-radius:16px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.07);">
+      <!-- Gradient cover -->
+      <div style="height:72px;background:linear-gradient(135deg,var(--accent) 0%,#a78bfa 100%);position:relative;">
+        <!-- Avatar overlapping cover -->
+        <div style="position:absolute;bottom:-28px;left:16px;width:58px;height:58px;border-radius:50%;overflow:hidden;border:3px solid var(--bg);background:var(--accent);display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.15);">
+          ${staff.avatar?`<img src="${staff.avatar}" style="width:100%;height:100%;object-fit:cover;"/>`:`<span style="font-size:20px;font-weight:800;color:#fff;">${initials}</span>`}
         </div>
       </div>
-      ${staff.phone||staff.location?`<div style="border-top:1px solid var(--accent)20;padding:10px 16px;display:flex;flex-direction:column;gap:8px;">
-        ${staff.phone?`<div style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2);"><span style="width:20px;display:flex;align-items:center;color:var(--text2);"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13.5 19.79 19.79 0 0 1 1.72 4.9 2 2 0 0 1 3.71 2.72h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 10.36a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg></span>${staff.phone}</div>`:''} 
-        ${staff.location?`<div style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2);"><span style="width:20px;display:flex;align-items:center;color:var(--text2);"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></span>${staff.location}</div>`:''} 
-      </div>`:''} 
+      <!-- Info body -->
+      <div style="background:var(--bg2);border:1px solid var(--border);border-top:none;padding:36px 16px 14px;">
+        <div style="font-size:18px;font-weight:800;line-height:1.2;">${staff.name||'Staff'}</div>
+        <div style="font-size:13px;color:var(--text2);margin-top:3px;">${staff.position||''}${staff.company?` · <span style="color:var(--accent);font-weight:600;">${staff.company}</span>`:''}</div>
+        ${staff.phone||staff.location?`<div style="margin-top:12px;display:flex;flex-direction:column;gap:7px;">
+          ${staff.phone?`<div style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2);"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13.5 19.79 19.79 0 0 1 1.72 4.9 2 2 0 0 1 3.71 2.72h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 10.36a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>${staff.phone}</div>`:''} 
+          ${staff.location?`<div style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2);"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>${staff.location}</div>`:''} 
+        </div>`:''} 
+      </div>
     </div>`;
 
   // ── Stats & brand list ─────────────────────────────────────────────────────
@@ -4090,6 +4162,7 @@ function openStaffSettings(){
   }
   if(document.getElementById('sf-settings-name')) document.getElementById('sf-settings-name').textContent=staff.name||'Staff';
   if(document.getElementById('sf-settings-position')) document.getElementById('sf-settings-position').textContent=staff.position||'';
+  if(document.getElementById('sf-settings-company')) document.getElementById('sf-settings-company').textContent=staff.company||'';
   if(document.getElementById('sf-settings-username')) document.getElementById('sf-settings-username').textContent=staff.username||'';
   if(document.getElementById('sf-pass-revealed')) document.getElementById('sf-pass-revealed').style.display='none';
   // Load saved notif email
@@ -4187,7 +4260,7 @@ function renderStaffList(){
         </div>
         <div style="flex:1;min-width:0;">
           <div style="font-size:14px;font-weight:700;">${s.name||'Unnamed'}</div>
-          <div style="font-size:12px;color:var(--text2);">${s.position||''}</div>
+          <div style="font-size:12px;color:var(--text2);">${s.position||''}${s.company?` · ${s.company}`:''}</div>
           <div style="display:flex;align-items:center;gap:6px;margin-top:4px;">
             <span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;background:var(--bg3);color:${permColor[s.permission]||'var(--text3)'};">${permLabel[s.permission]||s.permission}</span>
             ${s.phone?`<span style="font-size:11px;color:var(--text3);">${s.phone}</span>`:''}
@@ -4204,6 +4277,7 @@ function openAddStaff(){
   document.getElementById('staff-form-title').textContent='Add staff';
   document.getElementById('sf-name').value='';
   document.getElementById('sf-position').value='';
+  document.getElementById('sf-company').value='';
   document.getElementById('sf-phone').value='';
   document.getElementById('sf-location').value='';
   document.getElementById('sf-notif-email').value='';
@@ -4227,6 +4301,7 @@ function openEditStaff(id){
   document.getElementById('staff-form-title').textContent='Edit staff';
   document.getElementById('sf-name').value=s.name||''
   document.getElementById('sf-position').value=s.position||'';
+  document.getElementById('sf-company').value=s.company||'';
   document.getElementById('sf-phone').value=s.phone||'';
   document.getElementById('sf-location').value=s.location||'';
   document.getElementById('sf-notif-email').value=s.notif_email||'';
@@ -4311,9 +4386,10 @@ async function doSaveStaff(){
   if(!_sfEditingId && !password){ msg.innerHTML='<div class="alert alert-danger">Password is required for new staff.</div>'; return; }
 
   msg.innerHTML='<div class="alert alert-success">⏳ Saving...</div>';
+  const company=document.getElementById('sf-company').value.trim();
   const location=document.getElementById('sf-location').value.trim();
   const notifEmail=document.getElementById('sf-notif-email').value.trim();
-  const payload={name, position, phone, location, notif_email:notifEmail||null, avatar:_sfAvatarData||null, username, permission:perm, brand_ids:brandIds};
+  const payload={name, position, company, phone, location, notif_email:notifEmail||null, avatar:_sfAvatarData||null, username, permission:perm, brand_ids:brandIds};
   if(password) payload.password=password;
 
   let result;
