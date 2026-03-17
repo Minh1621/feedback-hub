@@ -1084,9 +1084,15 @@ async function loadAllData(){
     await api('POST', '/api/init');
     // Load all brands with stores, reports, feedbacks
     const data = await api('GET', '/api/brands');
-    if(Array.isArray(data)) DB.brands = data;
+    if(Array.isArray(data)){
+      DB.brands = data;
+    } else if(data && data.error){
+      console.error('Load error:', data.error);
+      showToast('⚠️ Failed to load data — check connection');
+    }
   } catch(e) {
     console.error('Load error:', e);
+    showToast('⚠️ Failed to load data — check connection');
   }
   showLoadingOverlay(false);
 }
