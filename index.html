@@ -818,6 +818,18 @@ label{
     </div>
 
     <!-- Export Data — prominent position -->
+    <!-- User Management -->
+    <div class="sec-label" style="margin-bottom:10px;">User Management</div>
+    <div class="card" style="margin-bottom:18px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <div>
+          <div style="font-size:14px;font-weight:600;margin-bottom:3px;">Staff accounts</div>
+          <div id="staff-count-label" style="font-size:12px;color:var(--text2);">Manage users with custom permissions</div>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="goTo_StaffList()">Manage</button>
+      </div>
+    </div>
+
     <div class="sec-label" style="margin-bottom:10px;">Data Export</div>
     <div class="card" style="margin-bottom:18px;">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
@@ -1126,6 +1138,99 @@ label{
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px;vertical-align:middle;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
         Verify & Download
       </button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ======= STAFF LIST ======= -->
+<div class="screen" id="s-staff-list">
+  <div class="topbar">
+    <button class="back-btn" onclick="goTo('s-settings')">&#8592; Back</button>
+    <div class="topbar-title">Staff accounts</div>
+    <button class="btn btn-sm btn-primary" onclick="openAddStaff()">+ Add</button>
+  </div>
+  <div class="content">
+    <div id="staff-list-el"></div>
+  </div>
+</div>
+
+<!-- ======= ADD/EDIT STAFF ======= -->
+<div class="screen" id="s-staff-form">
+  <div class="topbar">
+    <button class="back-btn" onclick="goTo_StaffList()">&#8592; Back</button>
+    <div class="topbar-title" id="staff-form-title">Add staff</div>
+  </div>
+  <div class="content">
+
+    <!-- Profile picture -->
+    <div style="display:flex;flex-direction:column;align-items:center;margin-bottom:20px;">
+      <div id="sf-avatar-preview" onclick="document.getElementById('sf-avatar-input').click()"
+        style="width:80px;height:80px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;border:3px solid var(--border);position:relative;">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        <div style="position:absolute;bottom:0;right:0;width:24px;height:24px;background:var(--accent);border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid var(--bg);">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+        </div>
+      </div>
+      <input type="file" id="sf-avatar-input" accept="image/*" style="display:none;" onchange="onSfAvatarPick(this)"/>
+      <div style="font-size:12px;color:var(--text3);margin-top:8px;">Tap to change photo</div>
+    </div>
+
+    <!-- Basic info -->
+    <div class="sec-label" style="margin-bottom:10px;">Personal info</div>
+    <div class="field"><label>Full name</label><input type="text" id="sf-name" placeholder="e.g. Leang Minh"/></div>
+    <div class="field"><label>Position / Title</label><input type="text" id="sf-position" placeholder="e.g. QC Inspector, Supervisor"/></div>
+    <div class="field"><label>Phone number</label><input type="tel" id="sf-phone" placeholder="e.g. +855 12 345 678"/></div>
+
+    <!-- Login credentials -->
+    <div style="border-top:1px solid var(--border);margin:4px 0 16px;"></div>
+    <div class="sec-label" style="margin-bottom:10px;">Login credentials</div>
+    <div class="field"><label>Username</label><input type="text" id="sf-username" placeholder="e.g. leangminh" autocomplete="off"/></div>
+    <div class="field"><label id="sf-pass-label">Password</label>
+      <div style="display:flex;gap:8px;">
+        <input type="password" id="sf-password" placeholder="Set a password" style="flex:1;" autocomplete="off"/>
+        <button class="btn btn-sm" onclick="sfTogglePass()">View</button>
+      </div>
+    </div>
+
+    <!-- Permissions -->
+    <div style="border-top:1px solid var(--border);margin:4px 0 16px;"></div>
+    <div class="sec-label" style="margin-bottom:10px;">Permissions</div>
+    <div class="card" style="margin-bottom:14px;">
+      <div style="font-size:13px;font-weight:500;margin-bottom:12px;">Access level</div>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <label style="display:flex;align-items:flex-start;gap:12px;cursor:pointer;">
+          <input type="radio" name="sf-perm" value="view" id="sf-perm-view" checked style="margin-top:3px;flex-shrink:0;"/>
+          <div><div style="font-size:13px;font-weight:600;">View only</div><div style="font-size:11px;color:var(--text3);">Can view reports and responses, cannot upload or edit</div></div>
+        </label>
+        <label style="display:flex;align-items:flex-start;gap:12px;cursor:pointer;">
+          <input type="radio" name="sf-perm" value="upload" id="sf-perm-upload" style="margin-top:3px;flex-shrink:0;"/>
+          <div><div style="font-size:13px;font-weight:600;">Upload reports</div><div style="font-size:11px;color:var(--text3);">Can view and upload new reports, cannot edit existing</div></div>
+        </label>
+        <label style="display:flex;align-items:flex-start;gap:12px;cursor:pointer;">
+          <input type="radio" name="sf-perm" value="edit" id="sf-perm-edit" style="margin-top:3px;flex-shrink:0;"/>
+          <div><div style="font-size:13px;font-weight:600;">Edit & upload</div><div style="font-size:11px;color:var(--text3);">Can view, upload, and edit all reports</div></div>
+        </label>
+      </div>
+    </div>
+
+    <!-- Brand access -->
+    <div class="card" style="margin-bottom:14px;">
+      <div style="font-size:13px;font-weight:500;margin-bottom:4px;">Brand access</div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:12px;">Which brands can this user access?</div>
+      <label style="display:flex;align-items:center;gap:10px;cursor:pointer;margin-bottom:10px;">
+        <input type="checkbox" id="sf-brand-all" onchange="sfToggleAllBrands(this)" style="width:16px;height:16px;"/>
+        <span style="font-size:13px;font-weight:600;">All brands</span>
+      </label>
+      <div id="sf-brand-list" style="display:flex;flex-direction:column;gap:8px;padding-left:4px;"></div>
+    </div>
+
+    <div id="sf-msg"></div>
+    <button class="btn btn-primary btn-full" onclick="doSaveStaff()">Save</button>
+    <div id="sf-danger" style="display:none;">
+      <div style="border-top:1px solid var(--border);margin:20px 0 14px;"></div>
+      <div class="sec-label" style="color:var(--danger);margin-bottom:10px;">Danger zone</div>
+      <button class="btn btn-danger btn-full" onclick="doDeleteStaff()">Remove this staff account</button>
     </div>
   </div>
 </div>
@@ -3796,6 +3901,193 @@ async function doRvRefresh(){
   if(icon) icon.style.animation='';
   if(btn) btn.disabled=false;
 }
+
+
+/* ===== STAFF USER MANAGEMENT ===== */
+let _sfAvatarData=null, _sfEditingId=null;
+let DB_STAFF=[];
+
+async function loadStaff(){
+  try{ DB_STAFF=await api('GET','/api/staff')||[]; }catch(e){ DB_STAFF=[]; }
+}
+
+async function goTo_StaffList(){
+  await loadStaff();
+  renderStaffList();
+  goTo('s-staff-list');
+}
+
+// Override goTo to load staff when navigating to staff list
+const _origGoTo = window.goTo;
+document.addEventListener('DOMContentLoaded',()=>{});
+
+function renderStaffList(){
+  const el=document.getElementById('staff-list-el');
+  if(!el) return;
+  // Update count label in settings
+  const lbl=document.getElementById('staff-count-label');
+  if(lbl) lbl.textContent=DB_STAFF.length?`${DB_STAFF.length} staff account${DB_STAFF.length>1?'s':''}`:'Manage users with custom permissions';
+
+  if(!DB_STAFF.length){
+    el.innerHTML=`<div class="empty">No staff accounts yet</div>
+    <div style="text-align:center;margin-top:16px;">
+      <button class="btn btn-primary" onclick="openAddStaff()">+ Add first staff member</button>
+    </div>`;
+    return;
+  }
+
+  const permLabel={view:'View only', upload:'Upload reports', edit:'Edit & upload'};
+  const permColor={view:'var(--text3)', upload:'var(--accent)', edit:'var(--success)'};
+
+  el.innerHTML=DB_STAFF.map(s=>`
+    <div class="card card-click" style="margin-bottom:10px;" onclick="openEditStaff('${s.id}')">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div style="width:46px;height:46px;border-radius:50%;overflow:hidden;flex-shrink:0;background:var(--accent);display:flex;align-items:center;justify-content:center;">
+          ${s.avatar?`<img src="${s.avatar}" style="width:100%;height:100%;object-fit:cover;"/>`:
+            `<span style="font-size:16px;font-weight:700;color:#fff;">${(s.name||'?').split(' ').map(w=>w[0]).filter(Boolean).slice(0,2).join('').toUpperCase()}</span>`}
+        </div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:14px;font-weight:700;">${s.name||'Unnamed'}</div>
+          <div style="font-size:12px;color:var(--text2);">${s.position||''}</div>
+          <div style="display:flex;align-items:center;gap:6px;margin-top:4px;">
+            <span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;background:var(--bg3);color:${permColor[s.permission]||'var(--text3)'};">${permLabel[s.permission]||s.permission}</span>
+            ${s.phone?`<span style="font-size:11px;color:var(--text3);">${s.phone}</span>`:''}
+          </div>
+        </div>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+      </div>
+    </div>`).join('');
+}
+
+function openAddStaff(){
+  _sfEditingId=null;
+  _sfAvatarData=null;
+  document.getElementById('staff-form-title').textContent='Add staff';
+  document.getElementById('sf-name').value='';
+  document.getElementById('sf-position').value='';
+  document.getElementById('sf-phone').value='';
+  document.getElementById('sf-username').value='';
+  document.getElementById('sf-password').value='';
+  document.getElementById('sf-pass-label').textContent='Password';
+  document.getElementById('sf-avatar-preview').innerHTML=`<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><div style="position:absolute;bottom:0;right:0;width:24px;height:24px;background:var(--accent);border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid var(--bg);"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></div>`;
+  document.getElementById('sf-perm-view').checked=true;
+  document.getElementById('sf-brand-all').checked=true;
+  document.getElementById('sf-msg').innerHTML='';
+  document.getElementById('sf-danger').style.display='none';
+  sfRenderBrandList([]);
+  goTo('s-staff-form');
+}
+
+function openEditStaff(id){
+  const s=DB_STAFF.find(s=>s.id===id);
+  if(!s) return;
+  _sfEditingId=id;
+  _sfAvatarData=s.avatar||null;
+  document.getElementById('staff-form-title').textContent='Edit staff';
+  document.getElementById('sf-name').value=s.name||''
+  document.getElementById('sf-position').value=s.position||'';
+  document.getElementById('sf-phone').value=s.phone||'';
+  document.getElementById('sf-username').value=s.username||'';
+  document.getElementById('sf-password').value='';
+  document.getElementById('sf-pass-label').textContent='New password (leave blank to keep)';
+  // Avatar
+  const prev=document.getElementById('sf-avatar-preview');
+  if(s.avatar){
+    prev.innerHTML=`<img src="${s.avatar}" style="width:100%;height:100%;object-fit:cover;"/><div style="position:absolute;bottom:0;right:0;width:24px;height:24px;background:var(--accent);border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid var(--bg);"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></div>`;
+  }
+  // Permission
+  const perm=s.permission||'view';
+  document.getElementById('sf-perm-'+perm) && (document.getElementById('sf-perm-'+perm).checked=true);
+  // Brand access
+  const brandIds=JSON.parse(s.brand_ids||'[]');
+  const allBrands=brandIds.length===0;
+  document.getElementById('sf-brand-all').checked=allBrands;
+  sfRenderBrandList(brandIds);
+  document.getElementById('sf-msg').innerHTML='';
+  document.getElementById('sf-danger').style.display='';
+  goTo('s-staff-form');
+}
+
+function sfRenderBrandList(selectedIds){
+  const el=document.getElementById('sf-brand-list');
+  if(!el) return;
+  const allChecked=document.getElementById('sf-brand-all')?.checked;
+  el.style.display=allChecked?'none':'';
+  el.innerHTML=DB.brands.map(b=>`
+    <label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:6px 0;">
+      <input type="checkbox" class="sf-brand-check" data-bid="${b.id}" ${selectedIds.includes(b.id)||selectedIds.length===0?'checked':''} style="width:16px;height:16px;"/>
+      <div style="width:14px;height:14px;border-radius:4px;background:${b.color};flex-shrink:0;"></div>
+      <span style="font-size:13px;">${b.name}</span>
+    </label>`).join('');
+}
+
+function sfToggleAllBrands(cb){
+  const el=document.getElementById('sf-brand-list');
+  if(el) el.style.display=cb.checked?'none':'';
+}
+
+function sfTogglePass(){
+  const inp=document.getElementById('sf-password');
+  inp.type=inp.type==='password'?'text':'password';
+}
+
+function onSfAvatarPick(input){
+  if(!input.files[0]) return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    _sfAvatarData=e.target.result;
+    const prev=document.getElementById('sf-avatar-preview');
+    prev.innerHTML=`<img src="${e.target.result}" style="width:100%;height:100%;object-fit:cover;"/><div style="position:absolute;bottom:0;right:0;width:24px;height:24px;background:var(--accent);border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid var(--bg);"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></div>`;
+  };
+  reader.readAsDataURL(input.files[0]);
+}
+
+async function doSaveStaff(){
+  const msg=document.getElementById('sf-msg');
+  const name=document.getElementById('sf-name').value.trim();
+  const position=document.getElementById('sf-position').value.trim();
+  const phone=document.getElementById('sf-phone').value.trim();
+  const username=document.getElementById('sf-username').value.trim();
+  const password=document.getElementById('sf-password').value;
+  const perm=document.querySelector('input[name="sf-perm"]:checked')?.value||'view';
+  const allBrands=document.getElementById('sf-brand-all').checked;
+  const brandIds=allBrands?[]:Array.from(document.querySelectorAll('.sf-brand-check:checked')).map(el=>el.getAttribute('data-bid'));
+
+  if(!username){ msg.innerHTML='<div class="alert alert-danger">Username is required.</div>'; return; }
+  if(!_sfEditingId && !password){ msg.innerHTML='<div class="alert alert-danger">Password is required for new staff.</div>'; return; }
+
+  msg.innerHTML='<div class="alert alert-success">⏳ Saving...</div>';
+  const payload={name, position, phone, avatar:_sfAvatarData||null, username, permission:perm, brand_ids:brandIds};
+  if(password) payload.password=password;
+
+  let result;
+  if(_sfEditingId){
+    result=await api('PUT',`/api/staff/${_sfEditingId}`,payload);
+  } else {
+    result=await api('POST','/api/staff',payload);
+  }
+
+  if(result && result.ok===false){
+    msg.innerHTML=`<div class="alert alert-danger">${result.error||'Failed to save'}</div>`;
+    return;
+  }
+
+  await loadStaff();
+  renderStaffList();
+  msg.innerHTML='<div class="alert alert-success">✓ Staff account saved!</div>';
+  setTimeout(()=>{ goTo('s-staff-list'); },1000);
+}
+
+async function doDeleteStaff(){
+  if(!_sfEditingId) return;
+  const s=DB_STAFF.find(s=>s.id===_sfEditingId);
+  if(!confirm(`Remove ${s?.name||'this staff account'}? This cannot be undone.`)) return;
+  await api('DELETE',`/api/staff/${_sfEditingId}`);
+  await loadStaff();
+  renderStaffList();
+  goTo('s-staff-list');
+}
+
 
 /* ===== EXPORT DATA ===== */
 function openExportVerify(){
