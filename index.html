@@ -482,7 +482,16 @@ label{
   <div class="content">
     <div id="sd-store-card" style="margin-bottom:14px;"></div>
     <button class="btn btn-primary btn-sm" style="width:100%;margin-bottom:18px;" onclick="goUploadForStore(DB.currentStoreId)">+ Upload report for this store</button>
-    <div class="sec-label">Reports sent to this store</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+      <div class="sec-label" style="margin-bottom:0;">Reports sent to this store</div>
+    </div>
+    <!-- Filter tabs -->
+    <div style="display:flex;gap:6px;margin-bottom:14px;overflow-x:auto;padding-bottom:2px;">
+      <button id="sdf-all"      class="btn btn-sm" style="border-radius:20px;flex-shrink:0;background:var(--accent);color:#fff;border-color:var(--accent);" onclick="setStoreDetailFilter('all')">All</button>
+      <button id="sdf-partial"  class="btn btn-sm" style="border-radius:20px;flex-shrink:0;" onclick="setStoreDetailFilter('partial')">Partial</button>
+      <button id="sdf-complete" class="btn btn-sm" style="border-radius:20px;flex-shrink:0;" onclick="setStoreDetailFilter('complete')">Complete</button>
+      <button id="sdf-pending"  class="btn btn-sm" style="border-radius:20px;flex-shrink:0;" onclick="setStoreDetailFilter('pending')">Pending</button>
+    </div>
     <div id="sd-report-list"></div>
   </div>
 </div>
@@ -1596,30 +1605,98 @@ function openStoreDetail(sid){
       </div>
     </div>`;
 
-  // Reports visible to this store
-  const visibleReports=b.reports.filter(r=>reportVisibleToStore(r,s.id));
-  const el=document.getElementById('sd-report-list');
-  if(!visibleReports.length){
-    el.innerHTML='<div class="empty">No reports sent to this store</div>';
-  } else {
-    el.innerHTML=visibleReports.map(r=>{
-      const myFb=r.feedbacks.find(f=>f.storeId===s.id);
-      const isExclusive=r.storeId===s.id;
-      return `<div class="card card-click" onclick="viewFeedback('${r.id}')">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
-          <div style="font-size:14px;font-weight:600;flex:1;">${r.title}</div>
-          <span class="badge ${myFb?'badge-done':'badge-none'}">${myFb?'Responded':'No response'}</span>
-        </div>
-        <div style="font-size:12px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:4px;">${r.file}</div>
-        <div style="display:flex;align-items:center;gap:8px;margin-top:6px;flex-wrap:wrap;">
-          <span style="font-size:12px;color:var(--text2);">${r.date}</span>
-          ${isExclusive?`<span style="font-size:11px;padding:2px 7px;border-radius:20px;background:${s.color}20;color:${s.color};font-weight:600;">This store only</span>`:'<span style="font-size:11px;color:var(--text3);">All stores</span>'}
-        </div>
-        ${myFb?`<div style="margin-top:8px;padding:9px 11px;background:var(--bg3);border-radius:8px;font-size:13px;color:var(--text2);line-height:1.5;">"${myFb.text.length>80?myFb.text.slice(0,80)+'…':myFb.text}"</div>`:''}
-      </div>`;
-    }).join('');
-  }
+  // Store filter — reset on new store
+  DB.storeDetailFilter='all';
+  renderStoreDetailReports(b,s);
   goTo('s-store-detail');
+}
+
+function getStoreReportStatus(r,sid){
+  const fbMap={}; r.feedbacks.forEach(f=>{if(!fbMap[f.storeId]||f.date>=fbMap[f.storeId].date) fbMap[f.storeId]=f;});
+  const myFb=fbMap[sid];
+  if(!myFb) return 'pending';
+  const totalItems=r.refs&&r.refs.length?r.refs.length:0;
+  if(totalItems===0) return (myFb.text||(myFb.itemFeedbacks&&myFb.itemFeedbacks.length))?'complete':'pending';
+  const refMap={}; (myFb.itemFeedbacks||[]).forEach(it=>{if(it.refId) refMap[it.refId]=it;});
+  let responded=0;
+  r.refs.forEach(ref=>{const it=refMap[ref.id]; if(it&&(it.note||(it.photos&&it.photos.length))) responded++;});
+  if(responded===0) responded=Math.min((myFb.itemFeedbacks||[]).filter(it=>it.note||(it.photos&&it.photos.length)).length,totalItems);
+  if(responded===0) return 'pending';
+  if(responded<totalItems) return 'partial';
+  return 'complete';
+}
+
+function setStoreDetailFilter(f){
+  DB.storeDetailFilter=f;
+  ['all','partial','complete','pending'].forEach(key=>{
+    const btn=document.getElementById('sdf-'+key);
+    if(!btn) return;
+    if(key===f){ btn.style.background='var(--accent)'; btn.style.color='#fff'; btn.style.borderColor='var(--accent)'; }
+    else { btn.style.background=''; btn.style.color=''; btn.style.borderColor=''; }
+  });
+  const b=brand(), s=b&&b.stores.find(s=>s.id===DB.currentStoreId);
+  if(b&&s) renderStoreDetailReports(b,s);
+}
+
+function renderStoreDetailReports(b,s){
+  const allReports=b.reports.filter(r=>reportVisibleToStore(r,s.id));
+  const el=document.getElementById('sd-report-list');
+  if(!allReports.length){ el.innerHTML='<div class="empty">No reports sent to this store</div>'; return; }
+  const filt=DB.storeDetailFilter||'all';
+  const filtered=filt==='all'?allReports:allReports.filter(r=>getStoreReportStatus(r,s.id)===filt);
+  if(!filtered.length){ el.innerHTML='<div class="empty">No '+filt+' reports</div>'; return; }
+  el.innerHTML=filtered.map(r=>{
+    const st=getStoreReportStatus(r,s.id);
+    const insp=r.inspection||{};
+    const fbMap={}; r.feedbacks.forEach(f=>{if(!fbMap[f.storeId]||f.date>=fbMap[f.storeId].date) fbMap[f.storeId]=f;});
+    const myFb=fbMap[s.id]||null;
+    const isExclusive=r.storeId===s.id;
+    const totalItems=r.refs&&r.refs.length?r.refs.length:0;
+    let respondedItems=0;
+    if(myFb&&totalItems>0){
+      const refMap={}; (myFb.itemFeedbacks||[]).forEach(it=>{if(it.refId) refMap[it.refId]=it;});
+      r.refs.forEach(ref=>{const it=refMap[ref.id]; if(it&&(it.note||(it.photos&&it.photos.length))) respondedItems++;});
+      if(respondedItems===0) respondedItems=Math.min((myFb.itemFeedbacks||[]).filter(it=>it.note||(it.photos&&it.photos.length)).length,totalItems);
+    }
+    const itemPct=totalItems?Math.round(respondedItems/totalItems*100):0;
+    let bc,bt;
+    if(st==='complete'){bc='badge-done';bt='Complete';}
+    else if(st==='partial'){bc='badge-partial';bt='Partial';}
+    else {bc='badge-none';bt='Pending';}
+    const scoreNum=parseFloat(insp.score)||0;
+    const scoreColor=scoreNum>=99?'var(--success)':scoreNum>=88?'var(--success)':scoreNum>=85?'var(--warn)':scoreNum>0?'var(--danger)':'var(--text)';
+    const scoreLabel=scoreNum>=99?'Excellent':scoreNum>=88?'Very good':scoreNum>=85?'Good':scoreNum>0?'Low':'';
+    return `<div class="card card-click" style="margin-bottom:10px;" onclick="viewFeedback('${r.id}')">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+        <div style="font-size:14px;font-weight:600;flex:1;">${r.title}</div>
+        <span class="badge ${bc}">${bt}</span>
+      </div>
+      <div style="font-size:12px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:4px;">${r.file}</div>
+      <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;">
+        ${isExclusive?`<span style="font-size:11px;padding:2px 8px;border-radius:20px;background:${s.color}18;color:${s.color};font-weight:600;display:inline-flex;align-items:center;gap:4px;"><span style="width:6px;height:6px;border-radius:50%;background:${s.color};"></span>${s.name} only</span>`:''}
+        ${r.desc?`<div style="font-size:13px;color:var(--text2);margin-top:4px;width:100%;">${r.desc}</div>`:''}
+        ${r.refs&&r.refs.length?`<div style="font-size:12px;color:var(--accent);margin-top:4px;display:flex;align-items:center;gap:4px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>${r.refs.length} reference item${r.refs.length>1?'s':''}</div>`:''}
+      </div>
+      ${insp.score||totalItems?`
+      <div style="margin-top:10px;padding:10px 12px;background:var(--bg3);border-radius:10px;">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">
+          <div style="flex:1;">
+            ${insp.score?`<div style="font-size:26px;font-weight:800;color:${scoreColor};line-height:1;">${insp.score}%${scoreLabel?` <span style="font-size:12px;font-weight:600;">${scoreLabel}</span>`:''}</div>`:''}
+            ${insp.checkedBy?`<div style="font-size:12px;color:var(--text2);margin-top:3px;">Checked by: <strong>${insp.checkedBy}</strong></div>`:''}
+            ${insp.date?`<div style="font-size:11px;color:var(--text3);margin-top:1px;">${insp.date}</div>`:''}
+          </div>
+          ${totalItems?`
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;min-width:72px;">
+            <span style="font-size:11px;color:var(--text2);">${respondedItems}/${totalItems} items</span>
+            <div style="width:60px;background:var(--bg4);border-radius:3px;height:5px;">
+              <div style="width:${itemPct}%;background:${itemPct===100?'var(--success)':itemPct>0?'var(--accent)':'var(--border2)'};height:5px;border-radius:3px;"></div>
+            </div>
+            <span style="font-size:11px;font-weight:700;color:${itemPct===100?'var(--success)':'var(--accent)'};">${itemPct}%</span>
+          </div>`:''}
+        </div>
+      </div>`:''}
+    </div>`;
+  }).join('');
 }
 
 function goAddStore(){ document.getElementById('add-store-brand-name').textContent=brand().name; goTo('s-add-store'); }
