@@ -1002,22 +1002,54 @@ label{
     <div class="topbar-title">Edit report</div>
   </div>
   <div class="content">
+
+    <!-- Basic info -->
+    <div class="sec-label" style="margin-bottom:10px;">Basic info</div>
     <div class="field"><label>Report title</label><input type="text" id="er-title"/></div>
     <div class="field"><label>Description (optional)</label><textarea id="er-desc" style="min-height:60px;"></textarea></div>
     <div class="field">
       <label>Visible to store</label>
       <select id="er-store"><option value="">All stores in this brand</option></select>
     </div>
+
+    <!-- PDF file -->
     <div style="border-top:1px solid var(--border);margin:4px 0 16px;"></div>
-    <div style="font-size:14px;font-weight:600;margin-bottom:12px;">Inspection details</div>
+    <div class="sec-label" style="margin-bottom:10px;">PDF File</div>
+    <div id="er-current-pdf" style="background:var(--bg3);border-radius:var(--rl);padding:12px 14px;margin-bottom:10px;display:flex;align-items:center;gap:10px;">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text2)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      <span id="er-current-pdf-name" style="font-size:13px;color:var(--text2);flex:1;font-family:'DM Mono',monospace;"></span>
+    </div>
+    <div class="field" style="margin-bottom:4px;">
+      <label>Replace PDF (optional)</label>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <input type="file" id="er-pdf-input" accept=".pdf" style="display:none;" onchange="onErPdfPick(this)"/>
+        <button class="btn btn-sm" onclick="document.getElementById('er-pdf-input').click()">Choose new PDF</button>
+        <span id="er-new-pdf-name" style="font-size:12px;color:var(--accent);flex:1;"></span>
+      </div>
+      <div style="font-size:11px;color:var(--text3);margin-top:5px;">Leave empty to keep current PDF</div>
+    </div>
+
+    <!-- Inspection details -->
+    <div style="border-top:1px solid var(--border);margin:14px 0 16px;"></div>
+    <div class="sec-label" style="margin-bottom:10px;">Inspection details</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
       <div class="field" style="margin-bottom:0;"><label>Store name</label><input type="text" id="er-store-name"/></div>
       <div class="field" style="margin-bottom:0;"><label>Date</label><input type="date" id="er-inspect-date"/></div>
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
       <div class="field" style="margin-bottom:0;"><label>Checked by</label><input type="text" id="er-checked-by"/></div>
-      <div class="field" style="margin-bottom:0;"><label>Score (%)</label><input type="number" id="er-score" min="0" max="100"/></div>
+      <div class="field" style="margin-bottom:0;"><label>Score (%)</label><input type="number" id="er-score" min="0" max="100" step="0.01"/></div>
     </div>
+
+    <!-- Reference items -->
+    <div style="border-top:1px solid var(--border);margin:14px 0 16px;"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+      <div class="sec-label" style="margin-bottom:0;">Reference items</div>
+      <button class="btn btn-sm" onclick="erAddRef()">+ Add item</button>
+    </div>
+    <div id="er-refs-list" style="margin-bottom:10px;"></div>
+    <div style="font-size:11px;color:var(--text3);margin-bottom:16px;">These are the specific items reviewers need to respond to</div>
+
     <div id="er-msg"></div>
     <button class="btn btn-primary btn-full" onclick="doEditReport()">Save changes</button>
     <div style="border-top:1px solid var(--border);margin:20px 0 14px;"></div>
@@ -3073,14 +3105,69 @@ function goEditReport(rid){
   document.getElementById('er-checked-by').value=insp.checkedBy||'';
   document.getElementById('er-score').value=insp.score||'';
   document.getElementById('er-msg').innerHTML='';
+  // PDF current name
+  const pdfName=document.getElementById('er-current-pdf-name');
+  if(pdfName) pdfName.textContent=r.file||'No PDF attached';
+  const newPdfEl=document.getElementById('er-new-pdf-name');
+  if(newPdfEl) newPdfEl.textContent='';
+  _erNewPdfData=null; _erNewPdfName=null;
   // Populate store dropdown
   const sel=document.getElementById('er-store');
   sel.innerHTML='<option value="">All stores in this brand</option>';
   foundBrand.stores.forEach(s=>{ const o=document.createElement('option'); o.value=s.id; o.textContent=s.name; sel.appendChild(o); });
   sel.value=r.storeId||'';
+  // Populate ref items
+  _erRefs=JSON.parse(JSON.stringify(r.refs||[]));
+  renderErRefs();
   goTo('s-edit-report');
 }
-function doEditReport(){
+
+let _erRefs=[], _erNewPdfData=null, _erNewPdfName=null;
+
+function onErPdfPick(input){
+  if(!input.files[0]) return;
+  const file=input.files[0];
+  _erNewPdfName=file.name;
+  document.getElementById('er-new-pdf-name').textContent=file.name;
+  const reader=new FileReader();
+  reader.onload=e=>{ _erNewPdfData=e.target.result; };
+  reader.readAsDataURL(file);
+}
+
+function renderErRefs(){
+  const el=document.getElementById('er-refs-list');
+  if(!el) return;
+  if(!_erRefs.length){
+    el.innerHTML='<div style="font-size:13px;color:var(--text3);padding:10px 0;">No items yet — click + Add item</div>';
+    return;
+  }
+  el.innerHTML=_erRefs.map((ref,i)=>`
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);padding:12px 14px;margin-bottom:8px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+        <span style="font-size:13px;font-weight:700;color:var(--accent);min-width:20px;">${i+1}.</span>
+        <input type="text" value="${ref.name||''}" placeholder="Item name" style="flex:1;font-size:13px;" oninput="_erRefs[${i}].name=this.value"/>
+        <button onclick="erRemoveRef(${i})" style="width:28px;height:28px;border-radius:8px;border:1px solid var(--border2);background:var(--bg3);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--danger);font-size:14px;flex-shrink:0;">✕</button>
+      </div>
+      <input type="text" value="${ref.desc||''}" placeholder="Description (optional)" style="width:100%;font-size:12px;box-sizing:border-box;" oninput="_erRefs[${i}].desc=this.value"/>
+    </div>`).join('');
+}
+
+function erAddRef(){
+  _erRefs.push({id:'ref_'+Date.now()+'_'+Math.random().toString(36).slice(2,6), name:'', desc:'', photos:[]});
+  renderErRefs();
+  // Focus last name input
+  setTimeout(()=>{
+    const inputs=document.querySelectorAll('#er-refs-list input[type=text]');
+    if(inputs.length) inputs[inputs.length-2]?.focus();
+  },50);
+}
+
+function erRemoveRef(i){
+  _erRefs.splice(i,1);
+  renderErRefs();
+}
+
+async function doEditReport(){
   let foundBrand=null, r=null;
   for(const b of DB.brands){ r=b.reports.find(rep=>rep.id===_editingReportId); if(r){foundBrand=b;break;} }
   if(!r) return;
@@ -3088,6 +3175,8 @@ function doEditReport(){
   const title=document.getElementById('er-title').value.trim();
   const msg=document.getElementById('er-msg');
   if(!title){ msg.innerHTML='<div class="alert alert-danger">Title is required.</div>'; return; }
+  msg.innerHTML='<div class="alert alert-success">⏳ Saving...</div>';
+  // Update report in memory
   r.title=title;
   r.desc=document.getElementById('er-desc').value.trim();
   r.storeId=document.getElementById('er-store').value;
@@ -3096,6 +3185,26 @@ function doEditReport(){
   r.inspection.date=document.getElementById('er-inspect-date').value;
   r.inspection.checkedBy=document.getElementById('er-checked-by').value.trim();
   r.inspection.score=document.getElementById('er-score').value.trim();
+  // Update refs (filter out empty name items)
+  r.refs=_erRefs.filter(ref=>ref.name.trim()).map(ref=>({
+    id:ref.id||('ref_'+Date.now()+'_'+Math.random().toString(36).slice(2,6)),
+    name:ref.name.trim(), desc:ref.desc||'', photos:ref.photos||[]
+  }));
+  // Handle PDF replacement
+  if(_erNewPdfData && _erNewPdfName){
+    msg.innerHTML='<div class="alert alert-success">⏳ Uploading new PDF...</div>';
+    try{
+      const uploadRes=await api('POST','/api/upload',{fileName:_erNewPdfName, fileData:_erNewPdfData});
+      if(uploadRes.url){ r.fileURL=uploadRes.url; r.file=_erNewPdfName; }
+    }catch(e){ msg.innerHTML='<div class="alert alert-danger">PDF upload failed. Other changes saved.</div>'; }
+  }
+  // Save to DB
+  await api('PUT',`/api/reports/${_editingReportId}`,{
+    title:r.title, desc:r.desc, storeId:r.storeId||'',
+    file:r.file, fileURL:r.fileURL||null,
+    inspection:r.inspection, refs:r.refs,
+    date:r.date
+  });
   msg.innerHTML='<div class="alert alert-success">✓ Report updated!</div>';
   setTimeout(()=>{ msg.innerHTML=''; viewFeedback(_editingReportId); },1200);
 }
