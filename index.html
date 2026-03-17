@@ -2232,7 +2232,10 @@ function openReviewerReport(rid){
 
   const submittedDiv=document.getElementById('rv-submitted-view');
   const formDiv=document.getElementById('rv-feedback-form');
-  const myFb=r.feedbacks.find(f=>f.storeId===s.id);
+  // Deduplicate feedbacks — use only the latest per store
+  const _fbMapRv={};
+  r.feedbacks.forEach(f=>{ if(!_fbMapRv[f.storeId]||f.date>=_fbMapRv[f.storeId].date) _fbMapRv[f.storeId]=f; });
+  const myFb=_fbMapRv[s.id]||null;
 
   if(myFb){
     submittedDiv.style.display='';
@@ -2240,13 +2243,18 @@ function openReviewerReport(rid){
     const _totalRefItems=r.refs&&r.refs.length?r.refs.length:1;
     const _respondedItems=(myFb.itemFeedbacks||[]).filter(it=>it.note||(it.photos&&it.photos.length)).length;
     const _isPartial=_respondedItems<_totalRefItems;
+    // Build a lookup map for quick refId → itemFeedback access
+    const fbByRefId={};
+    (myFb.itemFeedbacks||[]).forEach(it=>{ if(it.refId) fbByRefId[it.refId]=it; });
+    // Use r.refs as the source of truth — iterate refs, not itemFeedbacks
+    const refsToShow=r.refs&&r.refs.length?r.refs:[{id:'general',name:'General feedback',desc:'',photos:[]}];
     submittedDiv.innerHTML=`
       <div style="display:flex;align-items:center;justify-content:space-between;padding:13px 15px;background:${_isPartial?'var(--badge-partial-bg)':`var(--alert-success-bg)`};border:1px solid ${_isPartial?`var(--accent)`:`var(--alert-success-border)`};border-radius:var(--rl);margin-bottom:14px;">
         <div style="font-size:13px;font-weight:600;color:${_isPartial?`var(--accent)`:`var(--success)`};">${_isPartial?`⚠️ Partial · ${_respondedItems}/${_totalRefItems} items · ${myFb.date}`:`✓ Submitted · ${myFb.date}`}</div>
         <button class="btn btn-xs" onclick="editAllResponses('${rid}')">Edit all</button>
       </div>
-      ${(myFb.itemFeedbacks||[]).map((item,i)=>{
-        const ref=r.refs?r.refs.find(rf=>rf.id===item.refId):null;
+      ${refsToShow.map((ref,i)=>{
+        const item=fbByRefId[ref.id]||{refId:ref.id,note:'',photos:[]};
         const hasMyContent=item.note||(item.photos&&item.photos.length);
         const adminPhotos=ref&&ref.photos&&ref.photos.length?ref.photos:[];
         return `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);margin-bottom:10px;overflow:hidden;">
@@ -3018,10 +3026,12 @@ function editAllResponses(rid){
   const r=b.reports.find(r=>r.id===rid);
   const myFb=r.feedbacks.find(f=>f.storeId===s.id);
   if(!myFb) return;
-  // Pre-fill form with existing responses and re-open form
+  // Pre-fill form using refId lookup — safe after reload
   const refs=r.refs&&r.refs.length?r.refs:[{id:'general',desc:'',photos:[]}];
-  DB.itemFeedbacks=refs.map((ref,i)=>{
-    const existing=(myFb.itemFeedbacks||[])[i]||{refId:ref.id,note:'',photos:[]};
+  const existingByRefId={};
+  (myFb.itemFeedbacks||[]).forEach(it=>{ if(it.refId) existingByRefId[it.refId]=it; });
+  DB.itemFeedbacks=refs.map((ref)=>{
+    const existing=existingByRefId[ref.id]||{refId:ref.id,note:'',photos:[]};
     return {refId:ref.id, note:existing.note||'', photos:[...(existing.photos||[])]};
   });
   // Remove old feedback so form shows
@@ -3062,30 +3072,56 @@ function saveEditedResponse(rid, idx){
   const b=reviewerBrand(), s=reviewerStore();
   const r=b.reports.find(r=>r.id===rid);
   const myFb=r.feedbacks.find(f=>f.storeId===s.id);
-  if(!myFb||!myFb.itemFeedbacks) return;
+  if(!myFb) return;
+  // Get the ref at this position (idx = position in r.refs)
+  const refsArr=r.refs&&r.refs.length?r.refs:[{id:'general',name:'General',desc:'',photos:[]}];
+  const ref=refsArr[idx];
+  if(!ref) return;
   const note=document.getElementById('rvs_note_'+idx)?.value.trim()||'';
-  myFb.itemFeedbacks[idx].note=note;
+  // Find or create itemFeedback by refId
+  if(!myFb.itemFeedbacks) myFb.itemFeedbacks=[];
+  let itemFb=myFb.itemFeedbacks.find(it=>it.refId===ref.id);
+  if(!itemFb){ itemFb={refId:ref.id,note:'',photos:[]}; myFb.itemFeedbacks.push(itemFb); }
+  itemFb.note=note;
   // Rebuild text line
-  myFb.text=myFb.itemFeedbacks.map((it,i)=>it.note?`${i+1}: ${it.note}`:'').filter(Boolean).join(' | ');
+  myFb.text=refsArr.map((rf,i)=>{
+    const it=myFb.itemFeedbacks.find(x=>x.refId===rf.id);
+    return it&&it.note?`${i+1}: ${it.note}`:'';
+  }).filter(Boolean).join(' | ');
+  // Persist update to server
+  api('PUT',`/api/feedbacks/${myFb.id}`,{text:myFb.text,itemFeedbacks:myFb.itemFeedbacks,photos:myFb.photos||[]});
   // Re-render submitted view
   openReviewerReport(rid);
+}
+function getItemFbByIdx(myFb, r, idx){
+  // Find itemFeedback by ref position (idx) using refId — safe after reload
+  const refsArr=r.refs&&r.refs.length?r.refs:[{id:'general',name:'General',desc:'',photos:[]}];
+  const ref=refsArr[idx];
+  if(!ref) return null;
+  if(!myFb.itemFeedbacks) myFb.itemFeedbacks=[];
+  let itemFb=myFb.itemFeedbacks.find(it=>it.refId===ref.id);
+  if(!itemFb){ itemFb={refId:ref.id,note:'',photos:[]}; myFb.itemFeedbacks.push(itemFb); }
+  return itemFb;
 }
 function addSubmittedPhoto(rid, idx, input){
   const b=reviewerBrand(), s=reviewerStore();
   const r=b.reports.find(r=>r.id===rid);
   const myFb=r.feedbacks.find(f=>f.storeId===s.id);
-  if(!myFb||!myFb.itemFeedbacks) return;
+  if(!myFb) return;
+  const itemFb=getItemFbByIdx(myFb,r,idx);
+  if(!itemFb) return;
   const label=s?s.name:'Quality Control';
   Array.from(input.files).forEach(f=>{
     const reader=new FileReader();
     reader.onload=async e=>{
       const stamped=await stampPhoto(e.target.result, label);
-      myFb.itemFeedbacks[idx].photos.push(stamped);
+      itemFb.photos.push(stamped);
+      // Persist to server
+      api('PUT',`/api/feedbacks/${myFb.id}`,{text:myFb.text||'',itemFeedbacks:myFb.itemFeedbacks,photos:myFb.photos||[]});
       // Refresh grid
       const grid=document.getElementById('rvs_photogrid_'+idx);
       if(grid){
-        const photos=myFb.itemFeedbacks[idx].photos;
-        grid.innerHTML=photos.map((p,pi)=>`<div style="position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;"><img src="${p}" style="width:100%;height:100%;object-fit:cover;cursor:pointer;" onclick="openLightbox('${p}')"/><button onclick="removeSubmittedPhoto('${rid}',${idx},${pi})" style="position:absolute;top:3px;right:3px;width:18px;height:18px;border-radius:50%;background:rgba(0,0,0,.65);color:#fff;font-size:9px;border:none;cursor:pointer;">✕</button></div>`).join('');
+        grid.innerHTML=itemFb.photos.map((p,pi)=>`<div style="position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;"><img src="${p}" style="width:100%;height:100%;object-fit:cover;cursor:pointer;" onclick="openLightbox('${p}')"/><button onclick="removeSubmittedPhoto('${rid}',${idx},${pi})" style="position:absolute;top:3px;right:3px;width:18px;height:18px;border-radius:50%;background:rgba(0,0,0,.65);color:#fff;font-size:9px;border:none;cursor:pointer;">✕</button></div>`).join('');
       }
     };
     reader.readAsDataURL(f);
@@ -3096,12 +3132,15 @@ function removeSubmittedPhoto(rid, idx, pi){
   const b=reviewerBrand(), s=reviewerStore();
   const r=b.reports.find(r=>r.id===rid);
   const myFb=r.feedbacks.find(f=>f.storeId===s.id);
-  if(!myFb||!myFb.itemFeedbacks) return;
-  myFb.itemFeedbacks[idx].photos.splice(pi,1);
+  if(!myFb) return;
+  const itemFb=getItemFbByIdx(myFb,r,idx);
+  if(!itemFb) return;
+  itemFb.photos.splice(pi,1);
+  // Persist to server
+  api('PUT',`/api/feedbacks/${myFb.id}`,{text:myFb.text||'',itemFeedbacks:myFb.itemFeedbacks,photos:myFb.photos||[]});
   const grid=document.getElementById('rvs_photogrid_'+idx);
   if(grid){
-    const photos=myFb.itemFeedbacks[idx].photos;
-    grid.innerHTML=photos.map((p,pi2)=>`<div style="position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;"><img src="${p}" style="width:100%;height:100%;object-fit:cover;cursor:pointer;" onclick="openLightbox('${p}')"/><button onclick="removeSubmittedPhoto('${rid}',${idx},${pi2})" style="position:absolute;top:3px;right:3px;width:18px;height:18px;border-radius:50%;background:rgba(0,0,0,.65);color:#fff;font-size:9px;border:none;cursor:pointer;">✕</button></div>`).join('');
+    grid.innerHTML=itemFb.photos.map((p,pi2)=>`<div style="position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;"><img src="${p}" style="width:100%;height:100%;object-fit:cover;cursor:pointer;" onclick="openLightbox('${p}')"/><button onclick="removeSubmittedPhoto('${rid}',${idx},${pi2})" style="position:absolute;top:3px;right:3px;width:18px;height:18px;border-radius:50%;background:rgba(0,0,0,.65);color:#fff;font-size:9px;border:none;cursor:pointer;">✕</button></div>`).join('');
   }
 }
 
