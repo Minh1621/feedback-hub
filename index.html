@@ -699,8 +699,10 @@ label{
 <!-- ======= REVIEWER: HOME ======= -->
 <div class="screen" id="s-reviewer-home">
   <div class="topbar">
-    <div id="rv-brand-logo-top" style="width:30px;height:30px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:15px;overflow:hidden;flex-shrink:0;"></div>
-    <div class="topbar-title" id="rv-store-name">My Reports</div>
+    <div id="rv-app-logo-top" style="width:32px;height:32px;border-radius:8px;overflow:hidden;flex-shrink:0;"></div>
+    <div style="font-size:15px;font-weight:800;color:var(--text);letter-spacing:-.01em;flex:1;">FEEDBACK HUB</div>
+    <div id="rv-store-name" style="display:none;"></div>
+    <div id="rv-brand-logo-top" style="display:none;"></div>
     <button class="btn btn-ghost btn-sm" onclick="openRvSettings()" style="padding:6px 8px;">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
     </button>
@@ -1181,6 +1183,7 @@ label{
     <div class="field"><label>Full name</label><input type="text" id="sf-name" placeholder="e.g. Leang Minh"/></div>
     <div class="field"><label>Position / Title</label><input type="text" id="sf-position" placeholder="e.g. QC Inspector, Supervisor"/></div>
     <div class="field"><label>Phone number</label><input type="tel" id="sf-phone" placeholder="e.g. +855 12 345 678"/></div>
+    <div class="field"><label>Location / address</label><textarea id="sf-location" placeholder="e.g. Phnom Penh, Cambodia" style="min-height:60px;"></textarea></div>
 
     <!-- Login credentials -->
     <div style="border-top:1px solid var(--border);margin:4px 0 16px;"></div>
@@ -2436,16 +2439,12 @@ function renderReviewerHome(){
   const b=reviewerBrand(), s=reviewerStore();
   if(!b||!s) return;
 
-  // Topbar — show store logo if set, else brand logo
-  document.getElementById('rv-store-name').textContent=s.name;
-  const logoTop=document.getElementById('rv-brand-logo-top');
-  logoTop.style.background=b.color+'22';
-  if(s.logo){
-    logoTop.innerHTML=`<img src="${s.logo}" style="width:100%;height:100%;object-fit:cover;border-radius:7px;"/>`;
-  } else if(b.logo){
-    logoTop.innerHTML=`<img src="${b.logo}" style="width:100%;height:100%;object-fit:cover;border-radius:7px;"/>`;
-  } else {
-    logoTop.innerHTML=`<span>${b.logoText||'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>'}</span>`;
+  // Topbar — always show app logo (same as login page)
+  const appLogoTop=document.getElementById('rv-app-logo-top');
+  if(appLogoTop){
+    const loginLogoImg=document.querySelector('#s-login img[style*="object-fit:cover"]');
+    if(loginLogoImg){ appLogoTop.innerHTML=`<img src="${loginLogoImg.src}" style="width:100%;height:100%;object-fit:cover;"/>`; }
+    else { appLogoTop.style.background='var(--accent)'; appLogoTop.innerHTML=`<span style="font-size:13px;font-weight:800;color:#fff;">FH</span>`; }
   }
 
   // Store info card
@@ -3966,6 +3965,7 @@ function openAddStaff(){
   document.getElementById('sf-name').value='';
   document.getElementById('sf-position').value='';
   document.getElementById('sf-phone').value='';
+  document.getElementById('sf-location').value='';
   document.getElementById('sf-username').value='';
   document.getElementById('sf-password').value='';
   document.getElementById('sf-pass-label').textContent='Password';
@@ -3987,6 +3987,7 @@ function openEditStaff(id){
   document.getElementById('sf-name').value=s.name||''
   document.getElementById('sf-position').value=s.position||'';
   document.getElementById('sf-phone').value=s.phone||'';
+  document.getElementById('sf-location').value=s.location||'';
   document.getElementById('sf-username').value=s.username||'';
   document.getElementById('sf-password').value='';
   document.getElementById('sf-pass-label').textContent='New password (leave blank to keep)';
@@ -4057,7 +4058,8 @@ async function doSaveStaff(){
   if(!_sfEditingId && !password){ msg.innerHTML='<div class="alert alert-danger">Password is required for new staff.</div>'; return; }
 
   msg.innerHTML='<div class="alert alert-success">⏳ Saving...</div>';
-  const payload={name, position, phone, avatar:_sfAvatarData||null, username, permission:perm, brand_ids:brandIds};
+  const location=document.getElementById('sf-location').value.trim();
+  const payload={name, position, phone, location, avatar:_sfAvatarData||null, username, permission:perm, brand_ids:brandIds};
   if(password) payload.password=password;
 
   let result;
