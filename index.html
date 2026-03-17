@@ -2172,20 +2172,25 @@ function renderReviewerHome(){
   const el=document.getElementById('rv-report-list');
   if(!sorted.length){ el.innerHTML='<div class="empty">No reports assigned yet</div>'; return; }
   el.innerHTML=sorted.map(r=>{
-    const myFb=r.feedbacks.find(f=>f.storeId===s.id);
+    // Dedup feedbacks — latest per store
+    const _rvFbMap={};
+    r.feedbacks.forEach(f=>{ if(!_rvFbMap[f.storeId]||f.date>=_rvFbMap[f.storeId].date) _rvFbMap[f.storeId]=f; });
+    const myFb=_rvFbMap[s.id]||null;
     const insp=r.inspection||{};
-    const itemCount=r.refs&&r.refs.length?r.refs.length:0;
-    // Status: Pending / Partial / Done based on item responses
-    let statusBadge, statusClass;
-    if(!myFb){
-      statusBadge='Pending'; statusClass='badge-pending';
-    } else {
-      const totalItems=r.refs&&r.refs.length?r.refs.length:1;
-      const respondedItems=(myFb.itemFeedbacks||[]).filter(it=>it.note||(it.photos&&it.photos.length)).length;
-      if(respondedItems===0){ statusBadge='Pending'; statusClass='badge-pending'; }
-      else if(respondedItems<totalItems){ statusBadge='Partial'; statusClass='badge-partial'; }
-      else { statusBadge='✓ Done'; statusClass='badge-done'; }
+    const totalItems=r.refs&&r.refs.length?r.refs.length:0;
+    // Count responded items using refId lookup
+    let respondedItems=0;
+    if(myFb&&totalItems>0){
+      const fbByRef={};
+      (myFb.itemFeedbacks||[]).forEach(it=>{ if(it.refId) fbByRef[it.refId]=it; });
+      r.refs.forEach(ref=>{ const it=fbByRef[ref.id]; if(it&&(it.note||(it.photos&&it.photos.length))) respondedItems++; });
     }
+    const itemPct=totalItems?Math.round(respondedItems/totalItems*100):0;
+    // Status badge
+    let statusBadge, statusClass;
+    if(!myFb||respondedItems===0){ statusBadge='Pending'; statusClass='badge-pending'; }
+    else if(respondedItems<totalItems){ statusBadge='Partial'; statusClass='badge-partial'; }
+    else { statusBadge='✓ Done'; statusClass='badge-done'; }
     return `<div class="card card-click" onclick="openReviewerReport('${r.id}')">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
         <div style="font-size:14px;font-weight:600;flex:1;">${r.title}</div>
@@ -2199,7 +2204,18 @@ function renderReviewerHome(){
       </div>`:''}
       ${!insp.score&&insp.date?`<div style="font-size:12px;color:var(--text2);margin-top:6px;">${insp.date}${insp.checkedBy?' · Checked by: '+insp.checkedBy:''}
       </div>`:''}
-      ${itemCount?`<div style="font-size:12px;color:var(--accent);margin-top:8px;display:flex;align-items:center;gap:5px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>${itemCount} item${itemCount>1?'s':''} to review</div>`:''}
+      ${totalItems?`<div style="margin-top:10px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+          <div style="font-size:12px;color:var(--accent);display:flex;align-items:center;gap:5px;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+            ${respondedItems}/${totalItems} items
+          </div>
+          <span style="font-size:11px;font-weight:700;color:${itemPct===100?'var(--success)':itemPct>0?'var(--warn)':'var(--text3)'}">${itemPct}%</span>
+        </div>
+        <div style="background:var(--bg3);border-radius:3px;height:4px;overflow:hidden;">
+          <div style="width:${itemPct}%;background:${itemPct===100?'var(--success)':itemPct>0?'var(--warn)':'var(--border2)'};height:4px;border-radius:3px;transition:width .5s;"></div>
+        </div>
+      </div>`:''}
       ${myFb?`<div style="margin-top:8px;padding:8px 11px;background:var(--bg3);border-radius:8px;font-size:12px;color:var(--text2);">✓ Submitted ${myFb.date}</div>`:''}
     </div>`;
   }).join('');
@@ -2239,9 +2255,15 @@ function openReviewerReport(rid){
 
   if(myFb){
     submittedDiv.style.display='';
-    // Check partial vs full completion
+    // Check partial vs full completion using refId-based count
     const _totalRefItems=r.refs&&r.refs.length?r.refs.length:1;
-    const _respondedItems=(myFb.itemFeedbacks||[]).filter(it=>it.note||(it.photos&&it.photos.length)).length;
+    const _fbByRefId2={};
+    (myFb.itemFeedbacks||[]).forEach(it=>{ if(it.refId) _fbByRefId2[it.refId]=it; });
+    let _respondedItems=0;
+    (r.refs&&r.refs.length?r.refs:[{id:'general'}]).forEach(ref=>{
+      const it=_fbByRefId2[ref.id];
+      if(it&&(it.note||(it.photos&&it.photos.length))) _respondedItems++;
+    });
     const _isPartial=_respondedItems<_totalRefItems;
     // Build a lookup map for quick refId → itemFeedback access
     const fbByRefId={};
@@ -2612,7 +2634,7 @@ async function saveRvNotif(){
   if(s){
     s.notif_email=email;
     s.notif_enabled=1;
-    // Save notif_email to DB so it persists across all devices
+    // Save to DB — persists across all devices
     await api('PUT',`/api/stores/${s.id}`,{
       name:s.name, username:s.username, password:s.password,
       phone:s.phone||'', location:s.location||'', logo:s.logo||null,
@@ -2620,7 +2642,17 @@ async function saveRvNotif(){
       notif_email:email, notif_enabled:1
     });
   }
-  saveRvSettingsToStorage();
+  // Save to localStorage too
+  const sid=s?s.id:'';
+  if(sid){
+    const raw=localStorage.getItem('fh_rv_settings_'+sid);
+    let local={};
+    try{ local=raw?JSON.parse(raw):{} }catch(e){}
+    local.notifEnabled=true; local.notifEmail=email;
+    localStorage.setItem('fh_rv_settings_'+sid, JSON.stringify(local));
+  }
+  // Apply to UI
+  applyRvSettingsToUI({notifEnabled:true, notifEmail:email});
   msg.innerHTML='<div class="alert alert-success">✓ Email saved! Notifications will work on all your devices.</div>';
   setTimeout(()=>{ msg.innerHTML=''; },3000);
 }
@@ -2648,22 +2680,15 @@ function openRvSettings(){
   document.getElementById('rv-pass-revealed').style.display='none';
   document.getElementById('rv-pass-masked').style.display='';
   document.getElementById('rv-change-pass-form').style.display='none';
-  // Load saved settings first
-  loadRvSettingsFromStorage();
-  // Then override email from store record if set
-  if(s.email){
-    const emailEl=document.getElementById('rv-notif-email');
-    if(emailEl && !emailEl.value) emailEl.value=s.email;
-    const track=document.getElementById('rv-notif-toggle');
-    const knob=document.getElementById('rv-notif-knob');
-    const section=document.getElementById('rv-notif-email-section');
-    if(track && knob){
-      track.style.background='var(--accent)';
-      knob.style.transform='translateX(16px)';
-      knob.style.background='#fff';
-      if(section) section.style.display='';
-    }
-  }
+  // Build merged settings: localStorage + DB store record
+  const sid=s.id;
+  const raw=localStorage.getItem('fh_rv_settings_'+sid);
+  let local={};
+  try{ local=raw?JSON.parse(raw):{} }catch(e){}
+  // DB notif_email always takes priority
+  if(s.notif_email){ local.notifEnabled=true; local.notifEmail=s.notif_email; }
+  else if(s.email && !local.notifEmail){ local.notifEmail=s.email; }
+  applyRvSettingsToUI(local);
   goTo('s-rv-settings');
 }
 
@@ -2868,22 +2893,45 @@ async function loadAdminSettingsFromDB(){
 async function loadRvSettingsFromDB(storeId){
   if(!storeId) return;
   try{
-    // Find store from DB.brands
     let store=null;
     for(const b of DB.brands){ store=b.stores.find(s=>s.id===storeId); if(store) break; }
     if(!store) return;
-    // Load from store record
+    // Merge DB values into localStorage — DB wins for notif_email
     const sid=storeId;
     const raw=localStorage.getItem('fh_rv_settings_'+sid);
     let local={};
     try{ local=raw?JSON.parse(raw):{} }catch(e){}
-    // Prefer DB notif_email over local if set
     if(store.notif_email){
       local.notifEnabled=true;
       local.notifEmail=store.notif_email;
-      localStorage.setItem('fh_rv_settings_'+sid, JSON.stringify(local));
     }
+    if(store.notif_enabled) local.notifEnabled=true;
+    localStorage.setItem('fh_rv_settings_'+sid, JSON.stringify(local));
+    // Apply immediately to UI if settings screen is open
+    applyRvSettingsToUI(local);
   }catch(e){}
+}
+
+function applyRvSettingsToUI(settings){
+  const track=document.getElementById('rv-notif-toggle');
+  const knob=document.getElementById('rv-notif-knob');
+  const section=document.getElementById('rv-notif-email-section');
+  if(!track||!knob) return;
+  if(settings.notifEnabled){
+    track.style.background='var(--accent)';
+    knob.style.transform='translateX(16px)';
+    knob.style.background='#fff';
+    if(section) section.style.display='';
+  } else {
+    track.style.background='var(--bg3)';
+    knob.style.transform='';
+    knob.style.background='var(--text3)';
+    if(section) section.style.display='none';
+  }
+  const emailEl=document.getElementById('rv-notif-email');
+  if(emailEl && settings.notifEmail) emailEl.value=settings.notifEmail;
+  const boxes={'rv-notif-new-report':settings.notifNewReport,'rv-notif-reminder':settings.notifReminder,'rv-notif-alert':settings.notifAlert};
+  Object.entries(boxes).forEach(([id,val])=>{ const el=document.getElementById(id); if(el) el.checked=val!==false; });
 }
 
 /* ===== SETTINGS ===== */
