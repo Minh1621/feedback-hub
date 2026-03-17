@@ -1022,10 +1022,9 @@ label{
 /* ===== SCORE HELPER ===== */
 function scoreInfo(s){
   const n=parseInt(s)||0;
-  if(n===100) return {color:'var(--success)',label:'Excellent'};
-  if(n>=90)   return {color:'var(--success)',label:'Very good'};
+  if(n>=99)   return {color:'var(--success)',label:'Excellent'};
+  if(n>=88)   return {color:'var(--success)',label:'Very good'};
   if(n>=85)   return {color:'var(--warn)',   label:'Good'};
-  if(n>=80)   return {color:'var(--warn)',   label:'Good'};
   return       {color:'var(--danger)',       label:'Low'};
 }
 function scoreHTML(s, size){
@@ -1363,14 +1362,27 @@ function renderBrandReports(){
         <span class="badge ${bc}">${bt}</span>
       </div>
       <div style="font-size:12px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:4px;">${r.file}</div>
-      ${targetStore?`<div style="font-size:12px;color:var(--text2);margin-top:4px;display:flex;align-items:center;gap:5px;"><span class="dot" style="background:${targetStore.color}"></span>${targetStore.name} only</div>`:''}
+      ${targetStore?`<div style="font-size:12px;color:var(--text2);margin-top:6px;display:flex;align-items:center;gap:5px;"><span class="dot" style="background:${targetStore.color}"></span>${targetStore.name} only</div>`:''}
       ${r.desc?`<div style="font-size:13px;color:var(--text2);margin-top:5px;">${r.desc}</div>`:''}
-      ${r.refs&&r.refs.length?`<div style="font-size:12px;color:var(--accent);margin-top:5px;">📎 ${r.refs.length} reference item${r.refs.length>1?'s':''}</div>`:''}
-      ${r.inspection&&r.inspection.score?`<div style="font-size:12px;color:var(--text2);margin-top:5px;">Score: ${scoreHTML(r.inspection.score,13)}${r.inspection.checkedBy?' · '+r.inspection.checkedBy:''}</div>`:''}
+      ${r.refs&&r.refs.length?`<div style="font-size:12px;color:var(--accent);margin-top:6px;display:flex;align-items:center;gap:5px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>${r.refs.length} reference item${r.refs.length>1?'s':''}</div>`:''}
+      ${r.inspection&&r.inspection.score?`
+      <div style="margin-top:10px;padding:10px 12px;background:var(--bg3);border-radius:10px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <div>
+            <div style="font-size:26px;font-weight:800;line-height:1;">${scoreHTML(r.inspection.score,26)}</div>
+            ${r.inspection.checkedBy?`<div style="font-size:12px;color:var(--text2);margin-top:3px;">Checked by: <strong>${r.inspection.checkedBy}</strong></div>`:''}
+            ${r.inspection.date?`<div style="font-size:11px;color:var(--text3);margin-top:2px;">${r.inspection.date}</div>`:''}
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <div class="prog-wrap" style="width:70px;"><div class="prog-bar" style="width:${pct}%;background:${b.color};"></div></div>
+            <span style="font-size:11px;color:var(--text3);min-width:30px;text-align:right;">${pct}%</span>
+          </div>
+        </div>
+      </div>`:`
       <div style="display:flex;align-items:center;gap:8px;margin-top:10px;">
         <div class="prog-wrap" style="flex:1;"><div class="prog-bar" style="width:${pct}%;background:${b.color};"></div></div>
         <span style="font-size:11px;color:var(--text3);">${pct}%</span>
-      </div>
+      </div>`}
     </div>`;
   }).join('');
 }
@@ -2032,9 +2044,16 @@ function renderReviewerHome(){
 
   // Report list — pending first then done
   const sorted=[...reports].sort((a,b)=>{
-    const aD=a.feedbacks.find(f=>f.storeId===s.id)?1:0;
-    const bD=b.feedbacks.find(f=>f.storeId===s.id)?1:0;
-    return aD-bD;
+    const getStatus=(r)=>{
+      const fb=r.feedbacks.find(f=>f.storeId===s.id);
+      if(!fb) return 0; // pending first
+      const total=r.refs&&r.refs.length?r.refs.length:1;
+      const responded=(fb.itemFeedbacks||[]).filter(it=>it.note||(it.photos&&it.photos.length)).length;
+      if(responded===0) return 0;
+      if(responded<total) return 1; // partial
+      return 2; // done last
+    };
+    return getStatus(a)-getStatus(b);
   });
   const el=document.getElementById('rv-report-list');
   if(!sorted.length){ el.innerHTML='<div class="empty">No reports assigned yet</div>'; return; }
@@ -2042,10 +2061,21 @@ function renderReviewerHome(){
     const myFb=r.feedbacks.find(f=>f.storeId===s.id);
     const insp=r.inspection||{};
     const itemCount=r.refs&&r.refs.length?r.refs.length:0;
+    // Status: Pending / Partial / Done based on item responses
+    let statusBadge, statusClass;
+    if(!myFb){
+      statusBadge='Pending'; statusClass='badge-pending';
+    } else {
+      const totalItems=r.refs&&r.refs.length?r.refs.length:1;
+      const respondedItems=(myFb.itemFeedbacks||[]).filter(it=>it.note||(it.photos&&it.photos.length)).length;
+      if(respondedItems===0){ statusBadge='Pending'; statusClass='badge-pending'; }
+      else if(respondedItems<totalItems){ statusBadge='Partial'; statusClass='badge-partial'; }
+      else { statusBadge='✓ Done'; statusClass='badge-done'; }
+    }
     return `<div class="card card-click" onclick="openReviewerReport('${r.id}')">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
         <div style="font-size:14px;font-weight:600;flex:1;">${r.title}</div>
-        <span class="badge ${myFb?'badge-done':'badge-pending'}" style="flex-shrink:0;">${myFb?'✓ Done':'Pending'}</span>
+        <span class="badge ${statusClass}" style="flex-shrink:0;">${statusBadge}</span>
       </div>
       <div style="font-size:12px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:4px;">${r.file}</div>
       ${insp.score?`<div style="margin-top:10px;display:flex;flex-direction:column;align-items:flex-start;gap:4px;">
@@ -2092,9 +2122,13 @@ function openReviewerReport(rid){
 
   if(myFb){
     submittedDiv.style.display='';
+    // Check partial vs full completion
+    const _totalRefItems=r.refs&&r.refs.length?r.refs.length:1;
+    const _respondedItems=(myFb.itemFeedbacks||[]).filter(it=>it.note||(it.photos&&it.photos.length)).length;
+    const _isPartial=_respondedItems<_totalRefItems;
     submittedDiv.innerHTML=`
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:13px 15px;background:var(--alert-success-bg);border:1px solid var(--alert-success-border);border-radius:var(--rl);margin-bottom:14px;">
-        <div style="font-size:13px;font-weight:600;color:var(--success);">✓ Submitted · ${myFb.date}</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:13px 15px;background:${_isPartial?'var(--badge-partial-bg)':`var(--alert-success-bg)`};border:1px solid ${_isPartial?`var(--accent)`:`var(--alert-success-border)`};border-radius:var(--rl);margin-bottom:14px;">
+        <div style="font-size:13px;font-weight:600;color:${_isPartial?`var(--accent)`:`var(--success)`};">${_isPartial?`⚠️ Partial · ${_respondedItems}/${_totalRefItems} items · ${myFb.date}`:`✓ Submitted · ${myFb.date}`}</div>
         <button class="btn btn-xs" onclick="editAllResponses('${rid}')">Edit all</button>
       </div>
       ${(myFb.itemFeedbacks||[]).map((item,i)=>{
