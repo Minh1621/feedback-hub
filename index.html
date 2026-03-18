@@ -1877,7 +1877,27 @@ async function _silentRvRefresh(){
     // Fetch fresh data WITHOUT showing the loading overlay
     await api('POST', '/api/init');
     const data = await api('GET', '/api/brands');
-    if(Array.isArray(data)) DB.brands = data;
+    if(Array.isArray(data)){
+      // Before replacing DB.brands, preserve any in-progress form data
+      // so that photos and notes typed by the reviewer are never lost
+      if(DB.itemFeedbacks && DB.itemFeedbacks.length && DB.reviewerReportId && DB.editingFeedbackId){
+        const newBrands = data;
+        for(const br of newBrands){
+          const r = br.reports && br.reports.find(r=>r.id===DB.reviewerReportId);
+          if(r){
+            const fb = r.feedbacks && r.feedbacks.find(f=>f.id===DB.editingFeedbackId);
+            if(fb){
+              // Merge back in-memory itemFeedbacks (which have photos) into fresh data
+              fb.itemFeedbacks = DB.itemFeedbacks.map(it=>({...it}));
+            }
+            break;
+          }
+        }
+        DB.brands = newBrands;
+      } else {
+        DB.brands = data;
+      }
+    }
     if(DB.role==='reviewer') renderReviewerHome();
   } catch(e){ /* silent — don't disrupt UI */ }
   _rvRefreshPending = false;
@@ -3967,17 +3987,41 @@ async function saveReviewerDraft(){
   const fbMapDraft={}; r.feedbacks.forEach(f=>{if(!fbMapDraft[f.storeId]||f.date>=fbMapDraft[f.storeId].date) fbMapDraft[f.storeId]=f;});
   const existing=(DB.editingFeedbackId && r.feedbacks.find(f=>f.id===DB.editingFeedbackId)) || fbMapDraft[s.id] || null;
   if(existing){
-    // Update existing — no notification sent
-    await api('PUT',`/api/feedbacks/${existing.id}`,{text:feedbackObj.text,itemFeedbacks:feedbackObj.itemFeedbacks,photos:[]});
-    existing.itemFeedbacks=feedbackObj.itemFeedbacks;
+    // Update existing — preserve adminRemarks, no notification sent
+    const preservedRemarks = existing.adminRemarks || {};
+    // Strip UI-only fields before sending to API
+    const itemsForApi = feedbackObj.itemFeedbacks.map(it=>{
+      const {_rejected, _adminRemark, ...clean} = it;
+      return clean;
+    });
+    await api('PUT',`/api/feedbacks/${existing.id}`,{
+      text:feedbackObj.text,
+      itemFeedbacks:itemsForApi,
+      photos:[],
+      adminRemarks:preservedRemarks
+    });
+    // Keep the full in-memory state (including photos + UI fields) intact
+    existing.itemFeedbacks = DB.itemFeedbacks.map(it=>({...it}));
     existing.text=feedbackObj.text;
-    // Remove duplicates
+    existing.adminRemarks=preservedRemarks;
+    // Update DB.editingFeedbackId so future saves use this record
+    DB.editingFeedbackId = existing.id;
+    // Remove duplicates and push updated record
     r.feedbacks=r.feedbacks.filter(f=>f.storeId!==s.id);
     r.feedbacks.push(existing);
   } else {
     // Create new draft — no notification
-    const result=await api('POST','/api/feedbacks/draft',{...feedbackObj, report_id:r.id});
-    if(result.id) feedbackObj.id=result.id;
+    const itemsForNewApi = feedbackObj.itemFeedbacks.map(it=>{
+      const {_rejected, _adminRemark, ...clean} = it;
+      return clean;
+    });
+    const result=await api('POST','/api/feedbacks/draft',{...feedbackObj, itemFeedbacks:itemsForNewApi, report_id:r.id});
+    if(result.id){
+      feedbackObj.id=result.id;
+      DB.editingFeedbackId=result.id;
+      // Keep full in-memory state with photos
+      feedbackObj.itemFeedbacks = DB.itemFeedbacks.map(it=>({...it}));
+    }
     r.feedbacks.push(feedbackObj);
   }
   msg.innerHTML='<div class="alert alert-success">✓ Progress saved! Admin can see your partial responses.</div>';
