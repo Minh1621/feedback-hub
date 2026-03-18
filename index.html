@@ -1429,17 +1429,50 @@ function scoreHTML(s, size){
 /* ===== THEME ===== */
 function toggleTheme(){
   const h=document.documentElement;
-  const newTheme=h.getAttribute('data-theme')==='dark'?'light':'dark';
+  const cur=h.getAttribute('data-theme');
+  const newTheme=cur==='dark'?'light':'dark';
   h.setAttribute('data-theme', newTheme);
   try{ localStorage.setItem('fh_theme', newTheme); }catch(e){}
+  // If staff — save to DB so setting persists across devices
+  if(DB.role==='staff' && DB.staffData?.staff_id){
+    saveStaffNotifPrefsOnly();
+  }
+  updateThemeToggles();
 }
+
 function applyStoredTheme(){
   try{
     const saved=localStorage.getItem('fh_theme');
-    if(saved) document.documentElement.setAttribute('data-theme', saved);
+    if(saved){
+      // User has explicitly chosen a theme
+      document.documentElement.setAttribute('data-theme', saved);
+    } else {
+      // Follow device preference
+      const prefersDark=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches;
+      document.documentElement.setAttribute('data-theme', prefersDark?'dark':'light');
+    }
   }catch(e){}
+  updateThemeToggles();
 }
-// Apply theme immediately on script load
+
+function updateThemeToggles(){
+  // Keep all theme toggle UI in sync
+  const isDark=document.documentElement.getAttribute('data-theme')==='dark';
+  // CSS handles toggle appearance via data-theme — nothing extra needed
+}
+
+// Listen for device theme changes (when user hasn't set override)
+try{
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e=>{
+    const saved=localStorage.getItem('fh_theme');
+    if(!saved){
+      // No user override — follow device
+      document.documentElement.setAttribute('data-theme', e.matches?'dark':'light');
+    }
+  });
+}catch(e){}
+
+// Apply theme immediately on script load — BEFORE anything renders
 applyStoredTheme();
 
 /* ===== CLOUDFLARE API ===== */
@@ -1562,6 +1595,14 @@ async function doLogin(){
     DB.role='staff';
     DB.staffData=result;
     saveSession('staff', null, null, result);
+    // Apply staff's saved theme preference
+    try{
+      const prefs=JSON.parse(result.notif_prefs||'null');
+      if(prefs?.theme){
+        localStorage.setItem('fh_theme', prefs.theme);
+        document.documentElement.setAttribute('data-theme', prefs.theme);
+      }
+    }catch(e){}
     renderStaffHome();
     goTo('s-home');
   } else if(result.role==='reviewer'){
@@ -1735,6 +1776,14 @@ async function restoreSession(){
         }
       }catch(e){ DB.staffData=session.staffData||{}; }
       DB.role='staff';
+      // Apply staff's saved theme preference from DB
+      try{
+        const prefs=JSON.parse(DB.staffData?.notif_prefs||'null');
+        if(prefs?.theme){
+          localStorage.setItem('fh_theme', prefs.theme);
+          document.documentElement.setAttribute('data-theme', prefs.theme);
+        }
+      }catch(e){}
       renderStaffHome();
       goTo('s-home');
       return true;
@@ -2702,6 +2751,7 @@ async function saveBrand(){
   }
 }
 async function deleteBrand(){
+  if(DB.role==='staff'){ showToast('⚠️ You do not have permission to delete brands.'); return; }
   const b=brand();
   if(!b) return;
   showGenericConfirm(
@@ -4422,24 +4472,32 @@ function renderStaffHome(){
 function applyStaffPermissions(){
   if(DB.role!=='staff') return;
   const perm=DB.staffData?.permission||'view';
+  const upload=perm==='upload'||perm==='edit';
+  const edit=perm==='edit';
 
-  // ── Brand list buttons ───────────────────────────────────────────────────
-  // Hide + Upload report button on brand page (controlled per-page below)
-  const uploadBrandBtn=document.querySelector('#s-brand .btn-primary');
-  if(uploadBrandBtn) uploadBrandBtn.style.display=(perm==='view')?'none':'';
-
-  // ── Home page — hide + Brand button ─────────────────────────────────────
+  // ── Home: hide + Brand button (staff never adds brands) ──────────────────
   const addBrandBtn=document.querySelector('#s-home .btn-primary');
-  if(addBrandBtn) addBrandBtn.style.display='none'; // staff never adds brands
+  if(addBrandBtn) addBrandBtn.style.display='none';
 
-  // ── Show permission badge on staff card ──────────────────────────────────
-  const permBadge=document.getElementById('staff-perm-badge');
-  if(permBadge){
-    const labels={view:'View only',upload:'Upload reports',edit:'Edit & upload'};
-    const colors={view:'var(--text3)',upload:'var(--accent)',edit:'var(--success)'};
-    permBadge.textContent=labels[perm]||perm;
-    permBadge.style.color=colors[perm]||'var(--text3)';
-  }
+  // ── Brand page: upload button ─────────────────────────────────────────────
+  const uploadBrandBtn=document.querySelector('#s-brand .btn-primary');
+  if(uploadBrandBtn) uploadBrandBtn.style.display=upload?'':'none';
+
+  // ── Brand page: Edit brand button (top right) — view & upload cannot edit brand
+  const brandEditBtn=document.getElementById('brand-edit-btn');
+  if(brandEditBtn) brandEditBtn.style.display=edit?'':'none';
+
+  // ── Brand page: Delete brand button — only admin
+  const brandDeleteBtn=document.getElementById('brand-delete-btn');
+  if(brandDeleteBtn) brandDeleteBtn.style.display='none'; // staff never deletes brands
+
+  // ── Report detail: Edit report button
+  const reportEditBtn=document.getElementById('report-edit-btn');
+  if(reportEditBtn) reportEditBtn.style.display=edit?'':'none';
+
+  // ── Alert button — visible for upload + edit
+  const alertBtns=document.querySelectorAll('[onclick*="alertStores"]');
+  alertBtns.forEach(b=>b.style.display=upload?'':'none');
 }
 
 function openStaffSettings(){
@@ -4521,7 +4579,6 @@ async function saveStaffNotif(){
 }
 
 function saveStaffNotifPrefsOnly(){
-  // Save just the checkbox preferences without requiring email
   const staff=DB.staffData||{};
   if(!staff.staff_id) return;
   const notifPrefs={
@@ -4530,6 +4587,7 @@ function saveStaffNotifPrefsOnly(){
     notifAllDone: document.getElementById('sf-notif-all-done')?.checked??true,
     notifBrand: document.getElementById('sf-notif-brand')?.checked??true,
     notifStore: document.getElementById('sf-notif-store')?.checked??true,
+    theme: localStorage.getItem('fh_theme')||null,
   };
   const notifPrefsStr=JSON.stringify(notifPrefs);
   api('PUT',`/api/staff/${staff.staff_id}`,{...staff, notif_prefs:notifPrefsStr, brand_ids:staff.brand_ids||[]});
