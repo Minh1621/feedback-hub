@@ -1672,6 +1672,15 @@ label{
       <div id="ra-photos-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;"></div>
     </div>
 
+    <!-- Accept resubmission (shown when there's an existing remark + new store response) -->
+    <div id="ra-accept-section" style="display:none;padding:14px 20px;border-bottom:1px solid var(--border);">
+      <div style="font-size:12px;color:var(--text2);margin-bottom:10px;line-height:1.5;">The store has resubmitted a response to this item. You can <strong>accept</strong> it (clear the rejection) or add a new remark to reject again.</div>
+      <button onclick="raAcceptResponse()" style="width:100%;padding:12px;border-radius:12px;background:var(--success);border:none;color:#fff;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        Accept this response
+      </button>
+    </div>
+
     <!-- Remark -->
     <div style="padding:14px 20px 28px;">
       <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Add remark</div>
@@ -6125,14 +6134,26 @@ async function annSave(){
       if(fb){
         const it=fb.itemFeedbacks?.find(it=>it.refId===refId);
         if(it&&it.photos){ it.photos[photoIdx]=annotated; }
-        await api('PUT',`/api/feedbacks/${fbId}`,{text:fb.text,itemFeedbacks:fb.itemFeedbacks,photos:fb.photos||[]});
+        // Preserve adminRemarks on annotator save
+        await api('PUT',`/api/feedbacks/${fbId}`,{text:fb.text,itemFeedbacks:fb.itemFeedbacks,photos:fb.photos||[],adminRemarks:fb.adminRemarks||{}});
         break;
       }
     }
   }
   annClose();
   showToast('✓ Annotated photo saved!');
-  if(DB.currentReportId) viewFeedback(DB.currentReportId);
+  if(DB.currentReportId){
+    viewFeedback(DB.currentReportId);
+    // Re-open the item card that was being annotated after viewFeedback re-renders
+    setTimeout(()=>{
+      const itemCard=document.getElementById('ai_'+refId);
+      const arrow=document.getElementById('ai_arrow_'+refId);
+      if(itemCard && itemCard.style.display==='none'){
+        itemCard.style.display='';
+        if(arrow) arrow.style.transform='rotate(180deg)';
+      }
+    }, 80);
+  }
 }
 
 function annClose(){
@@ -6396,6 +6417,11 @@ function openRespAction(fbId, refId, storeId, rid, storeName, itemName) {
   const delBtn = document.getElementById('ra-delete-btn');
   if (delBtn) delBtn.style.display = hasResponse ? '' : 'none';
 
+  // Accept section — show when there's an existing remark AND the store has resubmitted a new response
+  const hasExistingRemark = !!(fb?.adminRemarks?.[refId + '_list']?.length || fb?.adminRemarks?.[refId]);
+  const acceptSection = document.getElementById('ra-accept-section');
+  if (acceptSection) acceptSection.style.display = (hasExistingRemark && hasResponse) ? '' : 'none';
+
   document.getElementById('resp-action-overlay').style.display = 'flex';
 }
 
@@ -6484,6 +6510,48 @@ function raDeleteResponse() {
   const { fbId, storeId, refId, rid } = _raCtx;
   closeRespAction();
   deleteStoreResponse(fbId, storeId, refId, rid);
+}
+
+async function raAcceptResponse() {
+  const { fbId, refId, storeId, rid } = _raCtx;
+  const b = brand();
+  const r = b.reports.find(r => r.id === rid);
+  const fb = r?.feedbacks.find(f => f.id === fbId);
+  if (!fb) return;
+
+  const acceptBtn = document.querySelector('#ra-accept-section button');
+  if (acceptBtn) { acceptBtn.disabled = true; acceptBtn.textContent = 'Accepting...'; }
+
+  // Clear the remark for this ref item only — keep other remarks intact
+  if (!fb.adminRemarks) fb.adminRemarks = {};
+  const listKey = refId + '_list';
+  fb.adminRemarks[listKey] = [];
+  delete fb.adminRemarks[refId];
+  if (fb.adminRemarks._authors) delete fb.adminRemarks._authors[refId];
+
+  // Record acceptance in timeline
+  const authorName = DB.staffData?.name || (DB.role === 'admin' ? 'Admin' : 'Staff');
+  const today = new Date().toISOString().slice(0, 10);
+  if (!Array.isArray(fb.timeline)) fb.timeline = [];
+  fb.timeline.push({ type: 'accepted', date: today, by: authorName });
+
+  await api('PUT', `/api/feedbacks/${fbId}`, {
+    adminRemarks: fb.adminRemarks,
+    timeline: fb.timeline
+  });
+
+  closeRespAction();
+  showToast('✓ Response accepted');
+  viewFeedback(rid);
+  // Re-open the item card
+  setTimeout(() => {
+    const itemCard = document.getElementById('ai_' + refId);
+    const arrow = document.getElementById('ai_arrow_' + refId);
+    if (itemCard && itemCard.style.display === 'none') {
+      itemCard.style.display = '';
+      if (arrow) arrow.style.transform = 'rotate(180deg)';
+    }
+  }, 80);
 }
 
 
