@@ -1643,26 +1643,10 @@ async function checkSessionStillValid(){
     const raw = localStorage.getItem('fh_session');
     if(!raw) return false;
     const session = JSON.parse(raw);
-    if(session.role !== 'reviewer') return true; // admin always valid
+    if(session.role !== 'reviewer') return true;
     const deviceId = getDeviceId();
-    // Check with worker if session still valid (not kicked out)
     const result = await api('POST', '/api/check-session', {store_id: session.storeId, device_id: deviceId});
-    return result && result.valid;
-  }catch(e){ return true; }
-}
-
-async function checkSessionStillValid(){
-  try{
-    const raw = localStorage.getItem('fh_session');
-    if(!raw) return false;
-    const session = JSON.parse(raw);
-    if(session.role !== 'reviewer') return true; // admin always valid
-    const deviceId = getDeviceId();
-    const result = await api('GET', `/api/devices/${session.storeId}`);
-    if(!result || !Array.isArray(result.devices)) return true;
-    // Check if our device is still in the list
-    const found = result.devices.find(d => d.device_id === deviceId);
-    return !!found;
+    return result && result.valid !== false;
   }catch(e){ return true; }
 }
 
