@@ -2621,15 +2621,47 @@ function viewFeedback(rid){
   const inspWrap=document.getElementById('fb-inspection');
   if(inspWrap){
     if(hasInsp){
+      // Build per-store submission history rows
+      const latestFbMap={};
+      r.feedbacks.forEach(f=>{if(!latestFbMap[f.storeId]||f.date>=latestFbMap[f.storeId].date) latestFbMap[f.storeId]=f;});
+      const targetStoresForInsp=r.storeId?b.stores.filter(s=>s.id===r.storeId):b.stores;
+      const subHistoryRows=targetStoresForInsp.map(store=>{
+        const fb=latestFbMap[store.id];
+        if(!fb) return '';
+        const firstSub=fb.firstSubmitted||fb.date||'';
+        const lastEdit=fb.lastEdited||null;
+        const editCount=fb.editCount||0;
+        const isPerfect=editCount===0&&!lastEdit;
+        return `<div style="display:flex;align-items:flex-start;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);">
+          <div class="dot" style="background:${store.color||'#888'};margin-top:4px;flex-shrink:0;"></div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:13px;font-weight:600;">${store.name}</div>
+            <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px;align-items:center;">
+              <span style="font-size:11px;color:var(--text3);">First submitted: <strong style="color:var(--text);">${firstSub}</strong></span>
+              ${lastEdit
+                ? `<span style="font-size:11px;padding:1px 8px;border-radius:20px;background:#fff8e1;color:#92400e;font-weight:600;">Last edited: ${lastEdit}</span>`
+                : isPerfect
+                  ? `<span style="font-size:11px;padding:1px 8px;border-radius:20px;background:#f0fdf4;color:#15803d;font-weight:600;">Perfect</span>`
+                  : ''}
+            </div>
+          </div>
+        </div>`;
+      }).filter(Boolean).join('');
+
       inspWrap.innerHTML=`
         <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);padding:14px 16px;margin-bottom:16px;">
           <div style="font-size:12px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;">Inspection details</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:${subHistoryRows?'12px':'0'};">
             ${insp.storeName?`<div><div style="font-size:11px;color:var(--text3);margin-bottom:2px;">Store</div><div style="font-size:14px;font-weight:500;">${insp.storeName}</div></div>`:''}
             ${insp.date?`<div><div style="font-size:11px;color:var(--text3);margin-bottom:2px;">Date</div><div style="font-size:14px;font-weight:500;">${insp.date}</div></div>`:''}
             ${insp.checkedBy?`<div><div style="font-size:11px;color:var(--text3);margin-bottom:2px;">Checked by</div><div style="font-size:14px;font-weight:500;">${insp.checkedBy}</div></div>`:''}
             ${insp.score?`<div><div style="font-size:11px;color:var(--text3);margin-bottom:2px;">Score</div><div style="font-size:22px;font-weight:700;">${scoreHTML(insp.score,22)}</div></div>`:''}
           </div>
+          ${subHistoryRows?`
+          <div style="border-top:1px solid var(--border);padding-top:10px;">
+            <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;">Response history</div>
+            ${subHistoryRows}
+          </div>`:''}
         </div>`;
     } else { inspWrap.innerHTML=''; }
   }
