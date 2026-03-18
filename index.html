@@ -2563,7 +2563,8 @@ async function doUpload(){
   };
   const b=brand();
   b.reports.unshift(newReport);
-  await api('POST','/api/reports',{...newReport, brand_id:b.id});
+  const _uploadAlerter = getAlerterInfo();
+  await api('POST','/api/reports',{...newReport, brand_id:b.id, alerter:_uploadAlerter});
 
   DB.pendingUpload=null; DB.pendingUploadURL=null; DB.pendingRefs=[];
   ['r-title','r-desc','r-store-name','r-checked-by','r-score'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
@@ -2805,9 +2806,16 @@ function viewFeedback(rid){
     mw.innerHTML=`<div style="text-align:center;padding:12px 0;font-size:13px;color:var(--success);">✓ All stores have responded</div>`;
   }
   goTo('s-feedback');
-  // Apply permission to Edit button on report detail
+  // Apply permissions to all buttons on report detail
   const rEditBtn=document.getElementById('report-edit-btn');
   if(rEditBtn) rEditBtn.style.display=canEdit()?'':'none';
+  // Alert buttons — visible for upload + edit + admin (not view-only)
+  if(DB.role==='staff'){
+    const canSendAlert=canUpload(); // upload & edit permission can alert
+    document.querySelectorAll('[onclick*="alertStores"],[onclick*="alertOneStore"]').forEach(btn=>{
+      btn.style.display=canSendAlert?'':'none';
+    });
+  }
 }
 
 /* ===== BRAND FORM ===== */
