@@ -459,7 +459,7 @@ label{
       <div class="filters">
         <button class="fbtn active" id="bf-all" onclick="setBF('all')">All</button>
         <button class="fbtn" id="bf-pending" onclick="setBF('pending')">Pending</button>
-        <button class="fbtn" id="bf-partial" onclick="setBF('partial')">Partial</button>
+        <!-- partial filter removed --><button class="fbtn" id="bf-partial" style="display:none;" onclick="setBF('partial')">Partial</button>
         <button class="fbtn" id="bf-checking" onclick="setBF('checking')">Checking</button>
         <button class="fbtn" id="bf-done" onclick="setBF('done')">Complete</button>
       </div>
@@ -2157,8 +2157,8 @@ function getReportStatus(r, stores){
     else if(responded>0){ anyDone=true; }
   }
   if(anyRejected) return 'checking';
-  if(allDone) return 'complete';
-  if(anyDone) return 'partial';
+  if(allDone) return 'checking';   // all responded but not verified → still checking
+  if(anyDone) return 'checking';   // partial response → still checking
   return 'pending';
 }
 
@@ -2319,16 +2319,15 @@ function renderBrandReports(){
   // 0=pending, 1=partial, 2=checking, 3=complete
   function rStatusNum(r){
     const s=getReportStatus(r,b.stores);
-    return s==='complete'?3:s==='checking'?2:s==='partial'?1:0;
+    return s==='complete'?2:s==='checking'?1:0;
   }
 
-  // Sort: pending → partial → checking → complete
+  // Sort: pending → checking → complete
   list.sort((a,bb)=> rStatusNum(a)-rStatusNum(bb));
 
   if(DB.brandFilter==='pending')  list=list.filter(r=>rStatusNum(r)===0);
-  if(DB.brandFilter==='partial')  list=list.filter(r=>rStatusNum(r)===1);
-  if(DB.brandFilter==='checking') list=list.filter(r=>rStatusNum(r)===2);
-  if(DB.brandFilter==='done')     list=list.filter(r=>rStatusNum(r)===3);
+  if(DB.brandFilter==='checking') list=list.filter(r=>rStatusNum(r)===1);
+  if(DB.brandFilter==='done')     list=list.filter(r=>rStatusNum(r)===2);
 
   const el=document.getElementById('brand-report-list');
   if(!list.length){ el.innerHTML='<div class="empty">No reports</div>'; return; }
@@ -2338,8 +2337,7 @@ function renderBrandReports(){
     let bc, bt;
     if(_archived)        { bc='badge-none';    bt='Archived'; }
     else if(_rStatus===0){ bc='badge-none';    bt='Pending'; }
-    else if(_rStatus===1){ bc='badge-partial'; bt='Partial'; }
-    else if(_rStatus===2){ bc='badge-pending'; bt='Checking'; }
+    else if(_rStatus===1){ bc='badge-pending'; bt='Checking'; }
     else                 { bc='badge-done';    bt='Complete'; }
     const targetStore=r.storeId?b.stores.find(s=>s.id===r.storeId):null;
     const _targetStoresCard=r.storeId?b.stores.filter(s=>s.id===r.storeId):b.stores;
@@ -2510,7 +2508,7 @@ function renderStoreDetailReports(b,s){
     const itemPct=totalItems?Math.round(respondedItems/totalItems*100):0;
     let bc,bt;
     if(st==='complete'){bc='badge-done';bt='Complete';}
-    else if(st==='partial'){bc='badge-partial';bt='Partial';}
+    else if(st==='checking'){bc='badge-pending';bt='Checking';}
     else {bc='badge-none';bt='Pending';}
     const scoreNum=parseFloat(insp.score)||0;
     const scoreColor=scoreNum>=99?'var(--success)':scoreNum>=88?'var(--success)':scoreNum>=85?'var(--warn)':scoreNum>0?'var(--danger)':'var(--text)';
