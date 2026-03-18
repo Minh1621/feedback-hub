@@ -1673,18 +1673,23 @@ label{
 
     <!-- Admin remark -->
     <div style="padding:14px 20px;border-bottom:1px solid var(--border);">
-      <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">Admin remark</div>
-      <textarea id="ra-remark-input" placeholder="Add a remark visible to admin team..." style="min-height:72px;font-size:14px;margin-bottom:0;"></textarea>
+      <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Add remark</div>
+      <div style="font-size:12px;color:var(--text2);margin-bottom:10px;">Remark will reset this store's response and notify them to resubmit.</div>
+      <textarea id="ra-remark-input" placeholder="Write your remark for this store..." style="min-height:72px;font-size:14px;margin-bottom:0;"></textarea>
       <div id="ra-remark-msg" style="margin-top:6px;"></div>
-      <button onclick="raSaveRemark()" style="margin-top:8px;width:100%;padding:10px;border-radius:10px;background:var(--accent);border:none;color:#fff;font-size:14px;font-weight:600;cursor:pointer;">Save remark</button>
+      <button onclick="raSaveRemark()" style="margin-top:8px;width:100%;padding:10px;border-radius:10px;background:var(--accent);border:none;color:#fff;font-size:14px;font-weight:600;cursor:pointer;">Save remark &amp; notify store</button>
     </div>
 
     <!-- Actions -->
     <div style="padding:14px 20px 28px;">
       <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;">Actions</div>
+      <button id="ra-send-review-btn" onclick="raSendForReview()" style="width:100%;padding:12px;border-radius:12px;border:1.5px solid var(--accent);background:transparent;color:var(--accent);font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:10px;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        Send for review (notify store to resubmit)
+      </button>
       <button id="ra-delete-btn" onclick="raDeleteResponse()" style="width:100%;padding:12px;border-radius:12px;border:1.5px solid var(--danger);background:transparent;color:var(--danger);font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
-        Reset to no response (store resubmits)
+        Reset to no response only
       </button>
     </div>
   </div>
@@ -2920,21 +2925,27 @@ function viewFeedback(rid){
         return {store:s, item:it, date:f.date};
       }).filter(x=>x.item && (x.item.note||(x.item.photos&&x.item.photos.length)));
       const respCount=responses.length;
-      return `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);margin-bottom:10px;overflow:hidden;">
+      return `<div style="background:var(--bg2);border:0.5px solid var(--border);border-radius:var(--rl);margin-bottom:10px;overflow:hidden;">
         <!-- Header row — tap to toggle -->
         <div onclick="toggleAdminItem('ai_${ref.id}')" style="display:flex;align-items:center;gap:10px;padding:13px 14px;cursor:pointer;user-select:none;">
-          <div style="flex:1;">
-            <div style="font-size:14px;font-weight:600;">${i+1}. ${ref.name||'Item '+(i+1)}</div>
-            ${ref.desc?`<div style="font-size:12px;color:var(--text2);margin-top:2px;">${ref.desc}</div>`:''}
+          <div style="width:28px;height:28px;border-radius:8px;background:var(--bg3);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <span style="font-size:13px;font-weight:600;color:var(--text2);">${i+1}</span>
           </div>
-          ${respCount?`<span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;background:var(--badge-done-bg);color:var(--success);">${respCount} response${respCount>1?'s':''}</span>`:'<span style="font-size:11px;color:var(--text3);">No responses</span>'}
-          <div id="ai_arrow_${ref.id}" style="font-size:13px;color:var(--text3);transition:transform .2s;">▼</div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:14px;font-weight:600;">${ref.name||'Item '+(i+1)}</div>
+            ${ref.desc?`<div style="font-size:12px;color:var(--text2);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${ref.desc}</div>`:''}
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+            ${respCount?`<span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;background:var(--badge-done-bg);color:var(--success);">${respCount} response${respCount>1?'s':''}</span>`:`<span style="font-size:11px;color:var(--text3);">No responses</span>`}
+            <div id="ai_arrow_${ref.id}" style="font-size:11px;color:var(--text3);transition:transform .2s;">▼</div>
+          </div>
         </div>
         <!-- Dropdown body -->
-        <div id="ai_${ref.id}" style="display:none;border-top:1px solid var(--border);">
-          <!-- Admin content -->
+        <div id="ai_${ref.id}" style="display:none;border-top:0.5px solid var(--border);">
+          <!-- Admin reference content -->
           <div style="padding:12px 14px;background:var(--bg3);">
-            ${ref.desc?`<div style="font-size:13px;color:var(--text);line-height:1.5;margin-bottom:8px;">${ref.desc}</div>`:''}
+            <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;">Reference</div>
+            ${ref.desc?`<div style="font-size:13px;color:var(--text2);line-height:1.5;margin-bottom:8px;">${ref.desc}</div>`:''}
             ${ref.photos&&ref.photos.length?`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-bottom:10px;">${ref.photos.map(p=>`<div style="aspect-ratio:1;border-radius:7px;overflow:hidden;"><img src="${p}" style="width:100%;height:100%;object-fit:cover;cursor:pointer;" onclick="openLightbox('${p}')"/></div>`).join('')}</div>`:''}
             ${canEdit()?`<button class="btn btn-xs" onclick="toggleEditRef('${ref.id}','${rid}')">Edit item</button>`:''}
           </div>
@@ -2967,8 +2978,9 @@ function viewFeedback(rid){
               <button class="btn btn-sm" onclick="toggleEditRef('${ref.id}','${rid}')">Cancel</button>
             </div>
           </div>
-          <!-- Store responses — sorted: admin remarks first, then no response, then responded -->
-          <div style="border-top:1px solid var(--border);">
+          <!-- Store responses — sorted: remarked first, then no response, then responded -->
+          <div style="border-top:0.5px solid var(--border);">
+            <div style="padding:10px 14px 2px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;">Store responses</div>
             ${buildSortedResponsesHTML(ref, r, b, rid)}
           </div>
         </div>
@@ -5241,65 +5253,75 @@ function buildSortedResponsesHTML(ref, r, b, rid){
   const targetStores=r.storeId?b.stores.filter(s=>s.id===r.storeId):b.stores;
   const canAct=canEdit()||(DB.role==='admin');
 
-  // Build entries for ALL target stores — with or without response
   const entries=targetStores.map(store=>{
     const fb=latestFbMap[store.id]||null;
     const item=fb?.itemFeedbacks?.find(it=>it.refId===ref.id)||null;
     const hasResponse=item&&(item.note||(item.photos&&item.photos.length));
-    const adminRemark=item?.adminRemark||fb?.adminRemarks?.[ref.id]||null;
-    return {store, fb, item, hasResponse, adminRemark};
+    // remarks is now an array of {text, author, date}
+    const remarks=fb?.adminRemarks?.[ref.id+'_list']||[];
+    // legacy single remark compat
+    const legacyRemark=fb?.adminRemarks?.[ref.id]||null;
+    const legacyAuthor=fb?.adminRemarks?._authors?.[ref.id]||null;
+    const allRemarks=remarks.length>0?remarks:(legacyRemark?[{text:legacyRemark,author:legacyAuthor||'Staff',date:''}]:[]);
+    return {store, fb, item, hasResponse, allRemarks};
   });
 
-  // Sort: 1=has admin remark, 2=no response, 3=has response
-  entries.sort((a,b)=>{
-    const rankA=a.adminRemark?0:!a.hasResponse?1:2;
-    const rankB=b.adminRemark?0:!b.hasResponse?1:2;
-    return rankA-rankB;
+  // Sort: remarked first, then no response, then responded
+  entries.sort((a,bb)=>{
+    const ra=a.allRemarks.length?0:!a.hasResponse?1:2;
+    const rb=bb.allRemarks.length?0:!bb.hasResponse?1:2;
+    return ra-rb;
   });
 
   if(!entries.length) return '<div style="padding:12px 14px;font-size:13px;color:var(--text3);">No stores assigned</div>';
 
-  return '<div style="padding:0 14px;">' + entries.map(({store,fb,item,hasResponse,adminRemark},ei)=>{
+  return '<div style="padding:0 14px;">' + entries.map(({store,fb,item,hasResponse,allRemarks},ei)=>{
     const storeColor=store.color||'#888';
     const isLast=ei===entries.length-1;
-
-    // Admin remark badge
-    const adminRemarkAuthor=fb?.adminRemarks?._authors?.[ref.id]||null;
-    const remarkBadge=adminRemark
-      ? `<div style="margin:6px 0;padding:8px 10px;background:#fff8e1;border-left:3px solid var(--warn);border-radius:0 8px 8px 0;font-size:12px;color:#92400e;">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
-            <div style="font-size:10px;font-weight:700;color:var(--warn);text-transform:uppercase;letter-spacing:.05em;">Admin remark</div>
-            ${adminRemarkAuthor?`<div style="font-size:10px;color:#b45309;">${adminRemarkAuthor}</div>`:''}
-          </div>
-          <div style="font-size:13px;color:#92400e;line-height:1.5;">${adminRemark}</div>
-        </div>` : '';
-
     const fbId=fb?.id||'';
+    const hasRemarks=allRemarks.length>0;
 
-    const clickHandler=canAct&&(hasResponse||fb)?`onclick="openRespAction('${fbId}','${ref.id}','${store.id}','${rid}','${store.name}','${ref.name||'Item'}')" style="cursor:pointer;"`:'';
-    return `<div ${clickHandler} style="padding:10px 0;${!isLast?'border-bottom:1px solid var(--border);':''}">
-      <div style="display:flex;align-items:flex-start;gap:7px;">
-        <div class="dot" style="background:${storeColor};margin-top:4px;flex-shrink:0;"></div>
-        <div style="flex:1;min-width:0;">
-          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-            <strong style="font-size:13px;">${store.name}</strong>
-            ${fb?`<span style="font-size:11px;color:var(--text3);">${fb.date}</span>`:''}
-            ${!hasResponse?`<span style="font-size:11px;padding:1px 7px;border-radius:20px;background:var(--bg3);color:var(--text3);">No response</span>`:''}
-            ${adminRemark?`<span style="font-size:11px;padding:1px 7px;border-radius:20px;background:#fff8e1;color:var(--warn);"><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg> Remarked</span>`:''}
-            ${canAct&&(hasResponse||fb)?`<span style="font-size:10px;color:var(--text3);margin-left:auto;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></span>`:''}
+    // Multi-remark list
+    const remarksHTML=hasRemarks?allRemarks.map(rm=>{
+      const initials=(rm.author||'?').split(' ').map(w=>w[0]).filter(Boolean).slice(0,2).join('').toUpperCase();
+      return `<div style="margin-bottom:7px;padding:10px 13px;background:#fffbf0;border-left:3px solid #f59e0b;border-radius:0 8px 8px 0;">
+        <div style="display:flex;align-items:center;gap:7px;margin-bottom:6px;">
+          <div style="width:22px;height:22px;border-radius:50%;background:#f59e0b;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <span style="font-size:9px;font-weight:700;color:#fff;">${initials}</span>
           </div>
-          ${remarkBadge}
-          ${hasResponse&&item.note?`<div style="font-size:13px;color:var(--text);line-height:1.5;margin-top:4px;">${item.note}</div>`:''}
-          ${hasResponse&&item.photos&&item.photos.length?`
-            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-top:7px;">
-              ${item.photos.map((p,pi)=>`
-                <div style="aspect-ratio:1;border-radius:7px;overflow:hidden;position:relative;">
-                  <img src="${p}" style="width:100%;height:100%;object-fit:cover;cursor:pointer;" onclick="event.stopPropagation();openLightbox('${p}')"/>
-                  <button onclick="event.stopPropagation();openAnnotator('${p}','${fbId}','${ref.id}',${pi})" title="Annotate" style="position:absolute;top:3px;right:3px;background:rgba(0,0,0,.65);border:none;border-radius:6px;color:#fff;cursor:pointer;padding:4px;display:flex;align-items:center;justify-content:center;width:24px;height:24px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg></button>
-                </div>`).join('')}
-            </div>`:''}
+          <span style="font-size:12px;font-weight:600;color:#92400e;flex:1;">${rm.author||'Staff'}</span>
+          ${rm.date?`<span style="font-size:10px;color:#b45309;">${rm.date}</span>`:''}
+          <span style="font-size:10px;font-weight:600;padding:1px 7px;border-radius:20px;background:#fde68a;color:#78350f;flex-shrink:0;">Remark</span>
         </div>
+        <div style="font-size:13px;color:#78350f;line-height:1.6;padding-left:29px;">${rm.text}</div>
+      </div>`;
+    }).join(''):'';
+
+    const clickHandler=canAct&&(hasResponse||fb||hasRemarks)?`onclick="openRespAction('${fbId}','${ref.id}','${store.id}','${rid}','${store.name}','${ref.name||'Item'}')" style="cursor:pointer;"`:'';
+
+    return `<div ${clickHandler} style="padding:12px 0;${!isLast?'border-bottom:0.5px solid var(--border);':''}">
+      <!-- Store header row -->
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:${hasRemarks||hasResponse?'10px':'0'};">
+        <div style="width:8px;height:8px;border-radius:50%;background:${storeColor};flex-shrink:0;"></div>
+        <span style="font-size:13px;font-weight:600;flex:1;">${store.name}</span>
+        ${fb&&fb.date?`<span style="font-size:11px;color:var(--text3);">${fb.date}</span>`:''}
+        ${!hasResponse&&!hasRemarks?`<span style="font-size:11px;padding:2px 8px;border-radius:20px;background:var(--bg3);color:var(--text3);">No response</span>`:''}
+        ${hasRemarks?`<span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;background:#fff8e1;color:#92400e;display:flex;align-items:center;gap:3px;"><svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg> ${allRemarks.length} remark${allRemarks.length>1?'s':''}</span>`:''}
+        ${canAct&&(hasResponse||fb||hasRemarks)?`<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>`:''}
       </div>
+      <!-- Remarks list -->
+      ${remarksHTML}
+      <!-- Store response text -->
+      ${hasResponse&&item.note?`<div style="font-size:13px;color:var(--text);line-height:1.6;margin-bottom:8px;padding-left:16px;border-left:2px solid var(--border2);">${item.note}</div>`:''}
+      <!-- Photos -->
+      ${hasResponse&&item.photos&&item.photos.length?`
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:4px;">
+          ${item.photos.map((p,pi)=>`
+            <div style="aspect-ratio:1;border-radius:8px;overflow:hidden;position:relative;">
+              <img src="${p}" style="width:100%;height:100%;object-fit:cover;cursor:pointer;" onclick="event.stopPropagation();openLightbox('${p}')"/>
+              <button onclick="event.stopPropagation();openAnnotator('${p}','${fbId}','${ref.id}',${pi})" title="Annotate" style="position:absolute;top:3px;right:3px;background:rgba(0,0,0,.6);border:none;border-radius:6px;color:#fff;cursor:pointer;padding:4px;display:flex;align-items:center;justify-content:center;width:24px;height:24px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg></button>
+            </div>`).join('')}
+        </div>`:''}
     </div>`;
   }).join('') + '</div>';
 }
@@ -5847,15 +5869,49 @@ function openRespAction(fbId, refId, storeId, rid, storeName, itemName) {
     photosSection.style.display = 'none';
   }
 
-  // Delete button text
+  // Delete button — only when there's a response
   const delBtn = document.getElementById('ra-delete-btn');
   if (delBtn) delBtn.style.display = hasResponse ? '' : 'none';
+
+  // Send for review button — show when there's a response or existing feedback
+  const sendBtn = document.getElementById('ra-send-review-btn');
+  if (sendBtn) sendBtn.style.display = (hasResponse || fb) ? '' : 'none';
 
   document.getElementById('resp-action-overlay').style.display = 'flex';
 }
 
 function closeRespAction() {
   document.getElementById('resp-action-overlay').style.display = 'none';
+}
+
+// Send for review — reset response + notify store without adding remark
+async function raSendForReview() {
+  const { fbId, refId, storeId, rid, storeName } = _raCtx;
+  const b = brand();
+  const r = b.reports.find(r => r.id === rid);
+  const fb = r?.feedbacks.find(f => f.id === fbId);
+  if (!fb) return;
+  const sendBtn = document.getElementById('ra-send-review-btn');
+  if (sendBtn) { sendBtn.disabled = true; sendBtn.textContent = 'Sending...'; }
+  // Reset this item's response
+  if (fb.itemFeedbacks) {
+    const it = fb.itemFeedbacks.find(it => it.refId === refId);
+    if (it) { it.note = ''; }
+  }
+  fb.text = (fb.itemFeedbacks || []).map((it, i) => it.note ? `Item ${i+1}: ${it.note}` : '').filter(Boolean).join(' | ');
+  await api('PUT', `/api/feedbacks/${fbId}`, {
+    text: fb.text, itemFeedbacks: fb.itemFeedbacks, photos: fb.photos || [], adminRemarks: fb.adminRemarks
+  });
+  try {
+    const _alerter = getAlerterInfo();
+    await api('POST', '/api/feedbacks/delete-notify', {
+      feedback_id: fbId, store_id: storeId, report_id: rid,
+      ref_id: refId, alerter_id: _alerter.id, alerter_role: _alerter.role
+    });
+  } catch(e) {}
+  closeRespAction();
+  showToast(`✓ ${storeName} notified to resubmit`);
+  viewFeedback(rid);
 }
 
 function openAnnotatorFromPanel(src, photoIdx) {
@@ -5868,27 +5924,56 @@ async function raSaveRemark() {
   const { fbId, refId, storeId, rid } = _raCtx;
   const text = document.getElementById('ra-remark-input').value.trim();
   const msg = document.getElementById('ra-remark-msg');
+  if (!text) { msg.innerHTML = '<div class="alert alert-danger">Please enter a remark.</div>'; return; }
   const b = brand();
   const r = b.reports.find(r => r.id === rid);
   const fb = r?.feedbacks.find(f => f.id === fbId);
   if (!fb) return;
   if (!fb.adminRemarks) fb.adminRemarks = {};
-  // Save remark with author name and date
-  const authorName = DB.staffData?.name || (DB.role==='admin'?'Admin':'Staff');
+
+  const authorName = DB.staffData?.name || (DB.role==='admin' ? 'Admin' : 'Staff');
   const today = new Date().toISOString().slice(0,10);
-  fb.adminRemarks[refId] = text ? `${text}` : '';
-  // Store author metadata separately
-  if(!fb.adminRemarks._authors) fb.adminRemarks._authors = {};
-  if(text) fb.adminRemarks._authors[refId] = `${authorName} · ${today}`;
-  msg.innerHTML = '<div class="alert alert-success">Saving...</div>';
+
+  // Append to multi-remark list
+  const listKey = refId + '_list';
+  if (!Array.isArray(fb.adminRemarks[listKey])) {
+    // Migrate old single remark if exists
+    const old = fb.adminRemarks[refId];
+    const oldAuthor = fb.adminRemarks._authors?.[refId] || null;
+    fb.adminRemarks[listKey] = old ? [{ text: old, author: oldAuthor || 'Staff', date: today }] : [];
+  }
+  fb.adminRemarks[listKey].push({ text, author: authorName, date: today });
+  // Keep legacy field in sync for backward compat
+  fb.adminRemarks[refId] = text;
+  if (!fb.adminRemarks._authors) fb.adminRemarks._authors = {};
+  fb.adminRemarks._authors[refId] = `${authorName} · ${today}`;
+
+  // Auto-reset store response to "No response" so store must resubmit
+  if (fb.itemFeedbacks) {
+    const it = fb.itemFeedbacks.find(it => it.refId === refId);
+    if (it) { it.note = ''; it.photos = it.photos || []; }
+  }
+  fb.text = (fb.itemFeedbacks || []).map((it, i) => it.note ? `Item ${i+1}: ${it.note}` : '').filter(Boolean).join(' | ');
+
+  msg.innerHTML = '<div class="alert alert-success">Saving remark...</div>';
   await api('PUT', `/api/feedbacks/${fbId}`, {
     text: fb.text, itemFeedbacks: fb.itemFeedbacks, photos: fb.photos || [], adminRemarks: fb.adminRemarks
   });
-  msg.innerHTML = '<div class="alert alert-success">Remark saved!</div>';
+
+  // Notify store to resubmit
+  try {
+    const _alerter = getAlerterInfo();
+    await api('POST', '/api/feedbacks/delete-notify', {
+      feedback_id: fbId, store_id: storeId, report_id: rid,
+      ref_id: refId, alerter_id: _alerter.id, alerter_role: _alerter.role
+    });
+  } catch(e) {}
+
+  msg.innerHTML = '<div class="alert alert-success">✓ Remark saved — store notified to resubmit!</div>';
   setTimeout(() => {
     closeRespAction();
     viewFeedback(rid);
-  }, 700);
+  }, 900);
 }
 
 function raDeleteResponse() {
