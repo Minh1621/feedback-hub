@@ -3956,17 +3956,20 @@ function onNotifCheckChange(){
 }
 
 async function testNotif(){
-  const email=document.getElementById('notif-email').value.trim();
+  const email=document.getElementById('notif-email').value.trim()||'liming6069@gmail.com';
   const msg=document.getElementById('notif-msg');
-  if(!email){ msg.innerHTML='<div class="alert alert-danger">Please enter an email first.</div>'; return; }
-  // Send real test email via Resend
-  const result=await api('POST','/api/test-email',{email});
-  if(result.ok){
-    msg.innerHTML='<div class="alert alert-success">✓ Test email sent to '+email+'</div>';
-  } else {
-    msg.innerHTML='<div class="alert alert-danger">Failed to send — check your email address.</div>';
+  msg.innerHTML='<div class="alert alert-success">⏳ Sending test email...</div>';
+  try{
+    const result=await api('POST','/api/test-email',{email});
+    if(result && result.ok){
+      msg.innerHTML='<div class="alert alert-success">✓ Email sent! Check <strong>liming6069@gmail.com</strong> and qc.eatmeout@gmail.com inbox. Resend ID: '+(result.resend_id||'?')+'</div>';
+    } else {
+      msg.innerHTML='<div class="alert alert-danger">❌ Failed: '+(result?.error||'Unknown error')+'</div>';
+    }
+  }catch(e){
+    msg.innerHTML='<div class="alert alert-danger">❌ Network error: '+e.message+'</div>';
   }
-  setTimeout(()=>{ msg.innerHTML=''; },4000);
+  setTimeout(()=>{ msg.innerHTML=''; },8000);
 }
 let ADMIN_CREDS = { username: 'admin', password: '1234' };
 
