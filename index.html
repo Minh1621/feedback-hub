@@ -958,24 +958,13 @@ label{
       <div style="font-size:14px;font-weight:500;margin-bottom:4px;" id="rv-settings-name"></div>
       <div style="font-size:12px;color:var(--text2);font-family:'DM Mono',monospace;" id="rv-settings-user"></div>
       <div style="border-top:1px solid var(--border);margin:12px 0;"></div>
-      <!-- View password -->
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+      <!-- Password — change only, no view -->
+      <div style="display:flex;align-items:center;justify-content:space-between;">
         <div>
-          <div style="font-size:13px;font-weight:500;">Login password</div>
-          <div style="font-size:12px;color:var(--text3);margin-top:2px;" id="rv-pass-masked">••••••••</div>
+          <div style="font-size:13px;font-weight:500;">Change password</div>
+          <div style="font-size:11px;color:var(--text3);">Requires email verification</div>
         </div>
-        <button class="btn btn-sm" onclick="requestAdminAction('view')">View</button>
-      </div>
-      <div id="rv-pass-revealed" style="display:none;margin-bottom:10px;padding:10px 12px;background:var(--bg3);border-radius:var(--r);font-size:14px;font-family:'DM Mono',monospace;letter-spacing:.08em;"></div>
-      <!-- Change password via email verify -->
-      <div style="border-top:1px solid var(--border);padding-top:12px;">
-        <div style="display:flex;align-items:center;justify-content:space-between;">
-          <div>
-            <div style="font-size:13px;font-weight:500;">Change password</div>
-            <div style="font-size:11px;color:var(--text3);">Requires email verification</div>
-          </div>
-          <button class="btn btn-sm" onclick="openEmailVerifyForStore()">Change</button>
-        </div>
+        <button class="btn btn-sm" onclick="openEmailVerifyForStore()">Change</button>
       </div>
     </div>
 
@@ -1394,22 +1383,13 @@ label{
         </div>
       </div>
       <div style="border-top:1px solid var(--border);margin:0 0 12px;"></div>
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+      <!-- Password — change only, no view -->
+      <div style="display:flex;align-items:center;justify-content:space-between;">
         <div>
-          <div style="font-size:13px;font-weight:500;">Login password</div>
-          <div style="font-size:12px;color:var(--text3);" id="sf-pass-masked">••••••••</div>
+          <div style="font-size:13px;font-weight:500;">Change password</div>
+          <div style="font-size:11px;color:var(--text3);">Requires email verification</div>
         </div>
-        <button class="btn btn-sm" onclick="sfViewPass()">View</button>
-      </div>
-      <div id="sf-pass-revealed" style="display:none;margin-bottom:10px;padding:10px 12px;background:var(--bg3);border-radius:var(--r);font-size:14px;font-family:'DM Mono',monospace;letter-spacing:.08em;"></div>
-      <div style="border-top:1px solid var(--border);padding-top:12px;">
-        <div style="display:flex;align-items:center;justify-content:space-between;">
-          <div>
-            <div style="font-size:13px;font-weight:500;">Change password</div>
-            <div style="font-size:11px;color:var(--text3);">Requires email verification</div>
-          </div>
-          <button class="btn btn-sm" onclick="openEmailVerifyForStaff()">Change</button>
-        </div>
+        <button class="btn btn-sm" onclick="openEmailVerifyForStaff()">Change</button>
       </div>
     </div>
 
@@ -3641,9 +3621,10 @@ function openRvSettings(){
   if(!s) return;
   document.getElementById('rv-settings-name').textContent=s.name;
   document.getElementById('rv-settings-user').textContent=s.username||s.email||'';
-  document.getElementById('rv-pass-revealed').style.display='none';
-  document.getElementById('rv-pass-masked').style.display='';
-  document.getElementById('rv-change-pass-form').style.display='none';
+  const rvPassRevealed=document.getElementById('rv-pass-revealed');
+  const rvPassMasked=document.getElementById('rv-pass-masked');
+  if(rvPassRevealed) rvPassRevealed.style.display='none';
+  if(rvPassMasked) rvPassMasked.style.display='';
   // Build merged settings: localStorage + DB store record
   const sid=s.id;
   const raw=localStorage.getItem('fh_rv_settings_'+sid);
@@ -3703,7 +3684,7 @@ function doChangeRvPass(){
   msg.innerHTML='<div class="alert alert-success">✓ Password updated!</div>';
   document.getElementById('rv-new-pass').value='';
   document.getElementById('rv-confirm-pass').value='';
-  setTimeout(()=>{ msg.innerHTML=''; document.getElementById('rv-change-pass-form').style.display='none'; },1500);
+  setTimeout(()=>{ msg.innerHTML=''; },1500);
 }
 
 function toggleReportMenu(id){
