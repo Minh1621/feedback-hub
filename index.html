@@ -2262,12 +2262,19 @@ function renderBrandReports(){
     // Deduplicate feedbacks — keep only latest per store
     const _fbMapCard={};
     r.feedbacks.forEach(f=>{ if(!_fbMapCard[f.storeId]||f.date>=_fbMapCard[f.storeId].date) _fbMapCard[f.storeId]=f; });
-    let _totalRespCard=0;
+    let _totalRespCard=0, _totalRejCard=0;
     _targetStoresCard.forEach(s=>{
       const fb=_fbMapCard[s.id];
-      if(fb) _totalRespCard+=(fb.itemFeedbacks||[]).filter(it=>it.note||(it.photos&&it.photos.length)).length;
+      if(!fb) return;
+      (fb.itemFeedbacks||[]).forEach(it=>{
+        const hasContent=!!(it.note||(it.photos&&it.photos.length));
+        const hasRemark=!!(fb.adminRemarks?.[it.refId+'_list']?.length||fb.adminRemarks?.[it.refId]);
+        if(hasRemark) _totalRejCard++;
+        else if(hasContent) _totalRespCard++;
+      });
     });
     const _itemPctCard=_totalPossCard?Math.round(_totalRespCard/_totalPossCard*100):0;
+    const _hasReject=_totalRejCard>0;
     return `<div class="card card-click" style="margin-bottom:10px;" onclick="viewFeedback('${r.id}')">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
         <div style="font-size:14px;font-weight:600;flex:1;">${r.title}</div>
@@ -2285,11 +2292,14 @@ function renderBrandReports(){
             ${r.inspection&&r.inspection.date?`<div style="font-size:11px;color:var(--text3);margin-top:2px;">${r.inspection.date}</div>`:''}
           </div>
           <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;flex-shrink:0;min-width:80px;">
-            <span style="font-size:11px;color:var(--text2);">${_totalRespCard}/${_totalPossCard} items</span>
-            <div style="width:70px;background:var(--bg4);border-radius:3px;height:5px;">
-              <div style="width:${_itemPctCard}%;background:${b.color};height:5px;border-radius:3px;transition:width .5s;"></div>
+            <div style="display:flex;align-items:center;gap:5px;">
+              <span style="font-size:11px;color:var(--text2);">${_totalRespCard}/${_totalPossCard} items</span>
+              ${_hasReject?`<span style="font-size:11px;font-weight:700;color:var(--danger);">✕${_totalRejCard}</span>`:''}
             </div>
-            <span style="font-size:11px;font-weight:600;color:${_itemPctCard===100?'var(--success)':_itemPctCard>0?'var(--warn)':'var(--text3)'};">${_itemPctCard}%</span>
+            <div style="width:70px;background:var(--bg4);border-radius:3px;height:5px;">
+              <div style="width:${_itemPctCard}%;background:${_hasReject?'var(--danger)':b.color};height:5px;border-radius:3px;transition:width .5s;"></div>
+            </div>
+            <span style="font-size:11px;font-weight:600;color:${_itemPctCard===100&&!_hasReject?'var(--success)':_hasReject?'var(--danger)':_itemPctCard>0?'var(--warn)':'var(--text3)'};">${_itemPctCard}%</span>
           </div>
         </div>
       </div>
@@ -5305,7 +5315,7 @@ function buildSortedResponsesHTML(ref, r, b, rid){
 
     const clickHandler=canAct&&(hasResponse||fb||hasRemarks)?`onclick="openRespAction('${fbId}','${ref.id}','${store.id}','${rid}','${store.name}','${ref.name||'Item'}')" style="cursor:pointer;"`:'';
 
-    return `<div ${clickHandler} style="padding:12px 0;${!isLast?'border-bottom:0.5px solid var(--border);':''}">
+    return `<div ${clickHandler} style="padding:12px 0 ${hasResponse&&item?.photos?.length?'14px':'12px'};${!isLast?'border-bottom:0.5px solid var(--border);':''}">
       <!-- Store header row -->
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:${hasRemarks||hasResponse?'10px':'0'};">
         <div style="width:8px;height:8px;border-radius:50%;background:${storeColor};flex-shrink:0;"></div>
@@ -5321,7 +5331,7 @@ function buildSortedResponsesHTML(ref, r, b, rid){
       ${hasResponse&&item.note?`<div style="font-size:13px;color:var(--text);line-height:1.6;margin-bottom:8px;padding-left:16px;border-left:2px solid var(--border2);">${item.note}</div>`:''}
       <!-- Photos -->
       ${hasResponse&&item.photos&&item.photos.length?`
-        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:4px;">
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:4px;padding-bottom:4px;">
           ${item.photos.map((p,pi)=>`
             <div style="aspect-ratio:1;border-radius:8px;overflow:hidden;position:relative;">
               <img src="${p}" style="width:100%;height:100%;object-fit:cover;cursor:pointer;" onclick="event.stopPropagation();openLightbox('${p}')"/>
