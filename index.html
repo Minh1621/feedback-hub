@@ -833,6 +833,17 @@ label{
     </div>
 
     <div class="sec-label" style="margin-bottom:10px;">Data Export</div>
+    <div class="card" style="margin-bottom:10px;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        <div style="font-size:14px;font-weight:600;">Download staff accounts</div>
+      </div>
+      <div style="font-size:12px;color:var(--text2);margin-bottom:12px;line-height:1.6;">Export all staff usernames, passwords, emails, phone, position and permissions. Admin password required.</div>
+      <button class="btn btn-primary btn-full" onclick="openStaffExportVerify()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px;vertical-align:middle;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Download staff data
+      </button>
+    </div>
     <div class="card" style="margin-bottom:18px;">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
@@ -956,23 +967,14 @@ label{
         <button class="btn btn-sm" onclick="requestAdminAction('view')">View</button>
       </div>
       <div id="rv-pass-revealed" style="display:none;margin-bottom:10px;padding:10px 12px;background:var(--bg3);border-radius:var(--r);font-size:14px;font-family:'DM Mono',monospace;letter-spacing:.08em;"></div>
-      <!-- Change password -->
+      <!-- Change password via email verify -->
       <div style="border-top:1px solid var(--border);padding-top:12px;">
         <div style="display:flex;align-items:center;justify-content:space-between;">
-          <div style="font-size:13px;font-weight:500;">Change password</div>
-          <button class="btn btn-sm" onclick="requestAdminAction('change')">Change</button>
-        </div>
-        <div id="rv-change-pass-form" style="display:none;margin-top:10px;">
-          <div class="field" style="margin-bottom:8px;">
-            <label>New password</label>
-            <input type="password" id="rv-new-pass" placeholder="Enter new password"/>
+          <div>
+            <div style="font-size:13px;font-weight:500;">Change password</div>
+            <div style="font-size:11px;color:var(--text3);">Requires email verification</div>
           </div>
-          <div class="field" style="margin-bottom:8px;">
-            <label>Confirm new password</label>
-            <input type="password" id="rv-confirm-pass" placeholder="Confirm password"/>
-          </div>
-          <div id="rv-change-pass-msg"></div>
-          <button class="btn btn-primary btn-sm" style="width:100%;" onclick="doChangeRvPass()">Save new password</button>
+          <button class="btn btn-sm" onclick="openEmailVerifyForStore()">Change</button>
         </div>
       </div>
     </div>
@@ -1150,6 +1152,9 @@ label{
   <div class="topbar">
     <button class="back-btn" onclick="goTo('s-settings')">&#8592; Back</button>
     <div class="topbar-title">Staff accounts</div>
+    <button class="btn btn-sm" onclick="openStaffExportVerify()" style="padding:6px 10px;" title="Download staff data">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+    </button>
     <button class="btn btn-sm btn-primary" onclick="openAddStaff()">+ Add</button>
   </div>
   <div class="content">
@@ -1397,6 +1402,15 @@ label{
         <button class="btn btn-sm" onclick="sfViewPass()">View</button>
       </div>
       <div id="sf-pass-revealed" style="display:none;margin-bottom:10px;padding:10px 12px;background:var(--bg3);border-radius:var(--r);font-size:14px;font-family:'DM Mono',monospace;letter-spacing:.08em;"></div>
+      <div style="border-top:1px solid var(--border);padding-top:12px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <div>
+            <div style="font-size:13px;font-weight:500;">Change password</div>
+            <div style="font-size:11px;color:var(--text3);">Requires email verification</div>
+          </div>
+          <button class="btn btn-sm" onclick="openEmailVerifyForStaff()">Change</button>
+        </div>
+      </div>
     </div>
 
     <!-- Support -->
@@ -1454,6 +1468,60 @@ label{
       <button class="btn btn-primary btn-sm" style="flex:1;" onclick="saveResponseNote()">Save remark</button>
       <button class="btn btn-sm" style="flex:1;" onclick="document.getElementById('response-note-overlay').style.display='none'">Cancel</button>
     </div>
+  </div>
+</div>
+
+
+<!-- ======= EMAIL VERIFY CODE OVERLAY ======= -->
+<div id="email-verify-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:70;align-items:flex-end;justify-content:center;">
+  <div style="background:var(--bg);border-radius:20px 20px 0 0;padding:24px;width:100%;max-width:480px;">
+    <div style="font-size:17px;font-weight:700;margin-bottom:6px;" id="ev-title">Verify your email</div>
+    <div style="font-size:13px;color:var(--text2);margin-bottom:20px;" id="ev-subtitle">A 6-digit code was sent to your email</div>
+
+    <!-- Step 1: Enter email -->
+    <div id="ev-step1">
+      <div class="field" style="margin-bottom:10px;">
+        <label>Your email address</label>
+        <input type="email" id="ev-email" placeholder="Enter the email on your account"/>
+      </div>
+      <div id="ev-step1-msg"></div>
+      <button class="btn btn-primary btn-full" onclick="evSendCode()">Send verification code</button>
+    </div>
+
+    <!-- Step 2: Enter code + new password -->
+    <div id="ev-step2" style="display:none;">
+      <div style="background:var(--bg3);border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:13px;color:var(--text2);">
+        Code sent to <strong id="ev-sent-to"></strong>
+        <button onclick="document.getElementById('ev-step2').style.display='none';document.getElementById('ev-step1').style.display='';" style="font-size:12px;color:var(--accent);background:none;border:none;cursor:pointer;margin-left:6px;">Change</button>
+      </div>
+      <div class="field" style="margin-bottom:10px;">
+        <label>6-digit verification code</label>
+        <input type="text" id="ev-code" placeholder="000000" maxlength="6" inputmode="numeric" style="font-size:24px;letter-spacing:8px;text-align:center;font-weight:700;"/>
+      </div>
+      <div class="field" style="margin-bottom:10px;">
+        <label>New password</label>
+        <input type="password" id="ev-newpass" placeholder="Enter new password"/>
+      </div>
+      <div class="field" style="margin-bottom:14px;">
+        <label>Confirm new password</label>
+        <input type="password" id="ev-confirmpass" placeholder="Confirm new password"/>
+      </div>
+      <div id="ev-step2-msg"></div>
+      <button class="btn btn-primary btn-full" onclick="evVerifyAndChange()">Verify & change password</button>
+    </div>
+    <button onclick="document.getElementById('email-verify-overlay').style.display='none'" style="width:100%;margin-top:10px;padding:10px;background:none;border:none;color:var(--text3);cursor:pointer;font-size:14px;">Cancel</button>
+  </div>
+</div>
+
+<!-- ======= STAFF EXPORT VERIFY OVERLAY ======= -->
+<div id="staff-export-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:70;align-items:flex-end;justify-content:center;">
+  <div style="background:var(--bg);border-radius:20px 20px 0 0;padding:24px;width:100%;max-width:480px;">
+    <div style="font-size:17px;font-weight:700;margin-bottom:6px;">Download staff data</div>
+    <div style="font-size:13px;color:var(--text2);margin-bottom:16px;">Enter admin password to export staff credentials</div>
+    <div class="field"><label>Admin password</label><input type="password" id="staff-export-pass" placeholder="••••"/></div>
+    <div id="staff-export-msg"></div>
+    <button class="btn btn-primary btn-full" onclick="doStaffExportVerify()">Download</button>
+    <button onclick="document.getElementById('staff-export-overlay').style.display='none'" style="width:100%;margin-top:10px;padding:10px;background:none;border:none;color:var(--text3);cursor:pointer;font-size:14px;">Cancel</button>
   </div>
 </div>
 
@@ -5224,6 +5292,157 @@ function annClose(){
 document.addEventListener('DOMContentLoaded',()=>{ annInitEvents(); });
 
 
+
+/* ===== EMAIL VERIFY PASSWORD CHANGE ===== */
+let _evMode=null; // 'store' or 'staff'
+
+function openEmailVerifyForStore(){
+  _evMode='store';
+  document.getElementById('ev-title').textContent='Change store password';
+  document.getElementById('ev-subtitle').textContent='We\'ll send a 6-digit code to your notification email';
+  document.getElementById('ev-email').value=DB_RV_SETTINGS?.notifEmail||'';
+  document.getElementById('ev-step1').style.display='';
+  document.getElementById('ev-step2').style.display='none';
+  document.getElementById('ev-step1-msg').innerHTML='';
+  document.getElementById('ev-step2-msg').innerHTML='';
+  document.getElementById('email-verify-overlay').style.display='flex';
+}
+
+function openEmailVerifyForStaff(){
+  _evMode='staff';
+  document.getElementById('ev-title').textContent='Change staff password';
+  document.getElementById('ev-subtitle').textContent='We\'ll send a 6-digit code to your notification email';
+  const staff=DB.staffData||{};
+  document.getElementById('ev-email').value=staff.notif_email||'';
+  document.getElementById('ev-step1').style.display='';
+  document.getElementById('ev-step2').style.display='none';
+  document.getElementById('ev-step1-msg').innerHTML='';
+  document.getElementById('ev-step2-msg').innerHTML='';
+  document.getElementById('email-verify-overlay').style.display='flex';
+}
+
+async function evSendCode(){
+  const email=document.getElementById('ev-email').value.trim();
+  const msg=document.getElementById('ev-step1-msg');
+  if(!email||!email.includes('@')){ msg.innerHTML='<div class="alert alert-danger">Please enter a valid email address.</div>'; return; }
+  msg.innerHTML='<div class="alert alert-success">⏳ Sending code...</div>';
+  const result=await api('POST','/api/send-verify-code',{email});
+  if(result&&result.ok){
+    document.getElementById('ev-sent-to').textContent=email;
+    document.getElementById('ev-step1').style.display='none';
+    document.getElementById('ev-step2').style.display='';
+    document.getElementById('ev-code').value='';
+    document.getElementById('ev-newpass').value='';
+    document.getElementById('ev-confirmpass').value='';
+    document.getElementById('ev-step2-msg').innerHTML='';
+    setTimeout(()=>document.getElementById('ev-code').focus(),100);
+  } else {
+    msg.innerHTML=`<div class="alert alert-danger">${result?.error||'Failed to send. Check email address.'}</div>`;
+  }
+}
+
+async function evVerifyAndChange(){
+  const code=document.getElementById('ev-code').value.trim();
+  const newpass=document.getElementById('ev-newpass').value;
+  const confirmpass=document.getElementById('ev-confirmpass').value;
+  const email=document.getElementById('ev-sent-to').textContent;
+  const msg=document.getElementById('ev-step2-msg');
+  if(code.length!==6){ msg.innerHTML='<div class="alert alert-danger">Please enter the 6-digit code.</div>'; return; }
+  if(!newpass||newpass.length<4){ msg.innerHTML='<div class="alert alert-danger">Password must be at least 4 characters.</div>'; return; }
+  if(newpass!==confirmpass){ msg.innerHTML='<div class="alert alert-danger">Passwords do not match.</div>'; return; }
+  msg.innerHTML='<div class="alert alert-success">⏳ Verifying...</div>';
+  // Verify code
+  const verify=await api('POST','/api/verify-code',{email, code});
+  if(!verify||!verify.ok){ msg.innerHTML=`<div class="alert alert-danger">${verify?.error||'Invalid code. Please try again.'}</div>`; return; }
+  // Change password
+  msg.innerHTML='<div class="alert alert-success">⏳ Changing password...</div>';
+  if(_evMode==='store'){
+    const sid=DB.reviewerStoreId;
+    const result=await api('POST','/api/store-change-password',{store_id:sid, new_password:newpass});
+    if(result&&result.ok){
+      // Update local session
+      try{ const raw=localStorage.getItem('fh_session'); if(raw){ const s=JSON.parse(raw); s.password=newpass; localStorage.setItem('fh_session',JSON.stringify(s)); } }catch(e){}
+      msg.innerHTML='<div class="alert alert-success">✓ Password changed successfully!</div>';
+      setTimeout(()=>{ document.getElementById('email-verify-overlay').style.display='none'; },1500);
+    } else { msg.innerHTML='<div class="alert alert-danger">Failed to change password.</div>'; }
+  } else if(_evMode==='staff'){
+    const staff=DB.staffData||{};
+    const result=await api('POST','/api/staff-change-password',{staff_id:staff.staff_id||staff.id, new_password:newpass});
+    if(result&&result.ok){
+      if(DB.staffData) DB.staffData.password=newpass;
+      try{ const raw=localStorage.getItem('fh_session'); if(raw){ const s=JSON.parse(raw); if(s.staffData) s.staffData.password=newpass; localStorage.setItem('fh_session',JSON.stringify(s)); } }catch(e){}
+      msg.innerHTML='<div class="alert alert-success">✓ Password changed successfully!</div>';
+      setTimeout(()=>{ document.getElementById('email-verify-overlay').style.display='none'; },1500);
+    } else { msg.innerHTML='<div class="alert alert-danger">Failed to change password.</div>'; }
+  }
+}
+
+/* ===== STAFF EXPORT ===== */
+function openStaffExportVerify(){
+  document.getElementById('staff-export-pass').value='';
+  document.getElementById('staff-export-msg').innerHTML='';
+  document.getElementById('staff-export-overlay').style.display='flex';
+  setTimeout(()=>document.getElementById('staff-export-pass').focus(),100);
+}
+
+async function doStaffExportVerify(){
+  const pass=document.getElementById('staff-export-pass').value;
+  const msg=document.getElementById('staff-export-msg');
+  if(pass!==ADMIN_CREDS.password){ msg.innerHTML='<div class="alert alert-danger">Incorrect password.</div>'; return; }
+  document.getElementById('staff-export-overlay').style.display='none';
+  await doExportStaffData();
+}
+
+async function doExportStaffData(){
+  showToast('Fetching staff data...');
+  try {
+    const data=await api('GET','/api/export-data');
+    if(!data||data.error) throw new Error(data?.error||'Failed');
+    const nl=String.fromCharCode(10);
+    const L=[];
+    const line=t=>L.push(t||'');
+    const now=new Date();
+    const dd=String(now.getDate()).padStart(2,'0'),mm=String(now.getMonth()+1).padStart(2,'0'),yyyy=now.getFullYear();
+    const hh=String(now.getHours()).padStart(2,'0'),min=String(now.getMinutes()).padStart(2,'0');
+    line('========================================');
+    line('  FEEDBACK HUB — Staff Data Export');
+    line('  Exported : '+dd+'-'+mm+'-'+yyyy+' '+hh+':'+min);
+    line('  Admin    : '+(data.admin?.username||'-'));
+    line('========================================');
+    line();
+    line('  STAFF ACCOUNTS ('+((data.staff||[]).length)+')');
+    line('----------------------------------------');
+    (data.staff||[]).forEach((s,i)=>{
+      line();
+      line('  Staff #'+(i+1)+': '+s.name);
+      line('  Position : '+s.position);
+      line('  Company  : '+s.company);
+      line('  Phone    : '+s.phone);
+      line('  Location : '+s.location);
+      line('  Username : '+s.username);
+      line('  Password : '+s.password);
+      line('  Email    : '+s.notif_email);
+      line('  Permission: '+s.permission);
+      const bids=JSON.parse(s.brand_ids||'[]');
+      line('  Brands   : '+(bids.length===0?'All brands':bids.join(', ')));
+      line('  Created  : '+s.created_at);
+    });
+    line();
+    line('========================================');
+    line('  END OF STAFF EXPORT');
+    line('========================================');
+    const txt=L.join(nl);
+    const blob=new Blob([txt],{type:'text/plain;charset=utf-8'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url; a.download='feedback-hub-staff-'+dd+'-'+mm+'-'+yyyy+'.txt';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast('Staff data downloaded!');
+  } catch(e){ showToast('Export failed: '+e.message); }
+}
+
+
 /* ===== EXPORT DATA ===== */
 function openExportVerify(){
   document.getElementById('export-admin-pass').value='';
@@ -5337,6 +5556,23 @@ async function doExportData(){
 
   // ── SUMMARY ────────────────────────────────────
   line('========================================');
+  // Staff section
+  if(data.staff&&data.staff.length){
+    line();
+    line('========================================');
+    line('  STAFF ACCOUNTS ('+data.staff.length+')');
+    line('----------------------------------------');
+    data.staff.forEach((s,i)=>{
+      line();
+      line('  Staff #'+(i+1)+': '+s.name);
+      line('  Position : '+s.position);
+      line('  Username : '+s.username);
+      line('  Password : '+s.password);
+      line('  Email    : '+s.notif_email);
+      line('  Permission: '+s.permission);
+    });
+  }
+
   line('  SUMMARY');
   line('========================================');
   line('  Total brands  : ' + data.brands.length);
