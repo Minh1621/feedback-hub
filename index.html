@@ -2866,32 +2866,48 @@ function viewFeedback(rid){
   r.feedbacks.forEach(f=>{ if(!_fbMapDetail[f.storeId]||f.date>=_fbMapDetail[f.storeId].date) _fbMapDetail[f.storeId]=f; });
   const storeItemStatus=targetStores.map(s=>{
     const fb=_fbMapDetail[s.id];
-    if(!fb) return {store:s,responded:0,total:totalItems,pct:0};
-    const responded=(fb.itemFeedbacks||[]).filter(it=>it.note||(it.photos&&it.photos.length)).length;
+    if(!fb) return {store:s,responded:0,rejected:0,total:totalItems,pct:0};
+    let responded=0, rejected=0;
+    (fb.itemFeedbacks||[]).forEach(it=>{
+      const hasContent=!!(it.note||(it.photos&&it.photos.length));
+      const hasRemark=!!(fb.adminRemarks?.[it.refId+'_list']?.length || fb.adminRemarks?.[it.refId]);
+      if(hasRemark) rejected++;
+      else if(hasContent) responded++;
+    });
     totalResponded+=responded;
-    return {store:s,responded,total:totalItems,pct:totalItems?Math.round(responded/totalItems*100):0};
+    const effective=responded; // rejected counts as not responded for percentage
+    return {store:s,responded:effective,rejected,total:totalItems,pct:totalItems?Math.round(effective/totalItems*100):0};
   });
   const overallPct=totalPossible?Math.round(totalResponded/totalPossible*100):0;
+  const totalRejected=storeItemStatus.reduce((a,s)=>a+s.rejected,0);
 
   document.getElementById('fb-summary').innerHTML=`
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);padding:14px 16px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;">
         <span style="font-size:13px;color:var(--text2);">Item responses</span>
         <span style="font-size:20px;font-weight:700;">${totalResponded}<span style="font-size:13px;font-weight:400;color:var(--text2);"> / ${totalPossible}</span></span>
       </div>
-      <div style="font-size:11px;color:var(--text3);margin-bottom:8px;">${totalItems} item${totalItems>1?'s':''} per store · ${ts} store${ts>1?'s':''}</div>
-      <div class="prog-wrap" style="height:8px;"><div class="prog-bar" style="width:${overallPct}%;background:${b.color};height:8px;"></div></div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+        <span style="font-size:11px;color:var(--text3);">${totalItems} item${totalItems>1?'s':''} per store · ${ts} store${ts>1?'s':''}</span>
+        ${totalRejected>0?`<span style="font-size:11px;font-weight:600;color:var(--danger);padding:1px 8px;border-radius:20px;background:var(--alert-danger-bg);border:1px solid var(--alert-danger-border);">✕ ${totalRejected} rejected</span>`:''}
+      </div>
+      <div class="prog-wrap" style="height:8px;">
+        <div class="prog-bar" style="width:${overallPct}%;background:${b.color};height:8px;"></div>
+      </div>
       <div style="text-align:right;font-size:11px;color:var(--text3);margin-top:3px;margin-bottom:10px;">${overallPct}%</div>
       <div style="display:flex;flex-direction:column;gap:8px;">
-        ${storeItemStatus.map(({store,responded,total,pct})=>`
+        ${storeItemStatus.map(({store,responded,rejected,total,pct})=>`
           <div style="display:flex;align-items:center;gap:8px;">
             <div style="width:8px;height:8px;border-radius:50%;background:${store.color};flex-shrink:0;"></div>
             <span style="font-size:12px;color:var(--text);flex:1;">${store.name}</span>
-            <span style="font-size:11px;color:var(--text2);">${responded}/${total}</span>
-            <div style="width:56px;background:var(--bg3);border-radius:3px;height:5px;flex-shrink:0;">
-              <div style="width:${pct}%;background:${responded===total?'var(--success)':responded>0?'var(--accent)':'var(--border2)'};height:5px;border-radius:3px;transition:width .5s;"></div>
+            <div style="display:flex;align-items:center;gap:5px;">
+              <span style="font-size:11px;color:var(--text2);">${responded}/${total}</span>
+              ${rejected>0?`<span style="font-size:11px;font-weight:700;color:var(--danger);">✕${rejected}</span>`:''}
             </div>
-            <span style="font-size:10px;font-weight:600;min-width:30px;text-align:right;color:${responded===total?'var(--success)':'var(--accent)'}">${pct}%</span>
+            <div style="width:56px;background:var(--bg3);border-radius:3px;height:5px;flex-shrink:0;">
+              <div style="width:${pct}%;background:${pct===100?'var(--success)':pct>0?'var(--accent)':'var(--border2)'};height:5px;border-radius:3px;transition:width .5s;"></div>
+            </div>
+            <span style="font-size:10px;font-weight:600;min-width:30px;text-align:right;color:${pct===100?'var(--success)':rejected>0?'var(--danger)':'var(--accent)'}">${pct}%</span>
           </div>`).join('')}
       </div>
     </div>`;
@@ -2905,14 +2921,14 @@ function viewFeedback(rid){
       const latestFbMap={};
       r.feedbacks.forEach(f=>{ if(!latestFbMap[f.storeId]||f.date>=latestFbMap[f.storeId].date) latestFbMap[f.storeId]=f; });
       const latestFbs=Object.values(latestFbMap);
-      // Count responses — only stores that have actual content (note OR photos) AND no remark (remark = reset)
-      const responses=latestFbs.map(f=>{
-        const s=b.stores.find(s=>s.id===f.storeId);
+      // Count responses and rejections for this ref item
+      let respCount=0, rejectCount=0;
+      latestFbs.forEach(f=>{
         const it=f.itemFeedbacks?f.itemFeedbacks.find(it=>it.refId===ref.id):null;
         const hasRemark=!!(f.adminRemarks?.[ref.id+'_list']?.length || f.adminRemarks?.[ref.id]);
-        return {store:s, item:it, date:f.date, hasRemark};
-      }).filter(x=>x.item && (x.item.note||(x.item.photos&&x.item.photos.length)) && !x.hasRemark);
-      const respCount=responses.length;
+        if(hasRemark){ rejectCount++; }
+        else if(it&&(it.note||(it.photos&&it.photos.length))){ respCount++; }
+      });
       return `<div style="background:var(--bg2);border:0.5px solid var(--border);border-radius:var(--rl);margin-bottom:10px;overflow:hidden;">
         <!-- Header row — tap to toggle -->
         <div onclick="toggleAdminItem('ai_${ref.id}')" style="display:flex;align-items:center;gap:10px;padding:13px 14px;cursor:pointer;user-select:none;">
@@ -2924,7 +2940,9 @@ function viewFeedback(rid){
             ${ref.desc?`<div style="font-size:12px;color:var(--text2);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${ref.desc}</div>`:''}
           </div>
           <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
-            ${respCount?`<span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;background:var(--badge-done-bg);color:var(--success);">${respCount} response${respCount>1?'s':''}</span>`:`<span style="font-size:11px;color:var(--text3);">No responses</span>`}
+            ${respCount?`<span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;background:var(--badge-done-bg);color:var(--success);">${respCount} response${respCount>1?'s':''}</span>`:''}
+            ${rejectCount?`<span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;background:var(--alert-danger-bg);color:var(--danger);">✕ ${rejectCount} rejected</span>`:''}
+            ${!respCount&&!rejectCount?`<span style="font-size:11px;color:var(--text3);">No responses</span>`:''}
             <div id="ai_arrow_${ref.id}" style="font-size:11px;color:var(--text3);transition:transform .2s;">▼</div>
           </div>
         </div>
