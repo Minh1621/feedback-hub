@@ -2438,7 +2438,7 @@ function renderHome(_brandsOverride){
         const badgeMap = {checking:'badge-pending',partial:'badge-partial',pending:'badge-none'};
         const labelMap = {checking:'Checking',partial:'Partial',pending:'Pending'};
         const bc = badgeMap[st]||'badge-none', bt = labelMap[st]||'Pending';
-        return `<div class="card card-click" style="margin-bottom:10px;" onclick="openBrand('${b.id}');setTimeout(()=>viewFeedback('${r.id}'),80);">
+        return `<div class="card card-click" style="margin-bottom:10px;" onclick="DB.currentBrandId='${b.id}';openBrand('${b.id}');setTimeout(()=>viewFeedback('${r.id}'),120);">
           <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
             <div>
               <div style="font-size:11px;color:var(--text3);margin-bottom:3px;">${b.name}</div>
@@ -2543,6 +2543,7 @@ function openBrand(id){
 }
 function renderBrandHero(){
   const b=brand();
+  if(!b) return;
   const logoEl=b.logo?`<img src="${b.logo}" style="width:100%;height:100%;object-fit:cover;border-radius:10px;"/>`:`<span style="font-size:24px;">${b.logoText||'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>'}</span>`;
   document.getElementById('brand-hero').innerHTML=`
     <div style="display:flex;align-items:center;gap:14px;padding:14px;background:${b.color}14;border-radius:var(--rl);border:1px solid ${b.color}30;">
@@ -2568,6 +2569,7 @@ function setBF(f){
 }
 function renderBrandReports(){
   const b=brand();
+  if(!b){ document.getElementById('brand-report-list').innerHTML='<div class="empty">No brand selected</div>'; return; }
   let list=[...b.reports];
 
   // 0=pending, 1=partial, 2=checking, 3=complete
@@ -3202,7 +3204,16 @@ function closeConfirm(){
 }
 function viewFeedback(rid){
   DB.currentReportId=rid;
-  const b=brand(), r=b.reports.find(r=>r.id===rid);
+  // Find brand containing this report — search all brands if needed
+  let b=brand();
+  if(!b || !b.reports.find(r=>r.id===rid)){
+    for(const br of DB.brands){
+      if(br.reports.find(r=>r.id===rid)){ b=br; DB.currentBrandId=br.id; break; }
+    }
+  }
+  if(!b){ console.warn('viewFeedback: brand not found for report',rid); return; }
+  const r=b.reports.find(r=>r.id===rid);
+  if(!r){ console.warn('viewFeedback: report not found',rid); return; }
   document.getElementById('fb-screen-title').textContent=r.title;
   document.getElementById('fb-filename').textContent=r.file;
 
