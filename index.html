@@ -3755,6 +3755,12 @@ function openReviewerReport(rid){
         _adminRemark: isRejected
           ? (myFb.adminRemarks?.[ref.id+'_list']?.map(r=>r.text).join('; ') || myFb.adminRemarks?.[ref.id] || '')
           : '',
+        // Full remark list for timeline display
+        _allRemarks: isRejected
+          ? (myFb.adminRemarks?.[ref.id+'_list']?.length
+              ? myFb.adminRemarks[ref.id+'_list']
+              : (myFb.adminRemarks?.[ref.id] ? [{text:myFb.adminRemarks[ref.id], author:myFb.adminRemarks?._authors?.[ref.id]||'Staff', date:''}] : []))
+          : [],
         // Keep previous response visible so store sees what was rejected
         _prevNote: isRejected ? (existing.note||'') : '',
         _prevPhotos: isRejected ? [...(existing.photos||[])] : []
@@ -3808,16 +3814,20 @@ function renderItemForms(r, brandColor){
     return `
     <div style="background:var(--bg2);border:1.5px solid ${_isRejected?'var(--danger)':'var(--border)'};border-radius:var(--rl);margin-bottom:10px;overflow:hidden;">
       ${_isRejected ? `
-      <!-- Rejection header -->
+      <!-- Rejection timeline — all rounds visible -->
       <div style="background:var(--alert-danger-bg);border-bottom:1px solid var(--alert-danger-border);padding:10px 14px;">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:${(_itFb._prevNote||(_itFb._prevPhotos&&_itFb._prevPhotos.length))?'10px':'0'};">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-          <div style="font-size:12px;font-weight:600;color:var(--danger);">Rejected — please resubmit${_remarkText ? ': ' + _remarkText : ''}</div>
-        </div>
-        <!-- Previous response display -->
+        ${(_itFb._allRemarks||[]).map((rm,rmi)=>`
+        <div style="margin-bottom:8px;">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            <span style="font-size:11px;font-weight:700;color:var(--danger);">Rejected by ${rm.author||'Staff'}${rm.date?' · '+rm.date:''}</span>
+          </div>
+          <div style="font-size:13px;color:var(--danger);font-weight:600;padding-left:18px;margin-bottom:${(_itFb._prevNote||(_itFb._prevPhotos&&_itFb._prevPhotos.length))&&rmi===(_itFb._allRemarks.length-1)?'8px':'0'};">${rm.text}</div>
+        </div>`).join('')}
+        <!-- Previous response (what was rejected) -->
         ${(_itFb._prevNote||(_itFb._prevPhotos&&_itFb._prevPhotos.length)) ? `
-        <div style="background:rgba(255,255,255,.6);border-radius:8px;padding:10px 12px;border:1px solid var(--alert-danger-border);">
-          <div style="font-size:10px;font-weight:700;color:var(--danger);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;">Your previous response</div>
+        <div style="background:rgba(255,255,255,.55);border-radius:8px;padding:10px 12px;border:1px solid var(--alert-danger-border);">
+          <div style="font-size:10px;font-weight:700;color:var(--danger);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;">Your previous response (rejected)</div>
           ${_itFb._prevNote ? `<div style="font-size:13px;color:var(--text);line-height:1.5;margin-bottom:${_itFb._prevPhotos&&_itFb._prevPhotos.length?'8px':'0'};">${_itFb._prevNote}</div>` : ''}
           ${_itFb._prevPhotos&&_itFb._prevPhotos.length ? `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:5px;">${_itFb._prevPhotos.map(p=>`<div style="aspect-ratio:1;border-radius:6px;overflow:hidden;"><img src="${p}" style="width:100%;height:100%;object-fit:cover;cursor:pointer;" onclick="openLightbox('${p}')"/></div>`).join('')}</div>` : ''}
         </div>` : ''}
@@ -4033,7 +4043,7 @@ async function saveReviewerDraft(){
     const preservedRemarks = existing.adminRemarks || {};
     // Strip UI-only fields before sending to API
     const itemsForApi = feedbackObj.itemFeedbacks.map(it=>{
-      const {_rejected, _adminRemark, _prevNote, _prevPhotos, ...clean} = it;
+      const {_rejected, _adminRemark, _prevNote, _prevPhotos, _allRemarks, ...clean} = it;
       return clean;
     });
     await api('PUT',`/api/feedbacks/${existing.id}`,{
@@ -4054,7 +4064,7 @@ async function saveReviewerDraft(){
   } else {
     // Create new draft — no notification
     const itemsForNewApi = feedbackObj.itemFeedbacks.map(it=>{
-      const {_rejected, _adminRemark, _prevNote, _prevPhotos, ...clean} = it;
+      const {_rejected, _adminRemark, _prevNote, _prevPhotos, _allRemarks, ...clean} = it;
       return clean;
     });
     const result=await api('POST','/api/feedbacks/draft',{...feedbackObj, itemFeedbacks:itemsForNewApi, report_id:r.id});
@@ -4083,7 +4093,7 @@ async function submitReviewerFeedback(){
   const b=reviewerBrand(), s=reviewerStore();
   const r=b.reports.find(r=>r.id===DB.reviewerReportId);
   const newText=DB.itemFeedbacks.map((it,i)=>it.note?`Item ${i+1}: ${it.note}`:'').filter(Boolean).join(' | ');
-  const newItems=DB.itemFeedbacks.map(it=>{ const {_rejected,_adminRemark,_prevNote,_prevPhotos,...clean}=it; return {...clean,photos:[...it.photos]}; });
+  const newItems=DB.itemFeedbacks.map(it=>{ const {_rejected,_adminRemark,_prevNote,_prevPhotos,_allRemarks,...clean}=it; return {...clean,photos:[...it.photos]}; });
   const newDate=new Date().toISOString().slice(0,10);
   msg.innerHTML='<div class="alert alert-success">⏳ Submitting...</div>';
 
@@ -5713,13 +5723,14 @@ function buildSortedResponsesHTML(ref, r, b, rid){
     const fb=latestFbMap[store.id]||null;
     const item=fb?.itemFeedbacks?.find(it=>it.refId===ref.id)||null;
     const hasResponse=item&&(item.note||(item.photos&&item.photos.length));
-    // remarks is now an array of {text, author, date}
     const remarks=fb?.adminRemarks?.[ref.id+'_list']||[];
-    // legacy single remark compat
     const legacyRemark=fb?.adminRemarks?.[ref.id]||null;
     const legacyAuthor=fb?.adminRemarks?._authors?.[ref.id]||null;
     const allRemarks=remarks.length>0?remarks:(legacyRemark?[{text:legacyRemark,author:legacyAuthor||'Staff',date:''}]:[]);
-    return {store, fb, item, hasResponse, allRemarks};
+    // Build timeline of events for this ref item from fb.timeline
+    const timeline=Array.isArray(fb?.timeline)?fb.timeline:[];
+    const itemEvents=timeline.filter(t=>t.refId===ref.id||(t.type==='rejected'&&!t.refId)||(t.type==='resubmitted'&&!t.refId));
+    return {store, fb, item, hasResponse, allRemarks, itemEvents};
   });
 
   // Sort: remarked first, then no response, then responded
@@ -5736,53 +5747,75 @@ function buildSortedResponsesHTML(ref, r, b, rid){
     const isLast=ei===entries.length-1;
     const fbId=fb?.id||'';
     const hasRemarks=allRemarks.length>0;
+    const isRejectedNow=hasRemarks; // has active remark = currently rejected
 
-    // Multi-remark list with delete button per remark
-    const remarksHTML=hasRemarks?allRemarks.map((rm,rmi)=>{
+    // ── Build chronological history: remarks interleaved with response ──────
+    // Each remark round gets its own block; after each remark the store's
+    // current response is shown. All rounds stay visible permanently.
+    let historyHTML='';
+
+    // Show all remarks (rejection rounds) with their text
+    allRemarks.forEach((rm,rmi)=>{
       const initials=(rm.author||'?').split(' ').map(w=>w[0]).filter(Boolean).slice(0,2).join('').toUpperCase();
-      return `<div style="margin-bottom:7px;padding:10px 13px;background:#fffbf0;border-left:3px solid #f59e0b;border-radius:0 8px 8px 0;">
-        <div style="display:flex;align-items:center;gap:7px;margin-bottom:6px;">
-          <div style="width:22px;height:22px;border-radius:50%;background:#f59e0b;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-            <span style="font-size:9px;font-weight:700;color:#fff;">${initials}</span>
+      // Annotated photos stored per-remark in adminRemarks[ref.id+'_photos_'+rmi] or just the ref photos
+      // Use ref.photos as the admin's reference/annotated photos for now
+      historyHTML+=`
+      <div style="margin-bottom:10px;">
+        <!-- Remark block -->
+        <div style="padding:10px 13px;background:#fffbf0;border-left:3px solid #f59e0b;border-radius:0 8px 8px 0;margin-bottom:6px;">
+          <div style="display:flex;align-items:center;gap:7px;margin-bottom:6px;">
+            <div style="width:22px;height:22px;border-radius:50%;background:#f59e0b;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+              <span style="font-size:9px;font-weight:700;color:#fff;">${initials}</span>
+            </div>
+            <span style="font-size:12px;font-weight:600;color:#92400e;flex:1;">${rm.author||'Staff'}</span>
+            ${rm.date?`<span style="font-size:10px;color:#b45309;">${rm.date}</span>`:''}
+            <span style="font-size:10px;font-weight:600;padding:1px 7px;border-radius:20px;background:#fde68a;color:#78350f;flex-shrink:0;">Remark</span>
+            ${canAct?`<button onclick="event.stopPropagation();deleteRemark('${fbId}','${ref.id}','${store.id}','${rid}',${rmi})" title="Delete remark" style="width:20px;height:20px;border-radius:50%;border:none;background:rgba(180,83,9,.15);color:#b45309;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;padding:0;">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>`:''}
           </div>
-          <span style="font-size:12px;font-weight:600;color:#92400e;flex:1;">${rm.author||'Staff'}</span>
-          ${rm.date?`<span style="font-size:10px;color:#b45309;">${rm.date}</span>`:''}
-          <span style="font-size:10px;font-weight:600;padding:1px 7px;border-radius:20px;background:#fde68a;color:#78350f;flex-shrink:0;">Remark</span>
-          <button onclick="event.stopPropagation();deleteRemark('${fbId}','${ref.id}','${store.id}','${rid}',${rmi})" title="Delete remark" style="width:20px;height:20px;border-radius:50%;border:none;background:rgba(180,83,9,.15);color:#b45309;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;padding:0;">
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-          </button>
+          <div style="font-size:13px;color:#78350f;line-height:1.6;padding-left:29px;">${rm.text}</div>
         </div>
-        <div style="font-size:13px;color:#78350f;line-height:1.6;padding-left:29px;">${rm.text}</div>
       </div>`;
-    }).join(''):'';
+    });
 
-    // Submit to store button removed — now shown once at bottom of the report
-
-    const clickHandler=canAct&&(hasResponse||fb||hasRemarks)?`onclick="openRespAction('${fbId}','${ref.id}','${store.id}','${rid}','${store.name}','${ref.name||'Item'}')" style="cursor:pointer;"`:'';
-
-    return `<div ${clickHandler} style="padding:12px 0 ${hasResponse&&item?.photos?.length?'14px':'12px'};${!isLast?'border-bottom:0.5px solid var(--border);':''}">
-      <!-- Store header row -->
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:${hasRemarks||hasResponse?'10px':'0'};">
-        <div style="width:8px;height:8px;border-radius:50%;background:${storeColor};flex-shrink:0;"></div>
-        <span style="font-size:13px;font-weight:600;flex:1;">${store.name}</span>
-        ${fb&&fb.date?`<span style="font-size:11px;color:var(--text3);">${fb.date}</span>`:''}
-        ${!hasResponse&&!hasRemarks?`<span style="font-size:11px;padding:2px 8px;border-radius:20px;background:var(--bg3);color:var(--text3);">No response</span>`:''}
-        ${hasRemarks?`<span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;background:#fff8e1;color:#92400e;display:flex;align-items:center;gap:3px;"><svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg> ${allRemarks.length} remark${allRemarks.length>1?'s':''}</span>`:''}
-        ${canAct&&(hasResponse||fb||hasRemarks)?`<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>`:''}
-      </div>
-      <!-- Remarks list -->
-      ${remarksHTML}
-      <!-- Store response text -->
-      ${hasResponse&&item.note?`<div style="font-size:13px;color:var(--text);line-height:1.6;margin-bottom:8px;padding-left:16px;border-left:2px solid var(--border2);margin-top:${hasRemarks?'8px':'0'}">${item.note}</div>`:''}
-      <!-- Photos -->
+    // ── Store's current response (photos + note) always shown at bottom ──
+    const responseBlock=`
+      ${hasResponse&&item.note?`<div style="font-size:13px;color:var(--text);line-height:1.6;margin-bottom:8px;padding-left:16px;border-left:2px solid ${isRejectedNow?'var(--danger)':'var(--border2)'};">${item.note}</div>`:''}
       ${hasResponse&&item.photos&&item.photos.length?`
         <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:4px;padding-bottom:4px;">
           ${item.photos.map((p,pi)=>`
             <div style="aspect-ratio:1;border-radius:8px;overflow:hidden;position:relative;">
               <img src="${p}" style="width:100%;height:100%;object-fit:cover;cursor:pointer;" onclick="event.stopPropagation();openLightbox('${p}')"/>
-              <button onclick="event.stopPropagation();openAnnotator('${p}','${fbId}','${ref.id}',${pi})" title="Annotate" style="position:absolute;top:3px;right:3px;background:rgba(0,0,0,.6);border:none;border-radius:6px;color:#fff;cursor:pointer;padding:4px;display:flex;align-items:center;justify-content:center;width:24px;height:24px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg></button>
+              ${canAct?`<button onclick="event.stopPropagation();openAnnotator('${p}','${fbId}','${ref.id}',${pi})" title="Annotate" style="position:absolute;top:3px;right:3px;background:rgba(0,0,0,.6);border:none;border-radius:6px;color:#fff;cursor:pointer;padding:4px;display:flex;align-items:center;justify-content:center;width:24px;height:24px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg></button>`:''}
             </div>`).join('')}
-        </div>`:''}
+        </div>`:''}`;
+
+    // Status label for header
+    const statusLabel=isRejectedNow
+      ? `<span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;background:var(--alert-danger-bg);color:var(--danger);display:flex;align-items:center;gap:3px;flex-shrink:0;">✕ ${allRemarks.length} remark${allRemarks.length>1?'s':''}</span>`
+      : hasResponse
+        ? `<span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;background:var(--badge-done-bg);color:var(--success);flex-shrink:0;">✓ Responded</span>`
+        : `<span style="font-size:11px;padding:2px 8px;border-radius:20px;background:var(--bg3);color:var(--text3);flex-shrink:0;">No response</span>`;
+
+    const clickHandler=canAct&&(hasResponse||fb||hasRemarks)
+      ? `onclick="openRespAction('${fbId}','${ref.id}','${store.id}','${rid}','${store.name}','${ref.name||'Item'}')" style="cursor:pointer;"`:'';
+
+    return `<div style="padding:12px 0;${!isLast?'border-bottom:0.5px solid var(--border);':''}">
+      <!-- Store header row -->
+      <div ${clickHandler} style="display:flex;align-items:center;gap:8px;margin-bottom:${hasRemarks||hasResponse?'10px':'0'};">
+        <div style="width:8px;height:8px;border-radius:50%;background:${storeColor};flex-shrink:0;"></div>
+        <span style="font-size:13px;font-weight:600;flex:1;">${store.name}</span>
+        ${fb&&fb.date?`<span style="font-size:11px;color:var(--text3);">${fb.date}</span>`:''}
+        ${statusLabel}
+        ${canAct&&(hasResponse||fb||hasRemarks)?`<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>`:''}
+      </div>
+      <!-- Full history: remarks then current response -->
+      ${historyHTML}
+      ${(hasRemarks||hasResponse)?`<div style="background:var(--bg3);border-radius:10px;padding:10px 12px;margin-top:${hasRemarks?'4px':'0'};">
+        ${hasRemarks?`<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;">Store's latest response</div>`:''}
+        ${responseBlock||'<div style="font-size:12px;color:var(--text3);font-style:italic;">No response submitted yet for this rejection</div>'}
+      </div>`:''}
     </div>`;
   }).join('') + '</div>';
 }
