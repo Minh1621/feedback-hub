@@ -1409,6 +1409,54 @@ label{
   </div>
 </div>
 
+
+<!-- ======= PHOTO ANNOTATOR ======= -->
+<div id="photo-annotator-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.95);z-index:100;flex-direction:column;">
+  <!-- Toolbar -->
+  <div style="display:flex;align-items:center;gap:6px;padding:10px 12px;background:#1a1a2e;flex-shrink:0;overflow-x:auto;">
+    <!-- Tool buttons -->
+    <button id="ann-tool-pen"    onclick="annSetTool('pen')"    title="Pen" style="width:36px;height:36px;border-radius:8px;border:2px solid #7c6fff;background:#7c6fff;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg></button>
+    <button id="ann-tool-rect"   onclick="annSetTool('rect')"   title="Rectangle" style="width:36px;height:36px;border-radius:8px;border:2px solid #444;background:#222;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><rect x="3" y="3" width="18" height="18" rx="2"/></svg></button>
+    <button id="ann-tool-circle" onclick="annSetTool('circle')" title="Circle" style="width:36px;height:36px;border-radius:8px;border:2px solid #444;background:#222;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><circle cx="12" cy="12" r="9"/></svg></button>
+    <button id="ann-tool-arrow"  onclick="annSetTool('arrow')"  title="Arrow" style="width:36px;height:36px;border-radius:8px;border:2px solid #444;background:#222;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><line x1="5" y1="19" x2="19" y2="5"/><polyline points="19 12 19 5 12 5"/></svg></button>
+    <button id="ann-tool-text"   onclick="annSetTool('text')"   title="Text" style="width:36px;height:36px;border-radius:8px;border:2px solid #444;background:#222;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg></button>
+    <div style="width:1px;height:28px;background:#444;flex-shrink:0;"></div>
+    <!-- Color swatches -->
+    <div style="display:flex;gap:4px;flex-shrink:0;">
+      ${['#ef4444','#f59e0b','#22c55e','#3b82f6','#fff','#000'].map(c=>`<div onclick="annSetColor('${c}')" style="width:22px;height:22px;border-radius:50%;background:${c};cursor:pointer;border:2px solid transparent;" class="ann-color-dot"></div>`).join('')}
+    </div>
+    <div style="width:1px;height:28px;background:#444;flex-shrink:0;"></div>
+    <!-- Stroke width -->
+    <select id="ann-stroke" onchange="annSetStroke(this.value)" style="height:32px;border-radius:6px;background:#222;color:#fff;border:1px solid #444;padding:0 6px;font-size:12px;flex-shrink:0;">
+      <option value="2">Thin</option>
+      <option value="4" selected>Normal</option>
+      <option value="8">Thick</option>
+    </select>
+    <div style="flex:1;"></div>
+    <button onclick="annUndo()" style="width:36px;height:36px;border-radius:8px;border:1px solid #444;background:#222;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#fff;flex-shrink:0;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg></button>
+    <button onclick="annSave()" style="padding:0 14px;height:36px;border-radius:8px;background:#7c6fff;border:none;color:#fff;font-size:13px;font-weight:600;cursor:pointer;flex-shrink:0;">Save</button>
+    <button onclick="annClose()" style="width:36px;height:36px;border-radius:8px;border:1px solid #444;background:#222;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#aaa;flex-shrink:0;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+  </div>
+  <!-- Canvas area -->
+  <div style="flex:1;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;" id="ann-canvas-wrap">
+    <canvas id="ann-canvas" style="max-width:100%;max-height:100%;cursor:crosshair;touch-action:none;"></canvas>
+    <input id="ann-text-input" type="text" placeholder="Type text..." style="display:none;position:absolute;background:rgba(0,0,0,.7);color:#fff;border:2px solid #7c6fff;border-radius:6px;padding:4px 8px;font-size:14px;outline:none;min-width:100px;"/>
+  </div>
+</div>
+
+<!-- ======= ADMIN RESPONSE NOTE OVERLAY ======= -->
+<div id="response-note-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:60;align-items:flex-end;justify-content:center;">
+  <div style="background:var(--bg);border-radius:20px 20px 0 0;padding:20px;width:100%;max-width:480px;max-height:80vh;overflow-y:auto;">
+    <div style="font-size:16px;font-weight:700;margin-bottom:14px;">Add admin remark</div>
+    <textarea id="rn-text" placeholder="Write your remark for this store..." style="min-height:100px;margin-bottom:12px;"></textarea>
+    <div id="rn-msg"></div>
+    <div style="display:flex;gap:10px;">
+      <button class="btn btn-primary btn-sm" style="flex:1;" onclick="saveResponseNote()">Save remark</button>
+      <button class="btn btn-sm" style="flex:1;" onclick="document.getElementById('response-note-overlay').style.display='none'">Cancel</button>
+    </div>
+  </div>
+</div>
+
 </div><!-- /wrap -->
 <script>
 /* ===== SCORE HELPER ===== */
@@ -2642,20 +2690,10 @@ function viewFeedback(rid){
               <button class="btn btn-sm" onclick="toggleEditRef('${ref.id}','${rid}')">Cancel</button>
             </div>
           </div>
-          <!-- Store responses for this item -->
-          ${responses.length?`<div style="padding:12px 14px;border-top:1px solid var(--border);">
-            <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;">Store responses</div>
-            ${responses.map(({store,item,date})=>`
-              <div style="padding:10px 0;border-bottom:1px solid var(--border);">
-                <div style="display:flex;align-items:center;gap:7px;margin-bottom:6px;">
-                  <div class="dot" style="background:${store?store.color:'#888'}"></div>
-                  <strong style="font-size:13px;">${store?store.name:'Unknown'}</strong>
-                  <span style="font-size:11px;color:var(--text3);">${date}</span>
-                </div>
-                ${item.note?`<div style="font-size:13px;color:var(--text);line-height:1.5;">${item.note}</div>`:'<div style="font-size:12px;color:var(--text3);">No note</div>'}
-                ${item.photos&&item.photos.length?`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-top:7px;">${item.photos.map(p=>`<div style="aspect-ratio:1;border-radius:7px;overflow:hidden;"><img src="${p}" style="width:100%;height:100%;object-fit:cover;cursor:pointer;" onclick="openLightbox('${p}')"/></div>`).join('')}</div>`:''}
-              </div>`).join('')}
-          </div>`:'<div style="padding:12px 14px;border-top:1px solid var(--border);font-size:13px;color:var(--text3);">No responses yet</div>'}
+          <!-- Store responses — sorted: admin remarks first, then no response, then responded -->
+          <div style="border-top:1px solid var(--border);">
+            ${buildSortedResponsesHTML(ref, r, b, rid)}
+          </div>
         </div>
       </div>`;
     }).join('');
@@ -4841,6 +4879,349 @@ async function doDeleteStaff(){
   renderStaffList();
   goTo('s-staff-list');
 }
+
+
+
+/* ===== RESPONSE MANAGEMENT ===== */
+
+function buildSortedResponsesHTML(ref, r, b, rid){
+  const latestFbMap={};
+  r.feedbacks.forEach(f=>{if(!latestFbMap[f.storeId]||f.date>=latestFbMap[f.storeId].date) latestFbMap[f.storeId]=f;});
+  const targetStores=r.storeId?b.stores.filter(s=>s.id===r.storeId):b.stores;
+  const canAct=canEdit()||(DB.role==='admin');
+
+  // Build entries for ALL target stores — with or without response
+  const entries=targetStores.map(store=>{
+    const fb=latestFbMap[store.id]||null;
+    const item=fb?.itemFeedbacks?.find(it=>it.refId===ref.id)||null;
+    const hasResponse=item&&(item.note||(item.photos&&item.photos.length));
+    const adminRemark=item?.adminRemark||fb?.adminRemarks?.[ref.id]||null;
+    return {store, fb, item, hasResponse, adminRemark};
+  });
+
+  // Sort: 1=has admin remark, 2=no response, 3=has response
+  entries.sort((a,b)=>{
+    const rankA=a.adminRemark?0:!a.hasResponse?1:2;
+    const rankB=b.adminRemark?0:!b.hasResponse?1:2;
+    return rankA-rankB;
+  });
+
+  if(!entries.length) return '<div style="padding:12px 14px;font-size:13px;color:var(--text3);">No stores assigned</div>';
+
+  return '<div style="padding:0 14px;">' + entries.map(({store,fb,item,hasResponse,adminRemark},ei)=>{
+    const storeColor=store.color||'#888';
+    const isLast=ei===entries.length-1;
+
+    // Admin remark badge
+    const remarkBadge=adminRemark
+      ? `<div style="margin:6px 0;padding:8px 10px;background:#fff8e1;border-left:3px solid var(--warn);border-radius:0 8px 8px 0;font-size:12px;color:#92400e;">
+          <div style="font-size:10px;font-weight:700;color:var(--warn);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px;">Admin remark</div>
+          ${adminRemark}
+        </div>` : '';
+
+    const fbId=fb?.id||'';
+
+    return `<div style="padding:10px 0;${!isLast?'border-bottom:1px solid var(--border);':''}">
+      <div style="display:flex;align-items:flex-start;gap:7px;">
+        <div class="dot" style="background:${storeColor};margin-top:4px;flex-shrink:0;"></div>
+        <div style="flex:1;min-width:0;">
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+            <strong style="font-size:13px;">${store.name}</strong>
+            ${fb?`<span style="font-size:11px;color:var(--text3);">${fb.date}</span>`:''}
+            ${!hasResponse?`<span style="font-size:11px;padding:1px 7px;border-radius:20px;background:var(--bg3);color:var(--text3);">No response</span>`:''}
+            ${adminRemark?`<span style="font-size:11px;padding:1px 7px;border-radius:20px;background:#fff8e1;color:var(--warn);">⚑ Remarked</span>`:''}
+          </div>
+          ${remarkBadge}
+          ${hasResponse&&item.note?`<div style="font-size:13px;color:var(--text);line-height:1.5;margin-top:4px;">${item.note}</div>`:''}
+          ${hasResponse&&item.photos&&item.photos.length?`
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-top:7px;">
+              ${item.photos.map((p,pi)=>`
+                <div style="aspect-ratio:1;border-radius:7px;overflow:hidden;position:relative;">
+                  <img src="${p}" style="width:100%;height:100%;object-fit:cover;cursor:pointer;" onclick="openLightbox('${p}')"/>
+                  ${canAct?`<button onclick="openAnnotator('${p}','${fbId}','${ref.id}',${pi})" style="position:absolute;top:2px;right:2px;background:rgba(0,0,0,.6);border:none;border-radius:5px;color:#fff;font-size:10px;cursor:pointer;padding:2px 5px;">✏️</button>`:''}
+                </div>`).join('')}
+            </div>`:''}
+          ${canAct&&hasResponse?`
+            <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;">
+              <button onclick="openResponseNote('${fbId}','${ref.id}','${store.id}','${rid}')" style="font-size:11px;padding:3px 10px;border-radius:20px;border:1px solid var(--accent);color:var(--accent);background:transparent;cursor:pointer;">${adminRemark?'Edit remark':'+ Add remark'}</button>
+              <button onclick="deleteStoreResponse('${fbId}','${store.id}','${ref.id}','${rid}')" style="font-size:11px;padding:3px 10px;border-radius:20px;border:1px solid var(--danger);color:var(--danger);background:transparent;cursor:pointer;">Delete response</button>
+            </div>`:''}
+          ${canAct&&!hasResponse&&fb?`
+            <div style="display:flex;gap:6px;margin-top:8px;">
+              <button onclick="openResponseNote('${fbId}','${ref.id}','${store.id}','${rid}')" style="font-size:11px;padding:3px 10px;border-radius:20px;border:1px solid var(--accent);color:var(--accent);background:transparent;cursor:pointer;">${adminRemark?'Edit remark':'+ Add remark'}</button>
+            </div>`:''}
+        </div>
+      </div>
+    </div>`;
+  }).join('') + '</div>';
+}
+
+// ── Delete store response ─────────────────────────────────────────────────────
+let _deleteResponseCtx={};
+function deleteStoreResponse(fbId, storeId, refId, rid){
+  const b=brand(), r=b.reports.find(r=>r.id===rid), store=b.stores.find(s=>s.id===storeId);
+  showGenericConfirm(
+    `Delete ${store?.name||'store'}'s response for this item?\n\nThey will be notified to resubmit.`,
+    async()=>{
+      const fb=r.feedbacks.find(f=>f.id===fbId);
+      if(!fb) return;
+      // Remove just this item's response from the feedback
+      if(fb.itemFeedbacks){
+        const it=fb.itemFeedbacks.find(it=>it.refId===refId);
+        if(it){ it.note=''; it.photos=[]; }
+      }
+      // Check if ALL items now empty → delete entire feedback
+      const allEmpty=!fb.itemFeedbacks||fb.itemFeedbacks.every(it=>!it.note&&(!it.photos||!it.photos.length));
+      fb.text=(fb.itemFeedbacks||[]).map((it,i)=>it.note?`Item ${i+1}: ${it.note}`:'').filter(Boolean).join(' | ');
+      if(allEmpty){
+        r.feedbacks=r.feedbacks.filter(f=>f.id!==fbId);
+        await api('DELETE',`/api/feedbacks/${fbId}`);
+      } else {
+        await api('PUT',`/api/feedbacks/${fbId}`,{text:fb.text,itemFeedbacks:fb.itemFeedbacks,photos:fb.photos||[]});
+      }
+      // Send notification to store to resubmit
+      await api('POST','/api/feedbacks/delete-notify',{feedback_id:fbId, store_id:storeId, report_id:rid, ref_id:refId});
+      showToast('Response deleted — store notified');
+      viewFeedback(rid);
+    }
+  );
+}
+
+// ── Admin response note/remark ────────────────────────────────────────────────
+let _rnCtx={};
+function openResponseNote(fbId, refId, storeId, rid){
+  _rnCtx={fbId, refId, storeId, rid};
+  const b=brand(), r=b.reports.find(r=>r.id===rid);
+  const fb=r.feedbacks.find(f=>f.id===fbId);
+  const existing=fb?.adminRemarks?.[refId]||'';
+  document.getElementById('rn-text').value=existing;
+  document.getElementById('rn-msg').innerHTML='';
+  document.getElementById('response-note-overlay').style.display='flex';
+}
+async function saveResponseNote(){
+  const text=document.getElementById('rn-text').value.trim();
+  const msg=document.getElementById('rn-msg');
+  const {fbId,refId,storeId,rid}=_rnCtx;
+  const b=brand(), r=b.reports.find(r=>r.id===rid);
+  const fb=r.feedbacks.find(f=>f.id===fbId);
+  if(!fb) return;
+  if(!fb.adminRemarks) fb.adminRemarks={};
+  fb.adminRemarks[refId]=text;
+  msg.innerHTML='<div class="alert alert-success">⏳ Saving...</div>';
+  await api('PUT',`/api/feedbacks/${fbId}`,{text:fb.text,itemFeedbacks:fb.itemFeedbacks,photos:fb.photos||[],adminRemarks:fb.adminRemarks});
+  msg.innerHTML='<div class="alert alert-success">✓ Remark saved!</div>';
+  setTimeout(()=>{
+    document.getElementById('response-note-overlay').style.display='none';
+    viewFeedback(rid);
+  },800);
+}
+
+/* ===== PHOTO ANNOTATOR ===== */
+let _annCtx={tool:'pen',color:'#ef4444',stroke:4,drawing:false,startX:0,startY:0,
+             history:[],imgData:null,fbId:null,refId:null,photoIdx:null};
+
+function openAnnotator(src, fbId, refId, photoIdx){
+  const overlay=document.getElementById('photo-annotator-overlay');
+  const canvas=document.getElementById('ann-canvas');
+  const wrap=document.getElementById('ann-canvas-wrap');
+  const ctx=canvas.getContext('2d');
+  _annCtx.fbId=fbId; _annCtx.refId=refId; _annCtx.photoIdx=parseInt(photoIdx);
+  _annCtx.history=[];
+  const img=new Image();
+  img.onload=()=>{
+    // Size canvas to image, fitting screen
+    const maxW=wrap.clientWidth-20, maxH=wrap.clientHeight-20;
+    const scale=Math.min(maxW/img.width, maxH/img.height, 1);
+    canvas.width=Math.round(img.width*scale);
+    canvas.height=Math.round(img.height*scale);
+    ctx.drawImage(img,0,0,canvas.width,canvas.height);
+    _annCtx.imgData=ctx.getImageData(0,0,canvas.width,canvas.height);
+    annSetTool('pen');
+  };
+  img.src=src;
+  overlay.style.display='flex';
+  // Rebuild static color dots
+  document.querySelectorAll('.ann-color-dot').forEach(d=>{
+    d.style.border=d.style.background===_annCtx.color?'2px solid #fff':'2px solid transparent';
+  });
+}
+
+function annSetTool(tool){
+  _annCtx.tool=tool;
+  ['pen','rect','circle','arrow','text'].forEach(t=>{
+    const btn=document.getElementById('ann-tool-'+t);
+    if(btn){ btn.style.background=t===tool?'#7c6fff':'#222'; btn.style.borderColor=t===tool?'#7c6fff':'#444'; }
+  });
+  const canvas=document.getElementById('ann-canvas');
+  canvas.style.cursor=tool==='text'?'text':'crosshair';
+}
+function annSetColor(c){
+  _annCtx.color=c;
+  document.querySelectorAll('.ann-color-dot').forEach(d=>{
+    d.style.border=d.style.background===c?'2px solid #fff':'2px solid transparent';
+  });
+}
+function annSetStroke(v){ _annCtx.stroke=parseInt(v); }
+
+function annGetPos(e, canvas){
+  const r=canvas.getBoundingClientRect();
+  const touch=e.touches?e.touches[0]:e;
+  return {x:(touch.clientX-r.left)*(canvas.width/r.width), y:(touch.clientY-r.top)*(canvas.height/r.height)};
+}
+
+function annUndo(){
+  const canvas=document.getElementById('ann-canvas');
+  const ctx=canvas.getContext('2d');
+  if(_annCtx.history.length===0){ ctx.putImageData(_annCtx.imgData,0,0); return; }
+  _annCtx.history.pop();
+  ctx.putImageData(_annCtx.imgData,0,0);
+  _annCtx.history.forEach(step=>annReplay(ctx,step));
+}
+
+function annReplay(ctx,step){
+  ctx.strokeStyle=step.color; ctx.lineWidth=step.stroke;
+  ctx.lineCap='round'; ctx.lineJoin='round';
+  if(step.type==='pen'){
+    ctx.beginPath();
+    step.pts.forEach((p,i)=>i===0?ctx.moveTo(p.x,p.y):ctx.lineTo(p.x,p.y));
+    ctx.stroke();
+  } else if(step.type==='rect'){
+    ctx.strokeRect(step.x,step.y,step.w,step.h);
+  } else if(step.type==='circle'){
+    ctx.beginPath();
+    const rx=Math.abs(step.w)/2, ry=Math.abs(step.h)/2;
+    ctx.ellipse(step.x+step.w/2,step.y+step.h/2,rx,ry,0,0,2*Math.PI);
+    ctx.stroke();
+  } else if(step.type==='arrow'){
+    annDrawArrow(ctx,step.x,step.y,step.x2,step.y2,step.stroke);
+  } else if(step.type==='text'){
+    ctx.fillStyle=step.color;
+    ctx.font=`bold ${step.sz}px sans-serif`;
+    ctx.fillText(step.txt,step.x,step.y);
+  }
+}
+
+function annDrawArrow(ctx,x1,y1,x2,y2,stroke){
+  const angle=Math.atan2(y2-y1,x2-x1);
+  const len=20+stroke*2;
+  ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(x2,y2);
+  ctx.lineTo(x2-len*Math.cos(angle-Math.PI/6),y2-len*Math.sin(angle-Math.PI/6));
+  ctx.lineTo(x2-len*Math.cos(angle+Math.PI/6),y2-len*Math.sin(angle+Math.PI/6));
+  ctx.closePath(); ctx.fillStyle=ctx.strokeStyle; ctx.fill();
+}
+
+function annInitEvents(){
+  const canvas=document.getElementById('ann-canvas');
+  if(canvas._annEventsAdded) return;
+  canvas._annEventsAdded=true;
+  let curPen=[];
+  const down=(e)=>{
+    e.preventDefault();
+    const pos=annGetPos(e,canvas);
+    const ctx=canvas.getContext('2d');
+    if(_annCtx.tool==='text'){
+      const inp=document.getElementById('ann-text-input');
+      const r=canvas.getBoundingClientRect();
+      const touch=e.touches?e.touches[0]:e;
+      inp.style.display='block';
+      inp.style.left=(touch.clientX-r.left+r.left)+'px';
+      inp.style.top=(touch.clientY-r.top+r.top-20)+'px';
+      inp.style.left=(touch.clientX)+'px';
+      inp.style.top=(touch.clientY-40)+'px';
+      inp.value=''; inp.focus();
+      inp.onkeydown=(ev)=>{
+        if(ev.key==='Enter'){
+          const txt=inp.value.trim();
+          if(txt){
+            const sz=14+_annCtx.stroke*3;
+            const step={type:'text',color:_annCtx.color,sz,txt,x:pos.x,y:pos.y};
+            _annCtx.history.push(step);
+            ctx.putImageData(_annCtx.imgData,0,0);
+            _annCtx.history.forEach(s=>annReplay(ctx,s));
+          }
+          inp.style.display='none';
+        }
+      };
+      return;
+    }
+    _annCtx.drawing=true;
+    _annCtx.startX=pos.x; _annCtx.startY=pos.y;
+    if(_annCtx.tool==='pen') curPen=[{x:pos.x,y:pos.y}];
+  };
+  const move=(e)=>{
+    e.preventDefault();
+    if(!_annCtx.drawing) return;
+    const pos=annGetPos(e,canvas);
+    const ctx=canvas.getContext('2d');
+    ctx.strokeStyle=_annCtx.color; ctx.lineWidth=_annCtx.stroke;
+    ctx.lineCap='round'; ctx.lineJoin='round';
+    if(_annCtx.tool==='pen'){
+      curPen.push({x:pos.x,y:pos.y});
+      ctx.putImageData(_annCtx.imgData,0,0);
+      _annCtx.history.forEach(s=>annReplay(ctx,s));
+      ctx.beginPath();
+      curPen.forEach((p,i)=>i===0?ctx.moveTo(p.x,p.y):ctx.lineTo(p.x,p.y));
+      ctx.stroke();
+    } else {
+      ctx.putImageData(_annCtx.imgData,0,0);
+      _annCtx.history.forEach(s=>annReplay(ctx,s));
+      const dx=pos.x-_annCtx.startX, dy=pos.y-_annCtx.startY;
+      if(_annCtx.tool==='rect') ctx.strokeRect(_annCtx.startX,_annCtx.startY,dx,dy);
+      else if(_annCtx.tool==='circle'){
+        ctx.beginPath();
+        ctx.ellipse(_annCtx.startX+dx/2,_annCtx.startY+dy/2,Math.abs(dx)/2,Math.abs(dy)/2,0,0,2*Math.PI);
+        ctx.stroke();
+      } else if(_annCtx.tool==='arrow'){
+        annDrawArrow(ctx,_annCtx.startX,_annCtx.startY,pos.x,pos.y,_annCtx.stroke);
+      }
+    }
+  };
+  const up=(e)=>{
+    if(!_annCtx.drawing) return;
+    _annCtx.drawing=false;
+    const pos=annGetPos(e.changedTouches?{clientX:e.changedTouches[0].clientX,clientY:e.changedTouches[0].clientY}:e, canvas);
+    const dx=pos.x-_annCtx.startX, dy=pos.y-_annCtx.startY;
+    if(_annCtx.tool==='pen') _annCtx.history.push({type:'pen',color:_annCtx.color,stroke:_annCtx.stroke,pts:[...curPen]});
+    else if(_annCtx.tool==='rect') _annCtx.history.push({type:'rect',color:_annCtx.color,stroke:_annCtx.stroke,x:_annCtx.startX,y:_annCtx.startY,w:dx,h:dy});
+    else if(_annCtx.tool==='circle') _annCtx.history.push({type:'circle',color:_annCtx.color,stroke:_annCtx.stroke,x:_annCtx.startX,y:_annCtx.startY,w:dx,h:dy});
+    else if(_annCtx.tool==='arrow') _annCtx.history.push({type:'arrow',color:_annCtx.color,stroke:_annCtx.stroke,x:_annCtx.startX,y:_annCtx.startY,x2:pos.x,y2:pos.y});
+    _annCtx.imgData=canvas.getContext('2d').getImageData(0,0,canvas.width,canvas.height);
+  };
+  canvas.addEventListener('mousedown',down); canvas.addEventListener('mousemove',move); canvas.addEventListener('mouseup',up);
+  canvas.addEventListener('touchstart',down,{passive:false}); canvas.addEventListener('touchmove',move,{passive:false}); canvas.addEventListener('touchend',up);
+}
+
+async function annSave(){
+  const canvas=document.getElementById('ann-canvas');
+  const annotated=canvas.toDataURL('image/jpeg',0.9);
+  const {fbId,refId,photoIdx}=_annCtx;
+  // Find the feedback and update the photo
+  const b=brand();
+  for(const br of (b?[b]:DB.brands)){
+    for(const rep of br.reports){
+      const fb=rep.feedbacks.find(f=>f.id===fbId);
+      if(fb){
+        const it=fb.itemFeedbacks?.find(it=>it.refId===refId);
+        if(it&&it.photos){ it.photos[photoIdx]=annotated; }
+        await api('PUT',`/api/feedbacks/${fbId}`,{text:fb.text,itemFeedbacks:fb.itemFeedbacks,photos:fb.photos||[]});
+        break;
+      }
+    }
+  }
+  annClose();
+  showToast('✓ Annotated photo saved!');
+  if(DB.currentReportId) viewFeedback(DB.currentReportId);
+}
+
+function annClose(){
+  document.getElementById('photo-annotator-overlay').style.display='none';
+  document.getElementById('ann-text-input').style.display='none';
+}
+
+// Init annotator events on first use
+document.addEventListener('DOMContentLoaded',()=>{ annInitEvents(); });
 
 
 /* ===== EXPORT DATA ===== */
