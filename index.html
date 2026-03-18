@@ -6607,10 +6607,12 @@ async function inlineAcceptResponse(fbId, refId, storeId, rid) {
   await api('PUT', `/api/feedbacks/${fbId}`, { adminRemarks: fb.adminRemarks, timeline: fb.timeline });
   showToast('✓ Response accepted');
   viewFeedback(rid);
+  // After accept: keep card CLOSED (collapse it back)
   setTimeout(() => {
     const card = document.getElementById('ai_' + refId);
     const arrow = document.getElementById('ai_arrow_' + refId);
-    if (card && card.style.display === 'none') { card.style.display = ''; if (arrow) arrow.style.transform = 'rotate(180deg)'; }
+    if (card) { card.style.display = 'none'; }
+    if (arrow) arrow.style.transform = 'rotate(0deg)';
   }, 80);
 }
 
@@ -6657,10 +6659,12 @@ async function inlineSaveRemark(fbId, refId, storeId, rid) {
   } catch(e) {}
   showToast('✓ Remark saved — store notified');
   viewFeedback(rid);
+  // After save remark: keep card CLOSED
   setTimeout(() => {
     const card = document.getElementById('ai_' + refId);
     const arrow = document.getElementById('ai_arrow_' + refId);
-    if (card && card.style.display === 'none') { card.style.display = ''; if (arrow) arrow.style.transform = 'rotate(180deg)'; }
+    if (card) { card.style.display = 'none'; }
+    if (arrow) arrow.style.transform = 'rotate(0deg)';
   }, 80);
 }
 
@@ -6695,14 +6699,12 @@ async function raAcceptResponse() {
   closeRespAction();
   showToast('✓ Response accepted');
   viewFeedback(rid);
-  // Re-open the item card
+  // After accept: close the item card
   setTimeout(() => {
     const itemCard = document.getElementById('ai_' + refId);
     const arrow = document.getElementById('ai_arrow_' + refId);
-    if (itemCard && itemCard.style.display === 'none') {
-      itemCard.style.display = '';
-      if (arrow) arrow.style.transform = 'rotate(180deg)';
-    }
+    if (itemCard) { itemCard.style.display = 'none'; }
+    if (arrow) arrow.style.transform = 'rotate(0deg)';
   }, 80);
 }
 
