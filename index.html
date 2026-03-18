@@ -2127,12 +2127,15 @@ function getReportStatus(r, stores){
     if(!fb){ allDone=false; continue; }
     let responded=0;
     if(totalItems>0){
-      // Use refId-based count
+      // Count only items that have content AND no remark (remark = rejected = not done)
       const refMap={};
       (fb.itemFeedbacks||[]).forEach(it=>{ if(it.refId) refMap[it.refId]=it; });
-      r.refs.forEach(ref=>{ const it=refMap[ref.id]; if(it&&(it.note||(it.photos&&it.photos.length))) responded++; });
-      // Fallback to direct count
-      if(responded===0) responded=Math.min((fb.itemFeedbacks||[]).filter(it=>it.note||(it.photos&&it.photos.length)).length, totalItems);
+      r.refs.forEach(ref=>{
+        const it=refMap[ref.id];
+        const hasContent=it&&(it.note||(it.photos&&it.photos.length));
+        const hasRemark=!!(fb.adminRemarks?.[ref.id+'_list']?.length||fb.adminRemarks?.[ref.id]);
+        if(hasContent&&!hasRemark) responded++;
+      });
     } else {
       // No refs — check if feedback has any content
       responded=(fb.itemFeedbacks||[]).filter(it=>it.note||(it.photos&&it.photos.length)).length + (fb.text?1:0);
