@@ -1878,9 +1878,14 @@ async function _silentRvRefresh(){
     await api('POST', '/api/init');
     const data = await api('GET', '/api/brands');
     if(Array.isArray(data)){
-      // Before replacing DB.brands, preserve any in-progress form data
-      // so that photos and notes typed by the reviewer are never lost
-      if(DB.itemFeedbacks && DB.itemFeedbacks.length && DB.reviewerReportId && DB.editingFeedbackId){
+      // Only merge in-memory itemFeedbacks if reviewer is ACTIVELY on the form screen
+      // (not just because editingFeedbackId/itemFeedbacks happen to be set from a past session)
+      const activeScreen = document.querySelector('.screen.active');
+      const isOnFormScreen = activeScreen && activeScreen.id === 's-reviewer-report';
+      const formDiv = document.getElementById('rv-feedback-form');
+      const formVisible = formDiv && formDiv.style.display !== 'none';
+
+      if(isOnFormScreen && formVisible && DB.itemFeedbacks && DB.itemFeedbacks.length && DB.reviewerReportId && DB.editingFeedbackId){
         const newBrands = data;
         for(const br of newBrands){
           const r = br.reports && br.reports.find(r=>r.id===DB.reviewerReportId);
@@ -1895,6 +1900,7 @@ async function _silentRvRefresh(){
         }
         DB.brands = newBrands;
       } else {
+        // Not actively editing — use clean data from server, no merge
         DB.brands = data;
       }
     }
@@ -5117,6 +5123,9 @@ async function doRvRefresh(){
         }
       }
     }
+    // Manual refresh: clear any stale in-memory form state so DB data is shown clean
+    DB.itemFeedbacks = [];
+    DB.editingFeedbackId = null;
     renderReviewerHome();
     showToast('Updated!');
   }catch(e){ showToast('Refresh failed'); }
