@@ -2707,7 +2707,7 @@ function viewFeedback(rid){
           <div style="padding:12px 14px;background:var(--bg3);">
             ${ref.desc?`<div style="font-size:13px;color:var(--text);line-height:1.5;margin-bottom:8px;">${ref.desc}</div>`:''}
             ${ref.photos&&ref.photos.length?`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-bottom:10px;">${ref.photos.map(p=>`<div style="aspect-ratio:1;border-radius:7px;overflow:hidden;"><img src="${p}" style="width:100%;height:100%;object-fit:cover;cursor:pointer;" onclick="openLightbox('${p}')"/></div>`).join('')}</div>`:''}
-            <button class="btn btn-xs" onclick="toggleEditRef('${ref.id}','${rid}')">Edit item</button>
+            ${canEdit()?`<button class="btn btn-xs" onclick="toggleEditRef('${ref.id}','${rid}')">Edit item</button>`:''}
           </div>
           <!-- Edit form -->
           <div id="refview_edit_${ref.id}" style="display:none;padding:14px;border-top:1px solid var(--border);background:var(--bg2);">
@@ -3665,21 +3665,19 @@ function doVerifyAdmin(){
       setTimeout(()=>{ revealed.style.display='none'; if(masked) masked.style.display=''; },10000);
     }
   } else if(_pendingAdminAction==='view_store_pass'){
-    // Admin edit store — fetch and show current password
     const sid=DB.currentStoreId;
-    let storeObj=null;
-    for(const b of DB.brands){ storeObj=b.stores.find(st=>st.id===sid); if(storeObj) break; }
-    const pw=storeObj?.password||'(not available)';
     const shown=document.getElementById('es-pass-shown');
-    if(shown){
-      shown.innerHTML='<span style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:4px;">Current password</span><span style="font-size:15px;font-weight:700;letter-spacing:.08em;">'+pw+'</span>';
-      shown.style.display='';
-      setTimeout(()=>{ shown.style.display='none'; },15000);
-    }
+    if(shown){ shown.innerHTML='<span style="font-size:12px;color:var(--text3);">Loading...</span>'; shown.style.display=''; }
+    api('GET',`/api/store-password/${sid}`).then(res=>{
+      const pw=res?.password||'';
+      if(shown){
+        shown.innerHTML=pw
+          ? '<span style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:4px;">Current password</span><span style="font-size:15px;font-weight:700;letter-spacing:.08em;">'+pw+'</span>'
+          : '<span style="font-size:13px;color:var(--text3);">No password set</span>';
+        setTimeout(()=>{ shown.style.display='none'; },15000);
+      }
+    });
   } else if(_pendingAdminAction==='view_staff_pass'){
-    // Admin edit staff — show current password
-    const staffObj=DB_STAFF.find(s=>s.id===_sfEditingId);
-    const pw=staffObj?.password||'(not available)';
     let showEl=document.getElementById('sf-pass-show-inline');
     if(!showEl){
       showEl=document.createElement('div');
@@ -3688,9 +3686,15 @@ function doVerifyAdmin(){
       const passField=document.getElementById('sf-password');
       if(passField&&passField.closest('.field')) passField.closest('.field').appendChild(showEl);
     }
-    showEl.innerHTML='<span style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:4px;">Current password</span><span style="font-size:15px;font-weight:700;letter-spacing:.08em;">'+pw+'</span>';
+    showEl.innerHTML='<span style="font-size:12px;color:var(--text3);">Loading...</span>';
     showEl.style.display='';
-    setTimeout(()=>{ showEl.style.display='none'; },15000);
+    api('GET',`/api/staff-password/${_sfEditingId}`).then(res=>{
+      const pw=res?.password||'';
+      showEl.innerHTML=pw
+        ? '<span style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:4px;">Current password</span><span style="font-size:15px;font-weight:700;letter-spacing:.08em;">'+pw+'</span>'
+        : '<span style="font-size:13px;color:var(--text3);">No password set</span>';
+      setTimeout(()=>{ showEl.style.display='none'; },15000);
+    });
   } else if(_pendingAdminAction==='change'){
     openEmailVerifyForStore();
     return;
