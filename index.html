@@ -3533,7 +3533,12 @@ function openReviewerReport(rid){
   r.feedbacks.forEach(f=>{ if(!_fbMapRv[f.storeId]||f.date>=_fbMapRv[f.storeId].date) _fbMapRv[f.storeId]=f; });
   const myFb=_fbMapRv[s.id]||null;
 
-  if(myFb){
+  // Detect if this feedback has any rejected (remarked) items that need resubmission
+  const _hasRejectedItems = myFb && r.refs && r.refs.some(ref => {
+    return !!(myFb.adminRemarks?.[ref.id+'_list']?.length || myFb.adminRemarks?.[ref.id]);
+  });
+
+  if(myFb && !_hasRejectedItems){
     submittedDiv.style.display='';
     // Check partial vs full completion using refId-based count
     const _totalRefItems=r.refs&&r.refs.length?r.refs.length:1;
@@ -3610,12 +3615,61 @@ function openReviewerReport(rid){
         </div>`;
       }).join('')}`;
     formDiv.style.display='none';
+  } else if(myFb && _hasRejectedItems) {
+    // Has feedback but some items were rejected — show form pre-filled, rejected items cleared
+    submittedDiv.style.display='none';
+    formDiv.style.display='';
+    DB.editingFeedbackId = myFb.id;
+    const refs = r.refs && r.refs.length ? r.refs : [{id:'general',desc:'',photos:[]}];
+    const existingByRefId = {};
+    (myFb.itemFeedbacks||[]).forEach(it=>{ if(it.refId) existingByRefId[it.refId]=it; });
+    DB.itemFeedbacks = refs.map(ref => {
+      const existing = existingByRefId[ref.id] || {refId:ref.id,note:'',photos:[]};
+      const isRejected = !!(myFb.adminRemarks?.[ref.id+'_list']?.length || myFb.adminRemarks?.[ref.id]);
+      // Rejected items are cleared so store must re-answer; non-rejected keep their answer
+      return {
+        refId: ref.id,
+        note: isRejected ? '' : (existing.note||''),
+        photos: isRejected ? [] : [...(existing.photos||[])],
+        _rejected: isRejected,  // mark for UI + validation
+        _adminRemark: isRejected
+          ? (myFb.adminRemarks?.[ref.id+'_list']?.map(r=>r.text).join('; ') || myFb.adminRemarks?.[ref.id] || '')
+          : ''
+      };
+    });
+    // Preserve existing adminRemarks on the fb object so they aren't lost on resubmit
+    DB._resubmitAdminRemarks = myFb.adminRemarks || {};
+    renderItemForms(r, b.color);
+    // Pre-fill non-rejected items and open rejected ones
+    setTimeout(()=>{
+      DB.itemFeedbacks.forEach((it,i)=>{
+        if(!it._rejected && it.note){
+          const ta=document.getElementById('item-note-'+i);
+          const btn=document.getElementById('rvtextbtn_'+i);
+          const box=document.getElementById('rvtext_'+i);
+          if(ta) ta.value=it.note;
+          if(box) box.style.display='';
+          if(btn){ btn.style.background='var(--accent)'; btn.style.color='#fff'; btn.style.borderColor='var(--accent)'; }
+        }
+        if(!it._rejected && it.photos.length) renderItemPhotoGrid(i);
+        if(it._rejected){
+          // Auto-open rejected items
+          const el=document.getElementById('rvi_'+i);
+          const arrow=document.getElementById('rvi_arrow_'+i);
+          if(el) el.style.display='';
+          if(arrow) arrow.style.transform='rotate(180deg)';
+        }
+        refreshReviewerItemStatus(i);
+      });
+      checkAllItemsDone();
+    }, 60);
   } else {
     submittedDiv.style.display='none';
     formDiv.style.display='';
     // Build item-by-item form
     const refs=r.refs&&r.refs.length?r.refs:[{id:'general',desc:'',photos:[]}];
     DB.itemFeedbacks=refs.map(ref=>({refId:ref.id,note:'',photos:[]}));
+    DB._resubmitAdminRemarks = null;
     renderItemForms(r, b.color);
   }
   goTo('s-reviewer-report');
@@ -3624,8 +3678,16 @@ function openReviewerReport(rid){
 function renderItemForms(r, brandColor){
   const refs=r.refs&&r.refs.length?r.refs:[{id:'general',desc:'General feedback',photos:[]}];
   const el=document.getElementById('rv-items-form');
-  el.innerHTML=refs.map((ref,i)=>`
-    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);margin-bottom:10px;overflow:hidden;">
+  el.innerHTML=refs.map((ref,i)=>{
+    const _itFb = DB.itemFeedbacks[i] || {};
+    const _isRejected = !!_itFb._rejected;
+    const _remarkText = _itFb._adminRemark || '';
+    return `
+    <div style="background:var(--bg2);border:1.5px solid ${_isRejected?'var(--danger)':'var(--border)'};border-radius:var(--rl);margin-bottom:10px;overflow:hidden;">
+      ${_isRejected ? `<div style="background:var(--alert-danger-bg);border-bottom:1px solid var(--alert-danger-border);padding:8px 14px;display:flex;align-items:center;gap:8px;">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <div style="font-size:12px;font-weight:600;color:var(--danger);">Rejected — please resubmit${_remarkText ? ': ' + _remarkText : ''}</div>
+      </div>` : ''}
       <!-- Tap header to toggle -->
       <div onclick="toggleReviewerItem('rvi_${i}')" style="display:flex;align-items:center;gap:10px;padding:13px 14px;cursor:pointer;user-select:none;">
         <div style="flex:1;">
@@ -3664,7 +3726,8 @@ function renderItemForms(r, brandColor){
           <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;" id="item-photo-grid-${i}"></div>
         </div>
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
   refs.forEach((_,i)=>renderItemPhotoGrid(i));
   // Set initial Submit button visibility
   checkAllItemsDone();
@@ -3741,7 +3804,16 @@ function refreshReviewerItemStatus(idx){
   checkAllItemsDone();
 }
 function checkAllItemsDone(){
-  const allDone=DB.itemFeedbacks.length>0 && DB.itemFeedbacks.every(it=>it.note.trim()||it.photos.length);
+  const hasRejected = DB.itemFeedbacks.some(it=>it._rejected);
+  let allDone;
+  if(hasRejected){
+    // Resubmission mode — only require rejected items to have new content
+    allDone = DB.itemFeedbacks.length>0 && DB.itemFeedbacks
+      .filter(it=>it._rejected)
+      .every(it=>it.note.trim()||it.photos.length);
+  } else {
+    allDone = DB.itemFeedbacks.length>0 && DB.itemFeedbacks.every(it=>it.note.trim()||it.photos.length);
+  }
   const submitBtn=document.getElementById('rv-submit-btn');
   const hint=document.getElementById('rv-all-done-hint');
   if(submitBtn) submitBtn.style.display=allDone?'':'none';
@@ -3842,8 +3914,14 @@ async function saveReviewerDraft(){
 
 async function submitReviewerFeedback(){
   const msg=document.getElementById('rv-fb-msg');
-  const allDone=DB.itemFeedbacks.every(it=>it.note.trim()||it.photos.length);
-  if(!allDone){ msg.innerHTML='<div class="alert alert-danger">Please complete all items before submitting.</div>'; return; }
+  const hasRejected = DB.itemFeedbacks.some(it=>it._rejected);
+  const allDone = hasRejected
+    ? DB.itemFeedbacks.filter(it=>it._rejected).every(it=>it.note.trim()||it.photos.length)
+    : DB.itemFeedbacks.every(it=>it.note.trim()||it.photos.length);
+  if(!allDone){
+    msg.innerHTML='<div class="alert alert-danger">'+(hasRejected?'Please fill in all rejected items before resubmitting.':'Please complete all items before submitting.')+'</div>';
+    return;
+  }
   const b=reviewerBrand(), s=reviewerStore();
   const r=b.reports.find(r=>r.id===DB.reviewerReportId);
   const newText=DB.itemFeedbacks.map((it,i)=>it.note?`Item ${i+1}: ${it.note}`:'').filter(Boolean).join(' | ');
@@ -3857,11 +3935,23 @@ async function submitReviewerFeedback(){
     || fbMap[s.id] || null;
 
   if(existing){
-    // UPDATE existing feedback
-    await api('PUT',`/api/feedbacks/${existing.id}`,{text:newText, itemFeedbacks:newItems, photos:[]});
+    // UPDATE existing feedback — preserve adminRemarks and resubmit timestamp
+    const _preservedRemarks = DB._resubmitAdminRemarks || existing.adminRemarks || {};
+    const _resubmitAt = new Date().toISOString().slice(0,10);
+    // Add resubmit event to timeline
+    if(!Array.isArray(existing.timeline)) existing.timeline=[];
+    existing.timeline.push({type:'resubmitted', date:_resubmitAt, by: DB.reviewerStoreName||''});
+    await api('PUT',`/api/feedbacks/${existing.id}`,{
+      text:newText, itemFeedbacks:newItems, photos:[],
+      adminRemarks:_preservedRemarks,
+      resubmit_at:_resubmitAt, timeline:existing.timeline
+    });
     existing.itemFeedbacks=newItems;
     existing.text=newText;
     existing.date=newDate;
+    existing.adminRemarks=_preservedRemarks;
+    existing.resubmitAt=_resubmitAt;
+    DB._resubmitAdminRemarks=null;
     // Remove any duplicate feedbacks for this store
     r.feedbacks=r.feedbacks.filter(f=>f.storeId!==s.id);
     r.feedbacks.push(existing);
