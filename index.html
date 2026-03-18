@@ -2531,10 +2531,14 @@ function renderHome(_brandsOverride){
 
 /* ===== BRAND ===== */
 function openBrand(id){
-  DB.currentBrandId=id; DB.brandFilter='all'; DB.brandTab='reports';
-  const b=brand();
-  document.getElementById('brand-topbar-title').textContent=b.name;
-  // Show Add store button only for admin
+  // Always find brand from full DB.brands list
+  const b = DB.brands.find(b=>b.id===id);
+  if(!b){ showToast('Brand not found — try refreshing'); return; }
+  DB.currentBrandId = b.id;
+  DB.brandFilter='all'; DB.brandTab='reports';
+  const titleEl=document.getElementById('brand-topbar-title');
+  if(titleEl) titleEl.textContent=b.name;
+  // Show Edit + Add store only for admin
   const addStoreBtn=document.getElementById('brand-add-store-btn');
   if(addStoreBtn) addStoreBtn.style.display=(DB.role==='admin')?'':'none';
   const brandEditBtn=document.getElementById('brand-edit-btn');
@@ -2569,7 +2573,8 @@ function setBF(f){
 }
 function renderBrandReports(){
   const b=brand();
-  if(!b){ document.getElementById('brand-report-list').innerHTML='<div class="empty">No brand selected</div>'; return; }
+  const listEl=document.getElementById('brand-report-list');
+  if(!b){ if(listEl) listEl.innerHTML='<div class="empty">No brand selected</div>'; return; }
   let list=[...b.reports];
 
   // 0=pending, 1=partial, 2=checking, 3=complete
@@ -3204,16 +3209,14 @@ function closeConfirm(){
 }
 function viewFeedback(rid){
   DB.currentReportId=rid;
-  // Find brand containing this report — search all brands if needed
-  let b=brand();
-  if(!b || !b.reports.find(r=>r.id===rid)){
-    for(const br of DB.brands){
-      if(br.reports.find(r=>r.id===rid)){ b=br; DB.currentBrandId=br.id; break; }
-    }
+  // Always search all brands for this report — most reliable approach
+  let b=null, r=null;
+  for(const br of DB.brands){
+    const found=br.reports.find(rep=>rep.id===rid);
+    if(found){ b=br; r=found; break; }
   }
-  if(!b){ console.warn('viewFeedback: brand not found for report',rid); return; }
-  const r=b.reports.find(r=>r.id===rid);
-  if(!r){ console.warn('viewFeedback: report not found',rid); return; }
+  if(!b || !r){ showToast('Report not found — try refreshing'); return; }
+  DB.currentBrandId=b.id; // ensure currentBrandId is always in sync
   document.getElementById('fb-screen-title').textContent=r.title;
   document.getElementById('fb-filename').textContent=r.file;
 
