@@ -1671,21 +1671,35 @@ async function restoreSession(){
     if(session.role==='staff'){
       // Always re-fetch fresh staff data from server (avatar/profile may have changed)
       try{
-        const staffId=session.staffData?.staff_id;
+        // staff_id could be stored as staff_id or id in session
+        const staffId=session.staffData?.staff_id||session.staffData?.id||null;
         if(staffId){
           const freshStaff=await api('GET','/api/staff');
           const found=Array.isArray(freshStaff)?freshStaff.find(s=>s.id===staffId):null;
           if(found){
-            // Merge fresh DB data with login response data (keep password from session)
             DB.staffData={
               ...session.staffData,
-              name:found.name, position:found.position, company:found.company||'',
-              phone:found.phone, location:found.location||'',
-              avatar:found.avatar, permission:found.permission,
-              brand_ids:JSON.parse(found.brand_ids||'[]'),
+              staff_id:found.id,
+              name:found.name,
+              position:found.position,
+              company:found.company||'',
+              phone:found.phone,
+              location:found.location||'',
+              avatar:found.avatar||null,
+              permission:found.permission,
+              brand_ids:Array.isArray(found.brand_ids)?found.brand_ids:JSON.parse(found.brand_ids||'[]'),
               notif_email:found.notif_email||'',
               card_style:found.card_style||null,
             };
+            // Update localStorage with fresh data so next reload is fast too
+            try{
+              const raw=localStorage.getItem('fh_session');
+              if(raw){
+                const sess=JSON.parse(raw);
+                sess.staffData=DB.staffData;
+                localStorage.setItem('fh_session',JSON.stringify(sess));
+              }
+            }catch(e){}
           } else {
             DB.staffData=session.staffData||{};
           }
