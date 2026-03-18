@@ -2178,7 +2178,15 @@ async function verifyReportComplete(rid){
     storeIds:r.storeIds||[], inspection:r.inspection||{}, refs:r.refs||[],
     verified:true, verifiedBy:authorName, verifiedAt:today
   });
-  showToast('✓ Report verified and marked complete!');
+
+  // Send completion notification to all stores + admin + staff
+  try {
+    await api('POST',`/api/reports/${rid}/verify-notify`,{
+      verified_by:authorName, verified_at:today
+    });
+  } catch(e) {}
+
+  showToast('✓ Report verified — all stores notified!');
   viewFeedback(rid);
 }
 
