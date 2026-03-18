@@ -428,16 +428,15 @@ label{
   </div>
   <div class="content">
     <div id="global-stats" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px;"></div>
-    <!-- Incomplete reports stat — full width, clickable -->
-    <div id="global-incomplete-bar" style="margin-bottom:20px;"></div>
+
     <!-- Tabs: Incomplete / Brands / Stores -->
     <div style="display:flex;gap:6px;margin-bottom:14px;" id="home-tabs">
-      <button onclick="homeTab('incomplete')" id="htab-incomplete" class="btn btn-sm active" style="flex:1;border-radius:20px;">Incomplete</button>
-      <button onclick="homeTab('brands')"    id="htab-brands"    class="btn btn-sm"        style="flex:1;border-radius:20px;">Brands</button>
+      <button onclick="homeTab('incomplete')" id="htab-incomplete" class="btn btn-sm"        style="flex:1;border-radius:20px;">Incomplete</button>
+      <button onclick="homeTab('brands')"    id="htab-brands"    class="btn btn-sm active" style="flex:1;border-radius:20px;">Brands</button>
       <button onclick="homeTab('stores')"    id="htab-stores"    class="btn btn-sm"        style="flex:1;border-radius:20px;">Stores</button>
     </div>
-    <div id="home-pane-incomplete"></div>
-    <div id="home-pane-brands" style="display:none;"></div>
+    <div id="home-pane-incomplete" style="display:none;"></div>
+    <div id="home-pane-brands"></div>
     <div id="home-pane-stores" style="display:none;"></div>
     <!-- Refresh bar -->
     <div style="height:80px;"></div>
@@ -2319,7 +2318,7 @@ async function unverifyReport(rid){
   viewFeedback(rid);
 }
 
-let _homeTab = 'incomplete';
+let _homeTab = 'brands';
 function homeTab(tab){
   _homeTab = tab;
   ['incomplete','brands','stores'].forEach(t=>{
@@ -2383,25 +2382,7 @@ function renderHome(){
       ${s.sub ? `<div style="height:0.5px;background:var(--border);margin:7px 0;"></div><div style="font-size:10px;font-weight:600;color:${s.subColor||'var(--text3)'};">${s.sub}</div>` : ''}
     </div>`).join('');
 
-  // Incomplete bar
-  const incBar = document.getElementById('global-incomplete-bar');
-  if(incBar){
-    incBar.innerHTML = nIncomplete > 0 ? `
-      <div onclick="homeTab('incomplete')" style="background:var(--alert-danger-bg);border:1px solid var(--alert-danger-border);border-radius:var(--rl);padding:11px 14px;cursor:pointer;display:flex;align-items:center;gap:10px;">
-        <div style="flex:1;">
-          <div style="font-size:14px;font-weight:700;color:var(--danger);">${nIncomplete} incomplete report${nIncomplete!==1?'s':''}</div>
-          <div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap;">
-            ${nPending?`<span style="font-size:11px;color:var(--text3);">○ ${nPending} Pending</span>`:''}
-            ${nPartial?`<span style="font-size:11px;color:var(--warn);">◑ ${nPartial} Partial</span>`:''}
-            ${nChecking?`<span style="font-size:11px;color:var(--accent);">⟳ ${nChecking} Checking</span>`:''}
-          </div>
-        </div>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
-      </div>` : `<div style="background:var(--badge-done-bg);border:1px solid var(--success);border-radius:var(--rl);padding:11px 14px;display:flex;align-items:center;gap:8px;">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
-        <span style="font-size:13px;font-weight:600;color:var(--success);">All reports complete</span>
-      </div>`;
-  }
+
 
   // ── Incomplete pane ──────────────────────────────────────────────────────
   const incPane = document.getElementById('home-pane-incomplete');
