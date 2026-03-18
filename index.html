@@ -1429,8 +1429,8 @@ label{
     <input id="ann-text-input" type="text" placeholder="Type then press Enter..." style="display:none;position:absolute;background:rgba(0,0,0,.75);color:#fff;border:2px solid #7c6fff;border-radius:8px;padding:6px 10px;font-size:15px;outline:none;min-width:120px;"/>
   </div>
 
-  <!-- Bottom bar: colors + stroke + Done -->
-  <div style="display:flex;align-items:center;gap:10px;padding:12px 14px;padding-bottom:max(12px,env(safe-area-inset-bottom));background:#1a1a2e;flex-shrink:0;">
+  <!-- Bottom bar: colors + stroke + Done — always visible, respects notch/home bar -->
+  <div style="display:flex;align-items:center;gap:10px;padding:12px 14px;padding-bottom:calc(12px + env(safe-area-inset-bottom, 0px));background:#1a1a2e;flex-shrink:0;position:relative;z-index:2;">
     <!-- Color swatches — static HTML, no JS template -->
     <div style="display:flex;gap:6px;align-items:center;flex-shrink:0;">
       <div onclick="annSetColor('#ef4444')" class="ann-color-dot" style="width:26px;height:26px;border-radius:50%;background:#ef4444;cursor:pointer;border:2px solid transparent;flex-shrink:0;"></div>
@@ -5130,10 +5130,14 @@ function buildSortedResponsesHTML(ref, r, b, rid){
     const isLast=ei===entries.length-1;
 
     // Admin remark badge
+    const adminRemarkAuthor=fb?.adminRemarks?._authors?.[ref.id]||null;
     const remarkBadge=adminRemark
       ? `<div style="margin:6px 0;padding:8px 10px;background:#fff8e1;border-left:3px solid var(--warn);border-radius:0 8px 8px 0;font-size:12px;color:#92400e;">
-          <div style="font-size:10px;font-weight:700;color:var(--warn);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px;">Admin remark</div>
-          ${adminRemark}
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+            <div style="font-size:10px;font-weight:700;color:var(--warn);text-transform:uppercase;letter-spacing:.05em;">Admin remark</div>
+            ${adminRemarkAuthor?`<div style="font-size:10px;color:#b45309;">${adminRemarkAuthor}</div>`:''}
+          </div>
+          <div style="font-size:13px;color:#92400e;line-height:1.5;">${adminRemark}</div>
         </div>` : '';
 
     const fbId=fb?.id||'';
@@ -5171,28 +5175,24 @@ let _deleteResponseCtx={};
 function deleteStoreResponse(fbId, storeId, refId, rid){
   const b=brand(), r=b.reports.find(r=>r.id===rid), store=b.stores.find(s=>s.id===storeId);
   showGenericConfirm(
-    `Delete ${store?.name||'store'}'s response for this item?\n\nThey will be notified to resubmit.`,
+    `Reset ${store?.name||'store'}'s response for this item?\n\nAdmin remarks and annotated photos will be kept. Store will be notified to resubmit.`,
     async()=>{
       const fb=r.feedbacks.find(f=>f.id===fbId);
       if(!fb) return;
-      // Remove just this item's response from the feedback
+      // Keep annotated photos and admin remarks — only clear the store's text note
       if(fb.itemFeedbacks){
         const it=fb.itemFeedbacks.find(it=>it.refId===refId);
-        if(it){ it.note=''; it.photos=[]; }
+        if(it){ it.note=''; /* annotated photos & admin remarks preserved */ }
       }
-      // Check if ALL items now empty → delete entire feedback
-      const allEmpty=!fb.itemFeedbacks||fb.itemFeedbacks.every(it=>!it.note&&(!it.photos||!it.photos.length));
       fb.text=(fb.itemFeedbacks||[]).map((it,i)=>it.note?`Item ${i+1}: ${it.note}`:'').filter(Boolean).join(' | ');
-      if(allEmpty){
-        r.feedbacks=r.feedbacks.filter(f=>f.id!==fbId);
-        await api('DELETE',`/api/feedbacks/${fbId}`);
-      } else {
-        await api('PUT',`/api/feedbacks/${fbId}`,{text:fb.text,itemFeedbacks:fb.itemFeedbacks,photos:fb.photos||[]});
-      }
-      // Send notification to store to resubmit
+      // Always PUT (never DELETE) — preserves admin remarks and annotated photos in DB
+      await api('PUT',`/api/feedbacks/${fbId}`,{
+        text:fb.text, itemFeedbacks:fb.itemFeedbacks,
+        photos:fb.photos||[], adminRemarks:fb.adminRemarks||{}
+      });
       const _alerter=getAlerterInfo();
       await api('POST','/api/feedbacks/delete-notify',{feedback_id:fbId, store_id:storeId, report_id:rid, ref_id:refId, alerter_id:_alerter.id, alerter_role:_alerter.role});
-      showToast('Response deleted — store notified');
+      showToast('Response reset — store notified to resubmit');
       viewFeedback(rid);
     }
   );
@@ -5754,7 +5754,13 @@ async function raSaveRemark() {
   const fb = r?.feedbacks.find(f => f.id === fbId);
   if (!fb) return;
   if (!fb.adminRemarks) fb.adminRemarks = {};
-  fb.adminRemarks[refId] = text;
+  // Save remark with author name and date
+  const authorName = DB.staffData?.name || (DB.role==='admin'?'Admin':'Staff');
+  const today = new Date().toISOString().slice(0,10);
+  fb.adminRemarks[refId] = text ? `${text}` : '';
+  // Store author metadata separately
+  if(!fb.adminRemarks._authors) fb.adminRemarks._authors = {};
+  if(text) fb.adminRemarks._authors[refId] = `${authorName} · ${today}`;
   msg.innerHTML = '<div class="alert alert-success">Saving...</div>';
   await api('PUT', `/api/feedbacks/${fbId}`, {
     text: fb.text, itemFeedbacks: fb.itemFeedbacks, photos: fb.photos || [], adminRemarks: fb.adminRemarks
@@ -5767,7 +5773,7 @@ async function raSaveRemark() {
 }
 
 function raDeleteResponse() {
-  const { fbId, storeId, refId, rid, storeName } = _raCtx;
+  const { fbId, storeId, refId, rid } = _raCtx;
   closeRespAction();
   deleteStoreResponse(fbId, storeId, refId, rid);
 }
