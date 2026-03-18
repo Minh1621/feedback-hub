@@ -459,8 +459,8 @@ label{
       <div class="filters">
         <button class="fbtn active" id="bf-all" onclick="setBF('all')">All</button>
         <button class="fbtn" id="bf-pending" onclick="setBF('pending')">Pending</button>
-        <button class="fbtn" id="bf-checking" onclick="setBF('checking')">Checking</button>
         <button class="fbtn" id="bf-partial" onclick="setBF('partial')">Partial</button>
+        <button class="fbtn" id="bf-checking" onclick="setBF('checking')">Checking</button>
         <button class="fbtn" id="bf-done" onclick="setBF('done')">Complete</button>
       </div>
       <button class="btn btn-primary btn-sm" style="width:100%;margin-bottom:14px;" onclick="goUpload()">+ Upload report</button>
@@ -2239,18 +2239,18 @@ function renderBrandReports(){
   const b=brand();
   let list=[...b.reports];
 
-  // 0=pending, 1=checking, 2=partial, 3=complete
+  // 0=pending, 1=partial, 2=checking, 3=complete
   function rStatusNum(r){
     const s=getReportStatus(r,b.stores);
-    return s==='complete'?3:s==='partial'?2:s==='checking'?1:0;
+    return s==='complete'?3:s==='checking'?2:s==='partial'?1:0;
   }
 
-  // Sort: pending → checking → partial → complete
+  // Sort: pending → partial → checking → complete
   list.sort((a,bb)=> rStatusNum(a)-rStatusNum(bb));
 
   if(DB.brandFilter==='pending')  list=list.filter(r=>rStatusNum(r)===0);
-  if(DB.brandFilter==='checking') list=list.filter(r=>rStatusNum(r)===1);
-  if(DB.brandFilter==='partial')  list=list.filter(r=>rStatusNum(r)===2);
+  if(DB.brandFilter==='partial')  list=list.filter(r=>rStatusNum(r)===1);
+  if(DB.brandFilter==='checking') list=list.filter(r=>rStatusNum(r)===2);
   if(DB.brandFilter==='done')     list=list.filter(r=>rStatusNum(r)===3);
 
   const el=document.getElementById('brand-report-list');
@@ -2259,11 +2259,11 @@ function renderBrandReports(){
     const _rStatus=rStatusNum(r);
     const _archived=isReportArchived(r);
     let bc, bt;
-    if(_archived)      { bc='badge-none';    bt='Archived'; }
+    if(_archived)        { bc='badge-none';    bt='Archived'; }
     else if(_rStatus===0){ bc='badge-none';    bt='Pending'; }
-    else if(_rStatus===1){ bc='badge-pending'; bt='Checking'; }
-    else if(_rStatus===2){ bc='badge-partial'; bt='Partial'; }
-    else               { bc='badge-done';    bt='Complete'; }
+    else if(_rStatus===1){ bc='badge-partial'; bt='Partial'; }
+    else if(_rStatus===2){ bc='badge-pending'; bt='Checking'; }
+    else                 { bc='badge-done';    bt='Complete'; }
     const targetStore=r.storeId?b.stores.find(s=>s.id===r.storeId):null;
     const _targetStoresCard=r.storeId?b.stores.filter(s=>s.id===r.storeId):b.stores;
     const _totalItemsCard=r.refs&&r.refs.length?r.refs.length:1;
@@ -5306,8 +5306,8 @@ function buildSortedResponsesHTML(ref, r, b, rid){
     const fbId=fb?.id||'';
     const hasRemarks=allRemarks.length>0;
 
-    // Multi-remark list
-    const remarksHTML=hasRemarks?allRemarks.map(rm=>{
+    // Multi-remark list with delete button per remark
+    const remarksHTML=hasRemarks?allRemarks.map((rm,rmi)=>{
       const initials=(rm.author||'?').split(' ').map(w=>w[0]).filter(Boolean).slice(0,2).join('').toUpperCase();
       return `<div style="margin-bottom:7px;padding:10px 13px;background:#fffbf0;border-left:3px solid #f59e0b;border-radius:0 8px 8px 0;">
         <div style="display:flex;align-items:center;gap:7px;margin-bottom:6px;">
@@ -5317,10 +5317,19 @@ function buildSortedResponsesHTML(ref, r, b, rid){
           <span style="font-size:12px;font-weight:600;color:#92400e;flex:1;">${rm.author||'Staff'}</span>
           ${rm.date?`<span style="font-size:10px;color:#b45309;">${rm.date}</span>`:''}
           <span style="font-size:10px;font-weight:600;padding:1px 7px;border-radius:20px;background:#fde68a;color:#78350f;flex-shrink:0;">Remark</span>
+          <button onclick="event.stopPropagation();deleteRemark('${fbId}','${ref.id}','${store.id}','${rid}',${rmi})" title="Delete remark" style="width:20px;height:20px;border-radius:50%;border:none;background:rgba(180,83,9,.15);color:#b45309;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;padding:0;">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
         </div>
         <div style="font-size:13px;color:#78350f;line-height:1.6;padding-left:29px;">${rm.text}</div>
       </div>`;
     }).join(''):'';
+
+    // Submit to store button — shown when this store has remarks (needs to resubmit)
+    const submitBtn=canAct&&hasRemarks?`<button onclick="event.stopPropagation();submitToStore('${fbId}','${ref.id}','${store.id}','${rid}','${store.name}')" style="margin-top:6px;width:100%;padding:9px;border-radius:10px;background:var(--accent);border:none;color:#fff;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+      Submit to ${store.name} — notify to resubmit
+    </button>`:'';
 
     const clickHandler=canAct&&(hasResponse||fb||hasRemarks)?`onclick="openRespAction('${fbId}','${ref.id}','${store.id}','${rid}','${store.name}','${ref.name||'Item'}')" style="cursor:pointer;"`:'';
 
@@ -5336,8 +5345,10 @@ function buildSortedResponsesHTML(ref, r, b, rid){
       </div>
       <!-- Remarks list -->
       ${remarksHTML}
+      <!-- Submit to store button -->
+      ${submitBtn}
       <!-- Store response text -->
-      ${hasResponse&&item.note?`<div style="font-size:13px;color:var(--text);line-height:1.6;margin-bottom:8px;padding-left:16px;border-left:2px solid var(--border2);">${item.note}</div>`:''}
+      ${hasResponse&&item.note?`<div style="font-size:13px;color:var(--text);line-height:1.6;margin-bottom:8px;padding-left:16px;border-left:2px solid var(--border2);margin-top:${hasRemarks?'8px':'0'}">${item.note}</div>`:''}
       <!-- Photos -->
       ${hasResponse&&item.photos&&item.photos.length?`
         <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:4px;padding-bottom:4px;">
@@ -5379,8 +5390,44 @@ function deleteStoreResponse(fbId, storeId, refId, rid){
   );
 }
 
-// ── Admin response note/remark ────────────────────────────────────────────────
-let _rnCtx={};
+// ── Delete a single remark ────────────────────────────────────────────────────
+async function deleteRemark(fbId, refId, storeId, rid, remarkIdx){
+  const b=brand(), r=b.reports.find(r=>r.id===rid);
+  const fb=r?.feedbacks.find(f=>f.id===fbId);
+  if(!fb||!fb.adminRemarks) return;
+  const listKey=refId+'_list';
+  const list=fb.adminRemarks[listKey]||[];
+  list.splice(remarkIdx,1);
+  fb.adminRemarks[listKey]=list;
+  // If no remarks left, clear legacy fields too
+  if(!list.length){
+    fb.adminRemarks[refId]='';
+    if(fb.adminRemarks._authors) delete fb.adminRemarks._authors[refId];
+  } else {
+    // Keep legacy in sync with last remark
+    const last=list[list.length-1];
+    fb.adminRemarks[refId]=last.text;
+    if(!fb.adminRemarks._authors) fb.adminRemarks._authors={};
+    fb.adminRemarks._authors[refId]=`${last.author} · ${last.date}`;
+  }
+  await api('PUT',`/api/feedbacks/${fbId}`,{
+    text:fb.text, itemFeedbacks:fb.itemFeedbacks, photos:fb.photos||[], adminRemarks:fb.adminRemarks
+  });
+  showToast('Remark deleted');
+  viewFeedback(rid);
+}
+
+// ── Submit to store — notify store to resubmit for this item ──────────────────
+async function submitToStore(fbId, refId, storeId, rid, storeName){
+  try {
+    const _alerter=getAlerterInfo();
+    await api('POST','/api/feedbacks/delete-notify',{
+      feedback_id:fbId, store_id:storeId, report_id:rid,
+      ref_id:refId, alerter_id:_alerter.id, alerter_role:_alerter.role
+    });
+    showToast(`✓ ${storeName} notified to resubmit`);
+  } catch(e){ showToast('Failed to notify store'); }
+}
 function openResponseNote(fbId, refId, storeId, rid){
   _rnCtx={fbId, refId, storeId, rid};
   const b=brand(), r=b.reports.find(r=>r.id===rid);
