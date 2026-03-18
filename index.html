@@ -2348,12 +2348,39 @@ function renderHome(){
   });
 
   // Stats row
-  document.getElementById('global-stats').innerHTML=[
-    {v:tb,l:'Brands'},{v:tr,l:'Reports'},{v:ts,l:'Stores'}
-  ].map(s=>`
-    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);padding:13px 14px;">
-      <div style="font-size:24px;font-weight:700;line-height:1;">${s.v}</div>
+  const nIncompleteReports = DB.brands.reduce((a,b)=>a+b.reports.filter(r=>getReportStatus(r,b.stores)!=='complete').length, 0);
+  const nTotalReports = tr;
+  const allComplete = nIncompleteReports === 0;
+
+  const statCards = [
+    {
+      v: tb, l: 'Brands',
+      sub: null,
+      border: '',
+      onclick: "homeTab('brands')"
+    },
+    {
+      v: ts, l: 'Stores',
+      sub: null,
+      border: '',
+      onclick: "homeTab('stores')"
+    },
+    {
+      v: nIncompleteReports,
+      l: 'Incomplete',
+      sub: allComplete ? 'All done ✓' : 'of '+nTotalReports+' reports',
+      subColor: allComplete ? 'var(--success)' : 'var(--text3)',
+      border: allComplete ? '1px solid var(--success)' : '1px solid #fecaca',
+      numColor: allComplete ? 'var(--success)' : 'var(--danger)',
+      onclick: "homeTab('incomplete')"
+    }
+  ];
+
+  document.getElementById('global-stats').innerHTML = statCards.map(s=>`
+    <div onclick="${s.onclick}" style="background:var(--bg2);border:${s.border||'1px solid var(--border)'};border-radius:var(--rl);padding:13px 14px;cursor:pointer;transition:opacity .15s;" onmousedown="this.style.opacity='.7'" onmouseup="this.style.opacity='1'" ontouchstart="this.style.opacity='.7'" ontouchend="this.style.opacity='1'">
+      <div style="font-size:24px;font-weight:700;line-height:1;color:${s.numColor||'var(--text)'};">${s.v}</div>
       <div style="font-size:12px;color:var(--text2);margin-top:3px;">${s.l}</div>
+      ${s.sub ? `<div style="height:0.5px;background:var(--border);margin:7px 0;"></div><div style="font-size:10px;font-weight:600;color:${s.subColor||'var(--text3)'};">${s.sub}</div>` : ''}
     </div>`).join('');
 
   // Incomplete bar
