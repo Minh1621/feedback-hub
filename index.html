@@ -490,7 +490,7 @@ label{
     <button class="btn btn-ghost btn-sm" onclick="goHome()" title="Home" style="padding:6px 8px;flex-shrink:0;">
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
     </button>
-    <button class="btn btn-sm" onclick="goEditStore()">Edit</button>
+    <button id="sd-edit-btn" class="btn btn-sm" onclick="goEditStore()" style="display:none;">Edit</button>
   </div>
   <div class="content">
     <div id="sd-store-card" style="margin-bottom:14px;"></div>
@@ -552,7 +552,7 @@ label{
     <button class="btn btn-primary btn-full" onclick="doEditStore()">Save changes</button>
     <div style="border-top:1px solid var(--border);margin:20px 0 14px;"></div>
     <div class="sec-label" style="color:var(--danger);">Danger zone</div>
-    <button class="btn btn-danger btn-full" id="remove-store-btn" onclick="confirmRemoveStore()">Remove this store</button>
+    <button class="btn btn-danger btn-full" id="remove-store-btn" onclick="confirmRemoveStore()" style="display:none;">Remove this store</button>
   </div>
 </div>
 
@@ -2675,6 +2675,11 @@ function openStoreDetail(sid){
   const s=b.stores.find(s=>s.id===sid);
   if(!s) return;
   document.getElementById('sd-store-name').textContent=s.name;
+  // Show Edit button only for admin
+  const sdEditBtn=document.getElementById('sd-edit-btn');
+  if(sdEditBtn) sdEditBtn.style.display=(DB.role==='admin')?'':'none';
+  const sdRemoveBtn=document.getElementById('remove-store-btn');
+  if(sdRemoveBtn) sdRemoveBtn.style.display=(DB.role==='admin')?'':'none';
 
   // Store info card
   document.getElementById('sd-store-card').innerHTML=`
