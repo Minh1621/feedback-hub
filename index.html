@@ -381,7 +381,7 @@ label{
 
 <!-- LIGHTBOX -->
 <div class="lightbox" id="lightbox" onclick="closeLightbox()">
-  <button class="lightbox-close" onclick="closeLightbox()">✕</button>
+  <button class="lightbox-close" onclick="closeLightbox()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
   <img id="lightbox-img" src="" alt=""/>
 </div>
 
@@ -1071,7 +1071,7 @@ label{
     <div style="font-size:13px;color:var(--text2);margin-bottom:6px;">You are about to remove:</div>
     <div id="remove-report-name" style="font-size:15px;font-weight:600;margin-bottom:16px;padding:12px 14px;background:var(--bg3);border-radius:var(--r);"></div>
     <div style="font-size:13px;color:var(--danger);margin-bottom:20px;padding:10px 14px;background:var(--alert-danger-bg);border-radius:var(--r);border:1px solid var(--alert-danger-border);">
-      ⚠️ This will permanently delete the report and all feedback from stores.
+      This will permanently delete the report and all feedback from stores.
     </div>
     <div style="font-size:13px;color:var(--text2);margin-bottom:8px;font-weight:500;">Type <strong style="color:var(--text);">DELETE</strong> to confirm:</div>
     <input type="text" id="remove-report-confirm-input" placeholder="Type DELETE here" style="margin-bottom:14px;" oninput="checkRemoveInput()"/>
@@ -1102,7 +1102,7 @@ label{
     <div style="font-size:13px;color:var(--text2);margin-bottom:6px;">You are about to remove:</div>
     <div id="remove-store-name-text" style="font-size:15px;font-weight:600;margin-bottom:16px;padding:12px 14px;background:var(--bg3);border-radius:var(--r);"></div>
     <div style="font-size:13px;color:var(--danger);margin-bottom:20px;padding:10px 14px;background:var(--alert-danger-bg);border-radius:var(--r);border:1px solid var(--alert-danger-border);">
-      ⚠️ This will permanently delete the store and all their feedback.
+      This will permanently delete the store and all their feedback.
     </div>
     <div style="display:flex;gap:10px;">
       <button class="btn btn-full" style="flex:1;" onclick="closeRemoveStoreOverlay()">Cancel</button>
@@ -1430,7 +1430,7 @@ label{
     <button id="ann-undo-btn" onclick="annUndo()" title="Undo" style="width:36px;height:36px;border-radius:8px;border:1px solid #444;background:#222;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#fff;flex-shrink:0;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg></button>
     <button id="ann-redo-btn" onclick="annRedo()" title="Redo" style="width:36px;height:36px;border-radius:8px;border:1px solid #444;background:#222;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#aaa;flex-shrink:0;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 14 20 9 15 4"/><path d="M4 20v-7a4 4 0 0 1 4-4h12"/></svg></button>
     <button onclick="annClose()" title="Cancel" style="width:36px;height:36px;border-radius:8px;border:1px solid #444;background:#222;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#aaa;flex-shrink:0;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
-    <button onclick="annSave()" style="padding:0 18px;height:36px;border-radius:8px;background:#22c55e;border:none;color:#fff;font-size:13px;font-weight:700;cursor:pointer;flex-shrink:0;">✓ Done</button>
+    <button onclick="annSave()" style="padding:0 18px;height:36px;border-radius:8px;background:#22c55e;border:none;color:#fff;font-size:13px;font-weight:700;cursor:pointer;flex-shrink:0;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg> Done</button>
   </div>
   <!-- Canvas area -->
   <div style="flex:1;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;" id="ann-canvas-wrap">
@@ -2441,7 +2441,7 @@ function onPDFPick(input){
   DB.pendingUpload=file;
   DB.pendingUploadURL=URL.createObjectURL(file);
   const lbl=document.getElementById('pdf-lbl');
-  if(lbl){ lbl.textContent='✓ '+file.name; lbl.style.color='var(--success)'; }
+  if(lbl){ lbl.textContent=file.name; lbl.style.color='var(--success)'; }
 }
 
 /* ===== REFERENCE ITEMS ===== */
@@ -2481,7 +2481,7 @@ function renderRefItems(){
         <input type="file" id="refphotoscam_${ref.id}" accept="image/*" capture="environment" style="display:none;" onchange="addRefPhotos('${ref.id}',this)"/>
       </div>
       <div class="photo-grid" id="refphotosgrid_${ref.id}">
-        ${ref.photos.map((p,pi)=>`<div class="photo-thumb-wrap"><img src="${p}" class="photo-thumb" onclick="openLightbox('${p}')"/><button class="photo-remove" onclick="removeRefPhoto('${ref.id}',${pi})">✕</button></div>`).join('')}
+        ${ref.photos.map((p,pi)=>`<div class="photo-thumb-wrap"><img src="${p}" class="photo-thumb" onclick="openLightbox('${p}')"/><button class="photo-remove" style="display:flex;align-items:center;justify-content:center;" onclick="removeRefPhoto('${ref.id}',${pi})"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>`).join('')}
       </div>
     </div>`).join('');
 }
@@ -2766,7 +2766,7 @@ function viewFeedback(rid){
               <input type="file" id="refphotosedit_${ref.id}" accept="image/*" multiple style="display:none;" onchange="addRefPhotosInline('${ref.id}','${rid}',this)"/>
               <input type="file" id="refphotoseditcam_${ref.id}" accept="image/*" capture="environment" style="display:none;" onchange="addRefPhotosInline('${ref.id}','${rid}',this)"/>
             </div>
-            <div class="photo-grid" id="refphotosgrid_inline_${ref.id}">${ref.photos.map((p,pi)=>`<div class="photo-thumb-wrap"><img src="${p}" class="photo-thumb" onclick="openLightbox('${p}')"/><button class="photo-remove" onclick="removeRefPhotoInline('${ref.id}','${rid}',${pi})">✕</button></div>`).join('')}</div>
+            <div class="photo-grid" id="refphotosgrid_inline_${ref.id}">${ref.photos.map((p,pi)=>`<div class="photo-thumb-wrap"><img src="${p}" class="photo-thumb" onclick="openLightbox('${p}')"/><button class="photo-remove" style="display:flex;align-items:center;justify-content:center;" onclick="removeRefPhotoInline('${ref.id}','${rid}',${pi})"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>`).join('')}</div>
             <div style="display:flex;gap:8px;margin-top:12px;">
               <button class="btn btn-primary btn-sm" style="flex:1;" onclick="saveRefEdit('${ref.id}','${rid}')">Save</button>
               <button class="btn btn-sm" onclick="toggleEditRef('${ref.id}','${rid}')">Cancel</button>
@@ -3018,7 +3018,7 @@ function renderReviewerHome(){
     let statusBadge, statusClass;
     if(!myFb||respondedItems===0){ statusBadge='Pending'; statusClass='badge-pending'; }
     else if(totalItems>0&&respondedItems<totalItems){ statusBadge='Partial'; statusClass='badge-partial'; }
-    else { statusBadge='✓ Done'; statusClass='badge-done'; }
+    else { statusBadge='Done'; statusClass='badge-done'; }
     return `<div class="card card-click" onclick="openReviewerReport('${r.id}')">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
         <div style="font-size:14px;font-weight:600;flex:1;">${r.title}</div>
@@ -3186,7 +3186,7 @@ function openReviewerReport(rid){
               <div id="rvs_edit_${i}" style="display:none;">
                 <textarea id="rvs_note_${i}" style="min-height:72px;margin-bottom:8px;">${item.note||''}</textarea>
                 <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:8px;" id="rvs_photogrid_${i}">
-                  ${item.photos&&item.photos.length?item.photos.map((p,pi)=>`<div style="position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;"><img src="${p}" style="width:100%;height:100%;object-fit:cover;cursor:pointer;" onclick="openLightbox('${p}')"/><button onclick="removeSubmittedPhoto('${rid}',${i},${pi})" style="position:absolute;top:3px;right:3px;width:18px;height:18px;border-radius:50%;background:rgba(0,0,0,.65);color:#fff;font-size:9px;border:none;cursor:pointer;">✕</button></div>`).join(''):''}
+                  ${item.photos&&item.photos.length?item.photos.map((p,pi)=>`<div style="position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;"><img src="${p}" style="width:100%;height:100%;object-fit:cover;cursor:pointer;" onclick="openLightbox('${p}')"/><button onclick="removeSubmittedPhoto('${rid}',${i},${pi})" style="position:absolute;top:3px;right:3px;width:18px;height:18px;border-radius:50%;background:rgba(0,0,0,.65);color:#fff;font-size:9px;border:none;cursor:pointer;"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>`).join(''):''}
                 </div>
                 <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap;">
                   <button onclick="document.getElementById('rvs_photoinput_${i}').click()" title="Upload photo" style="width:40px;height:40px;border-radius:10px;border:1.5px solid var(--border2);background:var(--bg3);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text2);">
@@ -3290,7 +3290,7 @@ function renderItemPhotoGrid(idx){
   grid.innerHTML=photos.map((p,pi)=>`
     <div style="position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;">
       <img src="${p}" style="width:100%;height:100%;object-fit:cover;cursor:pointer;" onclick="openLightbox('${p}')"/>
-      <button onclick="removeItemPhoto(${idx},${pi})" style="position:absolute;top:3px;right:3px;width:18px;height:18px;border-radius:50%;background:rgba(0,0,0,.65);color:#fff;font-size:9px;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;">✕</button>
+      <button onclick="removeItemPhoto(${idx},${pi})" style="position:absolute;top:3px;right:3px;width:18px;height:18px;border-radius:50%;background:rgba(0,0,0,.65);color:#fff;font-size:9px;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
     </div>`).join('');
 }
 
@@ -3852,7 +3852,7 @@ function renderErRefs(){
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:5px;" id="er_ref_grid_${i}">
         ${(ref.photos||[]).map((p,pi)=>`<div style="position:relative;aspect-ratio:1;border-radius:7px;overflow:hidden;">
           <img src="${p}" style="width:100%;height:100%;object-fit:cover;cursor:pointer;" onclick="openLightbox('${p}')"/>
-          <button onclick="erRemoveRefPhoto(${i},${pi})" style="position:absolute;top:2px;right:2px;width:18px;height:18px;border-radius:50%;background:rgba(0,0,0,.6);border:none;color:#fff;font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;">✕</button>
+          <button onclick="erRemoveRefPhoto(${i},${pi})" style="position:absolute;top:2px;right:2px;width:18px;height:18px;border-radius:50%;background:rgba(0,0,0,.6);border:none;color:#fff;font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
         </div>`).join('')}
       </div>
     </div>`).join('');
@@ -3881,7 +3881,7 @@ function erAddRefPhoto(i, input){
       _erRefs[i].photos.push(data);
       // Rebuild just the grid for this item
       const grid=document.getElementById('er_ref_grid_'+i);
-      if(grid) grid.innerHTML=(_erRefs[i].photos||[]).map((p,pi)=>`<div style="position:relative;aspect-ratio:1;border-radius:7px;overflow:hidden;"><img src="${p}" style="width:100%;height:100%;object-fit:cover;cursor:pointer;" onclick="openLightbox('${p}')"/><button onclick="erRemoveRefPhoto(${i},${pi})" style="position:absolute;top:2px;right:2px;width:18px;height:18px;border-radius:50%;background:rgba(0,0,0,.6);border:none;color:#fff;font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;">✕</button></div>`).join('');
+      if(grid) grid.innerHTML=(_erRefs[i].photos||[]).map((p,pi)=>`<div style="position:relative;aspect-ratio:1;border-radius:7px;overflow:hidden;"><img src="${p}" style="width:100%;height:100%;object-fit:cover;cursor:pointer;" onclick="openLightbox('${p}')"/><button onclick="erRemoveRefPhoto(${i},${pi})" style="position:absolute;top:2px;right:2px;width:18px;height:18px;border-radius:50%;background:rgba(0,0,0,.6);border:none;color:#fff;font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>`).join('');
     });
   });
 }
@@ -3890,7 +3890,7 @@ function erRemoveRefPhoto(i, pi){
   if(!_erRefs[i]||!_erRefs[i].photos) return;
   _erRefs[i].photos.splice(pi,1);
   const grid=document.getElementById('er_ref_grid_'+i);
-  if(grid) grid.innerHTML=(_erRefs[i].photos||[]).map((p,pj)=>`<div style="position:relative;aspect-ratio:1;border-radius:7px;overflow:hidden;"><img src="${p}" style="width:100%;height:100%;object-fit:cover;cursor:pointer;" onclick="openLightbox('${p}')"/><button onclick="erRemoveRefPhoto(${i},${pj})" style="position:absolute;top:2px;right:2px;width:18px;height:18px;border-radius:50%;background:rgba(0,0,0,.6);border:none;color:#fff;font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;">✕</button></div>`).join('');
+  if(grid) grid.innerHTML=(_erRefs[i].photos||[]).map((p,pj)=>`<div style="position:relative;aspect-ratio:1;border-radius:7px;overflow:hidden;"><img src="${p}" style="width:100%;height:100%;object-fit:cover;cursor:pointer;" onclick="openLightbox('${p}')"/><button onclick="erRemoveRefPhoto(${i},${pj})" style="position:absolute;top:2px;right:2px;width:18px;height:18px;border-radius:50%;background:rgba(0,0,0,.6);border:none;color:#fff;font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>`).join('');
 }
 
 async function doEditReport(){
@@ -4370,7 +4370,7 @@ function addSubmittedPhoto(rid, idx, input){
       // Refresh grid
       const grid=document.getElementById('rvs_photogrid_'+idx);
       if(grid){
-        grid.innerHTML=itemFb.photos.map((p,pi)=>`<div style="position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;"><img src="${p}" style="width:100%;height:100%;object-fit:cover;cursor:pointer;" onclick="openLightbox('${p}')"/><button onclick="removeSubmittedPhoto('${rid}',${idx},${pi})" style="position:absolute;top:3px;right:3px;width:18px;height:18px;border-radius:50%;background:rgba(0,0,0,.65);color:#fff;font-size:9px;border:none;cursor:pointer;">✕</button></div>`).join('');
+        grid.innerHTML=itemFb.photos.map((p,pi)=>`<div style="position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;"><img src="${p}" style="width:100%;height:100%;object-fit:cover;cursor:pointer;" onclick="openLightbox('${p}')"/><button onclick="removeSubmittedPhoto('${rid}',${idx},${pi})" style="position:absolute;top:3px;right:3px;width:18px;height:18px;border-radius:50%;background:rgba(0,0,0,.65);color:#fff;font-size:9px;border:none;cursor:pointer;"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>`).join('');
       }
     };
     reader.readAsDataURL(f);
@@ -4389,7 +4389,7 @@ function removeSubmittedPhoto(rid, idx, pi){
   api('PUT',`/api/feedbacks/${myFb.id}`,{text:myFb.text||'',itemFeedbacks:myFb.itemFeedbacks,photos:myFb.photos||[]});
   const grid=document.getElementById('rvs_photogrid_'+idx);
   if(grid){
-    grid.innerHTML=itemFb.photos.map((p,pi2)=>`<div style="position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;"><img src="${p}" style="width:100%;height:100%;object-fit:cover;cursor:pointer;" onclick="openLightbox('${p}')"/><button onclick="removeSubmittedPhoto('${rid}',${idx},${pi2})" style="position:absolute;top:3px;right:3px;width:18px;height:18px;border-radius:50%;background:rgba(0,0,0,.65);color:#fff;font-size:9px;border:none;cursor:pointer;">✕</button></div>`).join('');
+    grid.innerHTML=itemFb.photos.map((p,pi2)=>`<div style="position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;"><img src="${p}" style="width:100%;height:100%;object-fit:cover;cursor:pointer;" onclick="openLightbox('${p}')"/><button onclick="removeSubmittedPhoto('${rid}',${idx},${pi2})" style="position:absolute;top:3px;right:3px;width:18px;height:18px;border-radius:50%;background:rgba(0,0,0,.65);color:#fff;font-size:9px;border:none;cursor:pointer;"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>`).join('');
   }
 }
 
@@ -4457,7 +4457,7 @@ function rebuildRefPhotoGrid(refId, rid){
   const ref=r.refs.find(rf=>rf.id===refId);
   const grid=document.getElementById('refphotosgrid_inline_'+refId);
   if(!grid||!ref) return;
-  grid.innerHTML=ref.photos.map((p,pi)=>`<div class="photo-thumb-wrap"><img src="${p}" class="photo-thumb" onclick="openLightbox('${p}')"/><button class="photo-remove" onclick="removeRefPhotoInline('${refId}','${rid}',${pi})">✕</button></div>`).join('');
+  grid.innerHTML=ref.photos.map((p,pi)=>`<div class="photo-thumb-wrap"><img src="${p}" class="photo-thumb" onclick="openLightbox('${p}')"/><button class="photo-remove" style="display:flex;align-items:center;justify-content:center;" onclick="removeRefPhotoInline('${refId}','${rid}',${pi})"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>`).join('');
   // update count label
   const countEl=grid.previousElementSibling?.querySelector('span');
   if(countEl) countEl.textContent=`Photos (${ref.photos.length})`;
@@ -5085,7 +5085,7 @@ function buildSortedResponsesHTML(ref, r, b, rid){
             <strong style="font-size:13px;">${store.name}</strong>
             ${fb?`<span style="font-size:11px;color:var(--text3);">${fb.date}</span>`:''}
             ${!hasResponse?`<span style="font-size:11px;padding:1px 7px;border-radius:20px;background:var(--bg3);color:var(--text3);">No response</span>`:''}
-            ${adminRemark?`<span style="font-size:11px;padding:1px 7px;border-radius:20px;background:#fff8e1;color:var(--warn);">⚑ Remarked</span>`:''}
+            ${adminRemark?`<span style="font-size:11px;padding:1px 7px;border-radius:20px;background:#fff8e1;color:var(--warn);"><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg> Remarked</span>`:''}
           </div>
           ${remarkBadge}
           ${hasResponse&&item.note?`<div style="font-size:13px;color:var(--text);line-height:1.5;margin-top:4px;">${item.note}</div>`:''}
@@ -5094,7 +5094,7 @@ function buildSortedResponsesHTML(ref, r, b, rid){
               ${item.photos.map((p,pi)=>`
                 <div style="aspect-ratio:1;border-radius:7px;overflow:hidden;position:relative;">
                   <img src="${p}" style="width:100%;height:100%;object-fit:cover;cursor:pointer;" onclick="openLightbox('${p}')"/>
-                  ${canAct?`<button onclick="openAnnotator('${p}','${fbId}','${ref.id}',${pi})" style="position:absolute;top:2px;right:2px;background:rgba(0,0,0,.6);border:none;border-radius:5px;color:#fff;font-size:10px;cursor:pointer;padding:2px 5px;">✏️</button>`:''}
+                  ${canAct?`<button onclick="openAnnotator('${p}','${fbId}','${ref.id}',${pi})" title="Annotate" style="position:absolute;top:3px;right:3px;background:rgba(0,0,0,.65);border:none;border-radius:6px;color:#fff;cursor:pointer;padding:4px;display:flex;align-items:center;justify-content:center;width:24px;height:24px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg></button>`:''}
                 </div>`).join('')}
             </div>`:''}
           ${canAct&&hasResponse?`
