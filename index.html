@@ -450,7 +450,7 @@ label{
   <div class="topbar">
     <button class="back-btn" onclick="goTo('s-home')">&#8592; Back</button>
     <div class="topbar-title" id="brand-topbar-title">Brand</div>
-    <button id="brand-edit-btn" class="btn btn-sm" onclick="editBrand()">Edit</button>
+    <button id="brand-edit-btn" class="btn btn-sm" onclick="editBrand()" style="display:none;">Edit</button>
     <button class="btn btn-ghost btn-sm" onclick="goHome()" title="Home" style="padding:6px 8px;flex-shrink:0;">
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
     </button>
@@ -710,7 +710,7 @@ label{
     <button class="btn btn-ghost btn-sm" onclick="doAdminRefresh()" title="Refresh" style="padding:6px 8px;flex-shrink:0;">
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
     </button>
-    <button id="report-edit-btn" class="btn btn-sm" onclick="goEditReport(DB.currentReportId)">Edit</button>
+    <button id="report-edit-btn" class="btn btn-sm" onclick="goEditReport(DB.currentReportId)" style="display:none;">Edit</button>
   </div>
   <div class="content">
     <div id="fb-pdf-box" style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);height:120px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:7px;margin-bottom:16px;cursor:pointer;transition:border-color .15s;" onclick="openReportPDF()">
@@ -2712,7 +2712,7 @@ function openStoreDetail(sid){
   const storeUploadBtn=document.getElementById('store-upload-btn');
   if(storeUploadBtn) storeUploadBtn.style.display=canUpload()?'':'none';
   const storeEditBtn=document.getElementById('sd-store-edit-btn')||document.querySelector('#s-store-detail .btn-sm[onclick*="goEditStore"]');
-  if(storeEditBtn) storeEditBtn.style.display=canEdit()?'':'none';
+  if(storeEditBtn) storeEditBtn.style.display=(DB.role==='admin')?'':'none';
   goTo('s-store-detail');
 }
 
@@ -5552,6 +5552,11 @@ function applyStaffPermissions(){
   const brandDeleteBtn=document.getElementById('brand-delete-btn');
   if(brandDeleteBtn) brandDeleteBtn.style.display='none'; // staff never deletes brands
 
+  // ── Store detail: Edit store button — admin only, never staff
+  const storeEditBtn=document.getElementById('sd-edit-btn');
+  if(storeEditBtn) storeEditBtn.style.display='none';
+  const removeStoreBtn=document.getElementById('remove-store-btn');
+  if(removeStoreBtn) removeStoreBtn.style.display='none';
   // ── Report detail: Edit report button
   const reportEditBtn=document.getElementById('report-edit-btn');
   if(reportEditBtn) reportEditBtn.style.display=edit?'':'none';
