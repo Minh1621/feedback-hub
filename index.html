@@ -2362,7 +2362,7 @@ function homeTab(tab){
 }
 
 function renderHome(_brandsOverride){
-  const _brands = _brandsOverride || _brands;
+  const _brands = _brandsOverride || DB.brands;
   const tb=_brands.length;
   const tr=_brands.reduce((a,b)=>a+b.reports.length,0);
   const ts=_brands.reduce((a,b)=>a+b.stores.length,0);
