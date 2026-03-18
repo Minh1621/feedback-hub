@@ -6126,6 +6126,9 @@ function openRespAction(fbId, refId, storeId, rid, storeName, itemName) {
   document.getElementById('ra-item-name').textContent = itemName;
   document.getElementById('ra-remark-input').value = adminRemark;
   document.getElementById('ra-remark-msg').innerHTML = '';
+  // Always reset save button state when opening (in case previous save left it disabled)
+  const _saveBtn = document.querySelector('#resp-action-overlay button[onclick="raSaveRemark()"]');
+  if (_saveBtn) { _saveBtn.disabled = false; _saveBtn.textContent = 'Save remark'; }
 
   // Note section
   const noteSection = document.getElementById('ra-note-section');
@@ -6216,24 +6219,29 @@ async function raSaveRemark() {
   const saveBtn = document.querySelector('#resp-action-overlay button[onclick="raSaveRemark()"]');
   if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Saving...'; }
 
-  await api('PUT', `/api/feedbacks/${fbId}`, {
-    text: fb.text, itemFeedbacks: fb.itemFeedbacks, photos: fb.photos || [],
-    adminRemarks: fb.adminRemarks,
-    rejected_at: fb.rejectedAt, timeline: fb.timeline
-  });
-
-  // Notify store to resubmit
   try {
-    const _alerter = getAlerterInfo();
-    await api('POST', '/api/feedbacks/delete-notify', {
-      feedback_id: fbId, store_id: storeId, report_id: rid,
-      ref_id: refId, alerter_id: _alerter.id, alerter_role: _alerter.role
+    await api('PUT', `/api/feedbacks/${fbId}`, {
+      text: fb.text, itemFeedbacks: fb.itemFeedbacks, photos: fb.photos || [],
+      adminRemarks: fb.adminRemarks,
+      rejected_at: fb.rejectedAt, timeline: fb.timeline
     });
-  } catch(e) {}
 
-  closeRespAction();
-  showToast('✓ Remark saved — store notified to resubmit');
-  viewFeedback(rid);
+    // Notify store to resubmit
+    try {
+      const _alerter = getAlerterInfo();
+      await api('POST', '/api/feedbacks/delete-notify', {
+        feedback_id: fbId, store_id: storeId, report_id: rid,
+        ref_id: refId, alerter_id: _alerter.id, alerter_role: _alerter.role
+      });
+    } catch(e) {}
+
+    closeRespAction();
+    showToast('✓ Remark saved — store notified to resubmit');
+    viewFeedback(rid);
+  } finally {
+    // Always re-enable the button so the modal works again for the next item
+    if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Save remark'; }
+  }
 }
 
 function raDeleteResponse() {
