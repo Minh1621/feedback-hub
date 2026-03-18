@@ -1506,6 +1506,51 @@ label{
   </div>
 </div>
 
+
+<!-- ======= RESPONSE ACTION OVERLAY ======= -->
+<div id="resp-action-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:60;align-items:flex-end;justify-content:center;" onclick="if(event.target===this)closeRespAction()">
+  <div style="background:var(--bg);border-radius:20px 20px 0 0;width:100%;max-width:520px;max-height:90vh;overflow-y:auto;">
+    <!-- Header -->
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px 12px;border-bottom:1px solid var(--border);">
+      <div>
+        <div style="font-size:16px;font-weight:700;" id="ra-store-name">Store</div>
+        <div style="font-size:12px;color:var(--text3);" id="ra-item-name">Item</div>
+      </div>
+      <button onclick="closeRespAction()" style="width:32px;height:32px;border-radius:50%;border:none;background:var(--bg3);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text2);">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+
+    <!-- Response text -->
+    <div id="ra-note-section" style="padding:14px 20px;border-bottom:1px solid var(--border);display:none;">
+      <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;">Store response</div>
+      <div id="ra-note-text" style="font-size:14px;color:var(--text);line-height:1.6;"></div>
+    </div>
+
+    <!-- Photos -->
+    <div id="ra-photos-section" style="padding:14px 20px;border-bottom:1px solid var(--border);display:none;">
+      <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">Photos <span style="font-size:10px;color:var(--accent);">(tap pencil to annotate)</span></div>
+      <div id="ra-photos-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;"></div>
+    </div>
+
+    <!-- Admin remark -->
+    <div style="padding:14px 20px;border-bottom:1px solid var(--border);">
+      <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">Admin remark</div>
+      <textarea id="ra-remark-input" placeholder="Add a remark visible to admin team..." style="min-height:72px;font-size:14px;margin-bottom:0;"></textarea>
+      <div id="ra-remark-msg" style="margin-top:6px;"></div>
+      <button onclick="raSaveRemark()" style="margin-top:8px;width:100%;padding:10px;border-radius:10px;background:var(--accent);border:none;color:#fff;font-size:14px;font-weight:600;cursor:pointer;">Save remark</button>
+    </div>
+
+    <!-- Actions -->
+    <div style="padding:14px 20px 28px;">
+      <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;">Actions</div>
+      <button id="ra-delete-btn" onclick="raDeleteResponse()" style="width:100%;padding:12px;border-radius:12px;border:1.5px solid var(--danger);background:transparent;color:var(--danger);font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+        Reset to no response (store resubmits)
+      </button>
+    </div>
+  </div>
+</div>
 </div><!-- /wrap -->
 <script>
 /* ===== SCORE HELPER ===== */
@@ -5077,7 +5122,8 @@ function buildSortedResponsesHTML(ref, r, b, rid){
 
     const fbId=fb?.id||'';
 
-    return `<div style="padding:10px 0;${!isLast?'border-bottom:1px solid var(--border);':''}">
+    const clickHandler=canAct&&(hasResponse||fb)?`onclick="openRespAction('${fbId}','${ref.id}','${store.id}','${rid}','${store.name}','${ref.name||'Item'}')" style="cursor:pointer;"`:'';
+    return `<div ${clickHandler} style="padding:10px 0;${!isLast?'border-bottom:1px solid var(--border);':''}">
       <div style="display:flex;align-items:flex-start;gap:7px;">
         <div class="dot" style="background:${storeColor};margin-top:4px;flex-shrink:0;"></div>
         <div style="flex:1;min-width:0;">
@@ -5086,6 +5132,7 @@ function buildSortedResponsesHTML(ref, r, b, rid){
             ${fb?`<span style="font-size:11px;color:var(--text3);">${fb.date}</span>`:''}
             ${!hasResponse?`<span style="font-size:11px;padding:1px 7px;border-radius:20px;background:var(--bg3);color:var(--text3);">No response</span>`:''}
             ${adminRemark?`<span style="font-size:11px;padding:1px 7px;border-radius:20px;background:#fff8e1;color:var(--warn);"><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg> Remarked</span>`:''}
+            ${canAct&&(hasResponse||fb)?`<span style="font-size:10px;color:var(--text3);margin-left:auto;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></span>`:''}
           </div>
           ${remarkBadge}
           ${hasResponse&&item.note?`<div style="font-size:13px;color:var(--text);line-height:1.5;margin-top:4px;">${item.note}</div>`:''}
@@ -5093,18 +5140,9 @@ function buildSortedResponsesHTML(ref, r, b, rid){
             <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-top:7px;">
               ${item.photos.map((p,pi)=>`
                 <div style="aspect-ratio:1;border-radius:7px;overflow:hidden;position:relative;">
-                  <img src="${p}" style="width:100%;height:100%;object-fit:cover;cursor:pointer;" onclick="openLightbox('${p}')"/>
-                  ${canAct?`<button onclick="openAnnotator('${p}','${fbId}','${ref.id}',${pi})" title="Annotate" style="position:absolute;top:3px;right:3px;background:rgba(0,0,0,.65);border:none;border-radius:6px;color:#fff;cursor:pointer;padding:4px;display:flex;align-items:center;justify-content:center;width:24px;height:24px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg></button>`:''}
+                  <img src="${p}" style="width:100%;height:100%;object-fit:cover;cursor:pointer;" onclick="event.stopPropagation();openLightbox('${p}')"/>
+                  <button onclick="event.stopPropagation();openAnnotator('${p}','${fbId}','${ref.id}',${pi})" title="Annotate" style="position:absolute;top:3px;right:3px;background:rgba(0,0,0,.65);border:none;border-radius:6px;color:#fff;cursor:pointer;padding:4px;display:flex;align-items:center;justify-content:center;width:24px;height:24px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg></button>
                 </div>`).join('')}
-            </div>`:''}
-          ${canAct&&hasResponse?`
-            <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;">
-              <button onclick="openResponseNote('${fbId}','${ref.id}','${store.id}','${rid}')" style="font-size:11px;padding:3px 10px;border-radius:20px;border:1px solid var(--accent);color:var(--accent);background:transparent;cursor:pointer;">${adminRemark?'Edit remark':'+ Add remark'}</button>
-              <button onclick="deleteStoreResponse('${fbId}','${store.id}','${ref.id}','${rid}')" style="font-size:11px;padding:3px 10px;border-radius:20px;border:1px solid var(--danger);color:var(--danger);background:transparent;cursor:pointer;">Delete response</button>
-            </div>`:''}
-          ${canAct&&!hasResponse&&fb?`
-            <div style="display:flex;gap:6px;margin-top:8px;">
-              <button onclick="openResponseNote('${fbId}','${ref.id}','${store.id}','${rid}')" style="font-size:11px;padding:3px 10px;border-radius:20px;border:1px solid var(--accent);color:var(--accent);background:transparent;cursor:pointer;">${adminRemark?'Edit remark':'+ Add remark'}</button>
             </div>`:''}
         </div>
       </div>
@@ -5600,6 +5638,96 @@ async function doExportStaffData(){
     URL.revokeObjectURL(url);
     showToast('Staff data downloaded!');
   } catch(e){ showToast('Export failed: '+e.message); }
+}
+
+
+
+/* ===== RESPONSE ACTION PANEL ===== */
+let _raCtx = {};
+
+function openRespAction(fbId, refId, storeId, rid, storeName, itemName) {
+  const b = brand();
+  const r = b.reports.find(r => r.id === rid);
+  const fb = r?.feedbacks.find(f => f.id === fbId);
+  const item = fb?.itemFeedbacks?.find(it => it.refId === refId) || null;
+  const hasResponse = item && (item.note || (item.photos && item.photos.length));
+  const adminRemark = fb?.adminRemarks?.[refId] || '';
+
+  _raCtx = { fbId, refId, storeId, rid, storeName, itemName, fb, item, hasResponse };
+
+  document.getElementById('ra-store-name').textContent = storeName;
+  document.getElementById('ra-item-name').textContent = itemName;
+  document.getElementById('ra-remark-input').value = adminRemark;
+  document.getElementById('ra-remark-msg').innerHTML = '';
+
+  // Note section
+  const noteSection = document.getElementById('ra-note-section');
+  const noteText = document.getElementById('ra-note-text');
+  if (hasResponse && item.note) {
+    noteText.textContent = item.note;
+    noteSection.style.display = '';
+  } else {
+    noteSection.style.display = 'none';
+  }
+
+  // Photos section
+  const photosSection = document.getElementById('ra-photos-section');
+  const photosGrid = document.getElementById('ra-photos-grid');
+  if (hasResponse && item.photos && item.photos.length) {
+    photosGrid.innerHTML = item.photos.map((p, pi) => `
+      <div style="aspect-ratio:1;border-radius:10px;overflow:hidden;position:relative;">
+        <img src="${p}" style="width:100%;height:100%;object-fit:cover;cursor:pointer;" onclick="openLightbox('${p}')"/>
+        <button onclick="event.stopPropagation();openAnnotatorFromPanel('${p}',${pi})" title="Annotate" style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,.7);border:none;border-radius:7px;color:#fff;cursor:pointer;padding:5px;display:flex;align-items:center;justify-content:center;width:28px;height:28px;">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+        </button>
+      </div>`).join('');
+    photosSection.style.display = '';
+  } else {
+    photosSection.style.display = 'none';
+  }
+
+  // Delete button text
+  const delBtn = document.getElementById('ra-delete-btn');
+  if (delBtn) delBtn.style.display = hasResponse ? '' : 'none';
+
+  document.getElementById('resp-action-overlay').style.display = 'flex';
+}
+
+function closeRespAction() {
+  document.getElementById('resp-action-overlay').style.display = 'none';
+}
+
+function openAnnotatorFromPanel(src, photoIdx) {
+  const { fbId, refId } = _raCtx;
+  closeRespAction();
+  openAnnotator(src, fbId, refId, photoIdx);
+}
+
+async function raSaveRemark() {
+  const { fbId, refId, storeId, rid } = _raCtx;
+  const text = document.getElementById('ra-remark-input').value.trim();
+  const msg = document.getElementById('ra-remark-msg');
+  const b = brand();
+  const r = b.reports.find(r => r.id === rid);
+  const fb = r?.feedbacks.find(f => f.id === fbId);
+  if (!fb) return;
+  if (!fb.adminRemarks) fb.adminRemarks = {};
+  fb.adminRemarks[refId] = text;
+  msg.innerHTML = '<div class="alert alert-success">Saving...</div>';
+  await api('PUT', `/api/feedbacks/${fbId}`, {
+    text: fb.text, itemFeedbacks: fb.itemFeedbacks, photos: fb.photos || [], adminRemarks: fb.adminRemarks
+  });
+  msg.innerHTML = '<div class="alert alert-success">Remark saved!</div>';
+  setTimeout(() => {
+    closeRespAction();
+    viewFeedback(rid);
+  }, 700);
+}
+
+function raDeleteResponse() {
+  const { fbId, storeId, refId, rid, storeName } = _raCtx;
+  closeRespAction();
+  deleteStoreResponse(fbId, storeId, refId, rid);
 }
 
 
