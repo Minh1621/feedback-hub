@@ -459,6 +459,7 @@ label{
       <div class="filters">
         <button class="fbtn active" id="bf-all" onclick="setBF('all')">All</button>
         <button class="fbtn" id="bf-pending" onclick="setBF('pending')">Pending</button>
+        <button class="fbtn" id="bf-checking" onclick="setBF('checking')">Checking</button>
         <button class="fbtn" id="bf-partial" onclick="setBF('partial')">Partial</button>
         <button class="fbtn" id="bf-done" onclick="setBF('done')">Complete</button>
       </div>
@@ -2114,36 +2115,36 @@ window.addEventListener('load', async ()=>{
 
 /* ===== HOME ===== */
 // Helper: get report completion status based on item responses
+// Status: 'pending' = no response, 'checking' = has rejected items, 'partial' = some responded (no rejects), 'complete' = all done with no rejects
 function getReportStatus(r, stores){
   const targetStores=r.storeId?stores.filter(s=>s.id===r.storeId):stores;
   const totalItems=r.refs&&r.refs.length?r.refs.length:0;
   if(!r.feedbacks.length) return 'pending';
-  // Dedup feedbacks — latest per store
   const fbMap={};
   r.feedbacks.forEach(f=>{ if(!fbMap[f.storeId]||f.date>=fbMap[f.storeId].date) fbMap[f.storeId]=f; });
-  let allDone=true, anyDone=false;
+  let allDone=true, anyDone=false, anyRejected=false;
   for(const s of targetStores){
     const fb=fbMap[s.id];
     if(!fb){ allDone=false; continue; }
     let responded=0;
     if(totalItems>0){
-      // Count only items that have content AND no remark (remark = rejected = not done)
       const refMap={};
       (fb.itemFeedbacks||[]).forEach(it=>{ if(it.refId) refMap[it.refId]=it; });
       r.refs.forEach(ref=>{
         const it=refMap[ref.id];
         const hasContent=it&&(it.note||(it.photos&&it.photos.length));
         const hasRemark=!!(fb.adminRemarks?.[ref.id+'_list']?.length||fb.adminRemarks?.[ref.id]);
-        if(hasContent&&!hasRemark) responded++;
+        if(hasRemark){ anyRejected=true; }
+        else if(hasContent){ responded++; }
       });
     } else {
-      // No refs — check if feedback has any content
       responded=(fb.itemFeedbacks||[]).filter(it=>it.note||(it.photos&&it.photos.length)).length + (fb.text?1:0);
     }
-    if(responded===0){ allDone=false; }
+    if(responded===0&&!anyRejected){ allDone=false; }
     else if(totalItems>0&&responded<totalItems){ allDone=false; anyDone=true; }
-    else { anyDone=true; }
+    else if(responded>0){ anyDone=true; }
   }
+  if(anyRejected) return 'checking';
   if(allDone) return 'complete';
   if(anyDone) return 'partial';
   return 'pending';
@@ -2159,12 +2160,12 @@ function renderHome(){
   const el=document.getElementById('brand-list');
   if(!DB.brands.length){ el.innerHTML='<div class="empty">No brands yet</div>'; return; }
   el.innerHTML=DB.brands.map(b=>{
-    // Count reports by status using item-based logic
-    let nComplete=0, nPending=0;
+    let nComplete=0, nChecking=0, nPending=0;
     b.reports.forEach(r=>{
       const st=getReportStatus(r,b.stores);
       if(st==='complete') nComplete++;
-      else nPending++; // partial counts as pending
+      else if(st==='checking') nChecking++;
+      else nPending++;
     });
     const totalReports=b.reports.length||1;
     const completePct=Math.round(nComplete/totalReports*100);
@@ -2179,13 +2180,12 @@ function renderHome(){
         <div style="width:11px;height:11px;border-radius:50%;background:${b.color};flex-shrink:0;"></div>
       </div>
       <div style="padding:12px 16px;border-top:1px solid var(--border);background:var(--bg3);">
-        <!-- Report status pills — only Complete and Pending -->
         <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;">
           ${nComplete?`<span style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;background:var(--badge-done-bg);color:var(--success);">✓ ${nComplete} Complete</span>`:''}
+          ${nChecking?`<span style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;background:#fff3e0;color:var(--warn);">⟳ ${nChecking} Checking</span>`:''}
           ${nPending?`<span style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;background:var(--badge-none-bg);color:var(--text3);">○ ${nPending} Pending</span>`:''}
           ${b.reports.length===0?`<span style="font-size:11px;color:var(--text3);">No reports yet</span>`:''}
         </div>
-        <!-- Progress bar -->
         <div style="display:flex;align-items:center;gap:8px;">
           <div style="flex:1;background:var(--bg4);border-radius:4px;height:6px;overflow:hidden;">
             <div style="width:${completePct}%;background:var(--success);height:6px;border-radius:4px;transition:width .5s;"></div>
@@ -2229,24 +2229,29 @@ function brandTab(tab){
 }
 function setBF(f){
   DB.brandFilter=f;
-  ['all','pending','partial','done'].forEach(k=>document.getElementById('bf-'+k).classList.toggle('active',k===f));
+  ['all','pending','checking','partial','done'].forEach(k=>{
+    const el=document.getElementById('bf-'+k);
+    if(el) el.classList.toggle('active',k===f);
+  });
   renderBrandReports();
 }
 function renderBrandReports(){
   const b=brand();
   let list=[...b.reports];
-  const ts=b.stores.length;
 
-  // Helper: get report status based on item responses
-  // Use shared getReportStatus — 0=pending, 1=partial, 2=complete
-  function rStatusNum(r){ const s=getReportStatus(r,b.stores); return s==='complete'?2:s==='partial'?1:0; }
+  // 0=pending, 1=checking, 2=partial, 3=complete
+  function rStatusNum(r){
+    const s=getReportStatus(r,b.stores);
+    return s==='complete'?3:s==='partial'?2:s==='checking'?1:0;
+  }
 
-  // Sort: pending → partial → complete
+  // Sort: pending → checking → partial → complete
   list.sort((a,bb)=> rStatusNum(a)-rStatusNum(bb));
 
-  if(DB.brandFilter==='pending') list=list.filter(r=>rStatusNum(r)===0);
-  if(DB.brandFilter==='partial') list=list.filter(r=>rStatusNum(r)===1);
-  if(DB.brandFilter==='done')    list=list.filter(r=>rStatusNum(r)===2);
+  if(DB.brandFilter==='pending')  list=list.filter(r=>rStatusNum(r)===0);
+  if(DB.brandFilter==='checking') list=list.filter(r=>rStatusNum(r)===1);
+  if(DB.brandFilter==='partial')  list=list.filter(r=>rStatusNum(r)===2);
+  if(DB.brandFilter==='done')     list=list.filter(r=>rStatusNum(r)===3);
 
   const el=document.getElementById('brand-report-list');
   if(!list.length){ el.innerHTML='<div class="empty">No reports</div>'; return; }
@@ -2254,10 +2259,11 @@ function renderBrandReports(){
     const _rStatus=rStatusNum(r);
     const _archived=isReportArchived(r);
     let bc, bt;
-    if(_archived){ bc='badge-none'; bt='Archived'; }
-    else if(_rStatus===0){ bc='badge-none'; bt='Pending'; }
-    else if(_rStatus===1){ bc='badge-partial'; bt='Partial'; }
-    else { bc='badge-done'; bt='Complete'; }
+    if(_archived)      { bc='badge-none';    bt='Archived'; }
+    else if(_rStatus===0){ bc='badge-none';    bt='Pending'; }
+    else if(_rStatus===1){ bc='badge-pending'; bt='Checking'; }
+    else if(_rStatus===2){ bc='badge-partial'; bt='Partial'; }
+    else               { bc='badge-done';    bt='Complete'; }
     const targetStore=r.storeId?b.stores.find(s=>s.id===r.storeId):null;
     const _targetStoresCard=r.storeId?b.stores.filter(s=>s.id===r.storeId):b.stores;
     const _totalItemsCard=r.refs&&r.refs.length?r.refs.length:1;
