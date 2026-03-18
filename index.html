@@ -1427,9 +1427,10 @@ label{
       <option value="8">Thick</option>
     </select>
     <div style="flex:1;"></div>
-    <button onclick="annUndo()" style="width:36px;height:36px;border-radius:8px;border:1px solid #444;background:#222;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#fff;flex-shrink:0;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg></button>
-    <button onclick="annSave()" style="padding:0 14px;height:36px;border-radius:8px;background:#7c6fff;border:none;color:#fff;font-size:13px;font-weight:600;cursor:pointer;flex-shrink:0;">Save</button>
-    <button onclick="annClose()" style="width:36px;height:36px;border-radius:8px;border:1px solid #444;background:#222;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#aaa;flex-shrink:0;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    <button id="ann-undo-btn" onclick="annUndo()" title="Undo" style="width:36px;height:36px;border-radius:8px;border:1px solid #444;background:#222;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#fff;flex-shrink:0;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg></button>
+    <button id="ann-redo-btn" onclick="annRedo()" title="Redo" style="width:36px;height:36px;border-radius:8px;border:1px solid #444;background:#222;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#aaa;flex-shrink:0;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 14 20 9 15 4"/><path d="M4 20v-7a4 4 0 0 1 4-4h12"/></svg></button>
+    <button onclick="annClose()" title="Cancel" style="width:36px;height:36px;border-radius:8px;border:1px solid #444;background:#222;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#aaa;flex-shrink:0;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    <button onclick="annSave()" style="padding:0 18px;height:36px;border-radius:8px;background:#22c55e;border:none;color:#fff;font-size:13px;font-weight:700;cursor:pointer;flex-shrink:0;">✓ Done</button>
   </div>
   <!-- Canvas area -->
   <div style="flex:1;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;" id="ann-canvas-wrap">
@@ -4479,8 +4480,12 @@ async function doAdminRefresh(){
   if(icon) icon.style.animation='spin .7s linear infinite';
   try{
     await loadAllData();
-    renderHome();
-    renderHomeAppLogo();
+    if(DB.role==='staff'){
+      renderStaffHome(); // always use filtered view for staff
+    } else {
+      renderHome();
+      renderHomeAppLogo();
+    }
     showToast('Updated!');
   }catch(e){ showToast('Refresh failed'); }
   if(icon) icon.style.animation='';
@@ -4593,8 +4598,11 @@ function isViewOnly(){ return staffPerm()==='view'; }
 /* ===== STAFF HOME ===== */
 function renderStaffHome(){
   const staff=DB.staffData||{};
-  const allowedBrands=staff.brand_ids&&staff.brand_ids.length>0
-    ? DB.brands.filter(b=>staff.brand_ids.includes(b.id))
+  // Parse brand_ids safely — may be string or array
+  let staffBrandIds=[];
+  try{ staffBrandIds=Array.isArray(staff.brand_ids)?staff.brand_ids:JSON.parse(staff.brand_ids||'[]'); }catch(e){}
+  const allowedBrands=staffBrandIds.length>0
+    ? DB.brands.filter(b=>staffBrandIds.includes(b.id))
     : DB.brands;
 
   // ── Rebuild topbar for staff ───────────────────────────────────────────────
@@ -5167,7 +5175,14 @@ async function saveResponseNote(){
 
 /* ===== PHOTO ANNOTATOR ===== */
 let _annCtx={tool:'pen',color:'#ef4444',stroke:4,drawing:false,startX:0,startY:0,
-             history:[],imgData:null,fbId:null,refId:null,photoIdx:null};
+             history:[],redoStack:[],imgData:null,fbId:null,refId:null,photoIdx:null};
+
+function annUpdateUndoRedoBtns(){
+  const undoBtn=document.getElementById('ann-undo-btn');
+  const redoBtn=document.getElementById('ann-redo-btn');
+  if(undoBtn) undoBtn.style.opacity=_annCtx.history.length?'1':'.3';
+  if(redoBtn) redoBtn.style.color=_annCtx.redoStack.length?'#fff':'#aaa';
+}
 
 function openAnnotator(src, fbId, refId, photoIdx){
   const overlay=document.getElementById('photo-annotator-overlay');
@@ -5175,7 +5190,7 @@ function openAnnotator(src, fbId, refId, photoIdx){
   const wrap=document.getElementById('ann-canvas-wrap');
   const ctx=canvas.getContext('2d');
   _annCtx.fbId=fbId; _annCtx.refId=refId; _annCtx.photoIdx=parseInt(photoIdx);
-  _annCtx.history=[];
+  _annCtx.history=[]; _annCtx.redoStack=[];
   const img=new Image();
   img.onload=()=>{
     // Size canvas to image, fitting screen
@@ -5221,10 +5236,25 @@ function annGetPos(e, canvas){
 function annUndo(){
   const canvas=document.getElementById('ann-canvas');
   const ctx=canvas.getContext('2d');
-  if(_annCtx.history.length===0){ ctx.putImageData(_annCtx.imgData,0,0); return; }
-  _annCtx.history.pop();
+  if(_annCtx.history.length===0) return;
+  const step=_annCtx.history.pop();
+  _annCtx.redoStack.push(step);
   ctx.putImageData(_annCtx.imgData,0,0);
-  _annCtx.history.forEach(step=>annReplay(ctx,step));
+  _annCtx.history.forEach(s=>annReplay(ctx,s));
+  annUpdateUndoRedoBtns();
+}
+
+function annRedo(){
+  const canvas=document.getElementById('ann-canvas');
+  const ctx=canvas.getContext('2d');
+  if(_annCtx.redoStack.length===0) return;
+  const step=_annCtx.redoStack.pop();
+  _annCtx.history.push(step);
+  ctx.putImageData(_annCtx.imgData,0,0);
+  _annCtx.history.forEach(s=>annReplay(ctx,s));
+  // Update imgData to include the redo'd step
+  _annCtx.imgData=canvas.getContext('2d').getImageData(0,0,canvas.width,canvas.height);
+  annUpdateUndoRedoBtns();
 }
 
 function annReplay(ctx,step){
@@ -5336,7 +5366,9 @@ function annInitEvents(){
     else if(_annCtx.tool==='rect') _annCtx.history.push({type:'rect',color:_annCtx.color,stroke:_annCtx.stroke,x:_annCtx.startX,y:_annCtx.startY,w:dx,h:dy});
     else if(_annCtx.tool==='circle') _annCtx.history.push({type:'circle',color:_annCtx.color,stroke:_annCtx.stroke,x:_annCtx.startX,y:_annCtx.startY,w:dx,h:dy});
     else if(_annCtx.tool==='arrow') _annCtx.history.push({type:'arrow',color:_annCtx.color,stroke:_annCtx.stroke,x:_annCtx.startX,y:_annCtx.startY,x2:pos.x,y2:pos.y});
+    _annCtx.redoStack=[]; // new stroke clears redo history
     _annCtx.imgData=canvas.getContext('2d').getImageData(0,0,canvas.width,canvas.height);
+    annUpdateUndoRedoBtns();
   };
   canvas.addEventListener('mousedown',down); canvas.addEventListener('mousemove',move); canvas.addEventListener('mouseup',up);
   canvas.addEventListener('touchstart',down,{passive:false}); canvas.addEventListener('touchmove',move,{passive:false}); canvas.addEventListener('touchend',up);
