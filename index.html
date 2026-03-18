@@ -1549,10 +1549,11 @@ async function doLogin(){
     await loadAdminSettingsFromDB();
     renderHome(); renderHomeAppLogo(); goTo('s-home');
   } else if(result.role==='staff'){
+    DB.role='staff';
     DB.staffData=result;
     saveSession('staff', null, null, result);
     renderStaffHome();
-    goTo('s-home'); // staff uses admin home but with limited access
+    goTo('s-home');
   } else if(result.role==='reviewer'){
     DB.reviewerBrandId=result.brand_id; DB.reviewerStoreId=result.store_id;
     saveSession('reviewer', result.brand_id, result.store_id);
@@ -1583,8 +1584,17 @@ function doLogout(){
       }
     }
   }catch(e){}
-  DB.reviewerBrandId=null; DB.reviewerStoreId=null;
+  // ── Clear ALL session state ──────────────────────────────────────────────
+  DB.reviewerBrandId=null;
+  DB.reviewerStoreId=null;
+  DB.staffData=null;
+  DB.role=null;
+  DB.brands=[];
+  DB.currentBrandId=null;
   try{ localStorage.removeItem('fh_session'); }catch(e){}
+  // Reset staff home card if exists
+  const staffCard=document.getElementById('staff-info-card');
+  if(staffCard) staffCard.remove();
   goTo('s-login');
 }
 
@@ -1624,9 +1634,14 @@ async function checkSessionStillValid(){
 }
 
 // Save session to localStorage
-function saveSession(role, brandId, storeId){
+function saveSession(role, brandId, storeId, staffData){
   try{
-    localStorage.setItem('fh_session', JSON.stringify({role, brandId, storeId, ts:Date.now()}));
+    const staffId=staffData?.staff_id||staffData?.id||null;
+    localStorage.setItem('fh_session', JSON.stringify({
+      role, brandId, storeId, ts:Date.now(),
+      staffData:staffData?{...staffData, staff_id:staffId}:null,
+      device:getDeviceId()
+    }));
   }catch(e){}
 }
 
@@ -1654,18 +1669,43 @@ async function restoreSession(){
     }
     await loadAllData();
     if(session.role==='staff'){
-      DB.staffData=session.staffData||{};
-      await loadAllData();
+      // Always re-fetch fresh staff data from server (avatar/profile may have changed)
+      try{
+        const staffId=session.staffData?.staff_id;
+        if(staffId){
+          const freshStaff=await api('GET','/api/staff');
+          const found=Array.isArray(freshStaff)?freshStaff.find(s=>s.id===staffId):null;
+          if(found){
+            // Merge fresh DB data with login response data (keep password from session)
+            DB.staffData={
+              ...session.staffData,
+              name:found.name, position:found.position, company:found.company||'',
+              phone:found.phone, location:found.location||'',
+              avatar:found.avatar, permission:found.permission,
+              brand_ids:JSON.parse(found.brand_ids||'[]'),
+              notif_email:found.notif_email||'',
+              card_style:found.card_style||null,
+            };
+          } else {
+            DB.staffData=session.staffData||{};
+          }
+        } else {
+          DB.staffData=session.staffData||{};
+        }
+      }catch(e){ DB.staffData=session.staffData||{}; }
+      DB.role='staff';
       renderStaffHome();
       goTo('s-home');
       return true;
     }
     if(session.role==='admin'){
+      DB.role='admin';
       await loadAdminSettingsFromDB();
       renderHome(); renderHomeAppLogo();
       goTo('s-home');
       return true;
     } else if(session.role==='reviewer' && session.brandId && session.storeId){
+      DB.role='reviewer';
       DB.reviewerBrandId=session.brandId;
       DB.reviewerStoreId=session.storeId;
       // Find store record and save notif_email if available
