@@ -3964,7 +3964,14 @@ async function sendReminder(store, report, brand){
 
 function getAlerterInfo(){
   if(DB.role==='staff' && DB.staffData){
-    return { id: DB.staffData.staff_id||DB.staffData.id||null, role:'staff' };
+    return {
+      id: DB.staffData.staff_id||DB.staffData.id||null,
+      role: 'staff',
+      name: DB.staffData.name||null,
+      position: DB.staffData.position||null,
+      company: DB.staffData.company||null,
+      avatar_url: DB.staffData.avatar_url||null,
+    };
   }
   return { id: null, role:'admin' };
 }
