@@ -427,9 +427,18 @@ label{
     <button class="btn btn-ghost btn-sm" onclick="doLogout()">Sign out</button>
   </div>
   <div class="content">
-    <div id="global-stats" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:20px;"></div>
-    <div class="sec-label">Brands</div>
-    <div id="brand-list"></div>
+    <div id="global-stats" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px;"></div>
+    <!-- Incomplete reports stat — full width, clickable -->
+    <div id="global-incomplete-bar" style="margin-bottom:20px;"></div>
+    <!-- Tabs: Incomplete / Brands / Stores -->
+    <div style="display:flex;gap:6px;margin-bottom:14px;" id="home-tabs">
+      <button onclick="homeTab('incomplete')" id="htab-incomplete" class="btn btn-sm active" style="flex:1;border-radius:20px;">Incomplete</button>
+      <button onclick="homeTab('brands')"    id="htab-brands"    class="btn btn-sm"        style="flex:1;border-radius:20px;">Brands</button>
+      <button onclick="homeTab('stores')"    id="htab-stores"    class="btn btn-sm"        style="flex:1;border-radius:20px;">Stores</button>
+    </div>
+    <div id="home-pane-incomplete"></div>
+    <div id="home-pane-brands" style="display:none;"></div>
+    <div id="home-pane-stores" style="display:none;"></div>
     <!-- Refresh bar -->
     <div style="height:80px;"></div>
   </div>
@@ -448,6 +457,12 @@ label{
     <button class="back-btn" onclick="goTo('s-home')">&#8592; Back</button>
     <div class="topbar-title" id="brand-topbar-title">Brand</div>
     <button id="brand-edit-btn" class="btn btn-sm" onclick="editBrand()">Edit</button>
+    <button class="btn btn-ghost btn-sm" onclick="renderHome();goTo('s-home')" title="Home" style="padding:6px 8px;flex-shrink:0;">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+    </button>
+    <button class="btn btn-ghost btn-sm" onclick="doAdminRefresh()" title="Refresh" style="padding:6px 8px;flex-shrink:0;">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+    </button>
   </div>
   <div class="content">
     <div id="brand-hero" style="margin-bottom:18px;"></div>
@@ -478,6 +493,9 @@ label{
   <div class="topbar">
     <button class="back-btn" onclick="goTo('s-brand')">&#8592; Back</button>
     <div class="topbar-title" id="sd-store-name">Store</div>
+    <button class="btn btn-ghost btn-sm" onclick="renderHome();goTo('s-home')" title="Home" style="padding:6px 8px;flex-shrink:0;">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+    </button>
     <button class="btn btn-sm" onclick="goEditStore()">Edit</button>
   </div>
   <div class="content">
@@ -606,6 +624,9 @@ label{
   <div class="topbar">
     <button class="back-btn" onclick="goTo('s-brand')">&#8592; Back</button>
     <div class="topbar-title">Upload report</div>
+    <button class="btn btn-ghost btn-sm" onclick="renderHome();goTo('s-home')" title="Home" style="padding:6px 8px;flex-shrink:0;">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+    </button>
   </div>
   <div class="content">
     <!-- Brand info -->
@@ -680,6 +701,12 @@ label{
   <div class="topbar">
     <button class="back-btn" onclick="goTo('s-brand')">&#8592; Back</button>
     <div class="topbar-title" id="fb-screen-title">Feedback</div>
+    <button class="btn btn-ghost btn-sm" onclick="renderHome();goTo('s-home')" title="Home" style="padding:6px 8px;flex-shrink:0;">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+    </button>
+    <button class="btn btn-ghost btn-sm" onclick="doAdminRefresh()" title="Refresh" style="padding:6px 8px;flex-shrink:0;">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+    </button>
     <button id="report-edit-btn" class="btn btn-sm" onclick="goEditReport(DB.currentReportId)">Edit</button>
   </div>
   <div class="content">
@@ -763,6 +790,12 @@ label{
   <div class="topbar">
     <button class="back-btn" onclick="goTo('s-home')">&#8592; Back</button>
     <div class="topbar-title">Settings</div>
+    <button class="btn btn-ghost btn-sm" onclick="renderHome();goTo('s-home')" title="Home" style="padding:6px 8px;flex-shrink:0;">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+    </button>
+    <button class="btn btn-ghost btn-sm" onclick="doAdminRefresh()" title="Refresh" style="padding:6px 8px;flex-shrink:0;">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+    </button>
   </div>
   <div class="content">
     <!-- Appearance -->
@@ -1006,6 +1039,9 @@ label{
   <div class="topbar">
     <button class="back-btn" onclick="DB.currentReportId?viewFeedback(DB.currentReportId):goTo('s-brand')">&#8592; Back</button>
     <div class="topbar-title">Edit report</div>
+    <button class="btn btn-ghost btn-sm" onclick="renderHome();goTo('s-home')" title="Home" style="padding:6px 8px;flex-shrink:0;">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+    </button>
   </div>
   <div class="content">
 
@@ -1318,6 +1354,12 @@ label{
   <div class="topbar">
     <button class="back-btn" onclick="goTo('s-home')">&#8592; Back</button>
     <div class="topbar-title">Settings</div>
+    <button class="btn btn-ghost btn-sm" onclick="renderHome();goTo('s-home')" title="Home" style="padding:6px 8px;flex-shrink:0;">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+    </button>
+    <button class="btn btn-ghost btn-sm" onclick="doAdminRefresh()" title="Refresh" style="padding:6px 8px;flex-shrink:0;">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+    </button>
   </div>
   <div class="content">
 
@@ -2277,52 +2319,172 @@ async function unverifyReport(rid){
   viewFeedback(rid);
 }
 
+let _homeTab = 'incomplete';
+function homeTab(tab){
+  _homeTab = tab;
+  ['incomplete','brands','stores'].forEach(t=>{
+    const btn = document.getElementById('htab-'+t);
+    const pane = document.getElementById('home-pane-'+t);
+    if(btn) btn.classList.toggle('active', t===tab);
+    if(pane) pane.style.display = t===tab ? '' : 'none';
+  });
+}
+
 function renderHome(){
-  const tb=DB.brands.length, tr=DB.brands.reduce((a,b)=>a+b.reports.length,0), ts=DB.brands.reduce((a,b)=>a+b.stores.length,0);
-  document.getElementById('global-stats').innerHTML=[{v:tb,l:'Brands'},{v:tr,l:'Reports'},{v:ts,l:'Stores'}].map(s=>`
+  const tb=DB.brands.length;
+  const tr=DB.brands.reduce((a,b)=>a+b.reports.length,0);
+  const ts=DB.brands.reduce((a,b)=>a+b.stores.length,0);
+
+  // Count incomplete reports across all brands
+  let nIncomplete=0, nPending=0, nChecking=0, nPartial=0;
+  DB.brands.forEach(b=>{
+    b.reports.forEach(r=>{
+      const st=getReportStatus(r,b.stores);
+      if(st!=='complete'){ nIncomplete++; }
+      if(st==='pending') nPending++;
+      else if(st==='checking') nChecking++;
+      else if(st==='partial'||st==='incomplete') nPartial++;
+    });
+  });
+
+  // Stats row
+  document.getElementById('global-stats').innerHTML=[
+    {v:tb,l:'Brands'},{v:tr,l:'Reports'},{v:ts,l:'Stores'}
+  ].map(s=>`
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);padding:13px 14px;">
       <div style="font-size:24px;font-weight:700;line-height:1;">${s.v}</div>
       <div style="font-size:12px;color:var(--text2);margin-top:3px;">${s.l}</div>
     </div>`).join('');
-  const el=document.getElementById('brand-list');
-  if(!DB.brands.length){ el.innerHTML='<div class="empty">No brands yet</div>'; return; }
-  el.innerHTML=DB.brands.map(b=>{
-    let nComplete=0, nChecking=0, nPending=0;
-    b.reports.forEach(r=>{
-      const st=getReportStatus(r,b.stores);
-      if(st==='complete') nComplete++;
-      else if(st==='checking') nChecking++;
-      else nPending++;
-    });
-    const totalReports=b.reports.length||1;
-    const completePct=Math.round(nComplete/totalReports*100);
-    const logoEl=b.logo?`<img src="${b.logo}" style="width:100%;height:100%;object-fit:cover;border-radius:10px;"/>`:`<span>${b.logoText||'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>'}</span>`;
-    return `<div class="brand-card" onclick="openBrand('${b.id}')">
-      <div class="brand-header">
-        <div class="brand-logo" style="background:${b.color}22;border:1px solid ${b.color}44;">${logoEl}</div>
-        <div style="flex:1;min-width:0;">
-          <div style="font-size:15px;font-weight:600;">${b.name}</div>
-          <div style="font-size:12px;color:var(--text2);margin-top:2px;">${b.stores.length} store${b.stores.length!==1?'s':''} &bull; ${b.reports.length} report${b.reports.length!==1?'s':''}</div>
-        </div>
-        <div style="width:11px;height:11px;border-radius:50%;background:${b.color};flex-shrink:0;"></div>
-      </div>
-      <div style="padding:12px 16px;border-top:1px solid var(--border);background:var(--bg3);">
-        <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;">
-          ${nComplete?`<span style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;background:var(--badge-done-bg);color:var(--success);">✓ ${nComplete} Complete</span>`:''}
-          ${nChecking?`<span style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;background:#fff3e0;color:var(--warn);">⟳ ${nChecking} Checking</span>`:''}
-          ${nPending?`<span style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;background:var(--badge-none-bg);color:var(--text3);">○ ${nPending} Pending</span>`:''}
-          ${b.reports.length===0?`<span style="font-size:11px;color:var(--text3);">No reports yet</span>`:''}
-        </div>
-        <div style="display:flex;align-items:center;gap:8px;">
-          <div style="flex:1;background:var(--bg4);border-radius:4px;height:6px;overflow:hidden;">
-            <div style="width:${completePct}%;background:var(--success);height:6px;border-radius:4px;transition:width .5s;"></div>
+
+  // Incomplete bar
+  const incBar = document.getElementById('global-incomplete-bar');
+  if(incBar){
+    incBar.innerHTML = nIncomplete > 0 ? `
+      <div onclick="homeTab('incomplete')" style="background:var(--alert-danger-bg);border:1px solid var(--alert-danger-border);border-radius:var(--rl);padding:11px 14px;cursor:pointer;display:flex;align-items:center;gap:10px;">
+        <div style="flex:1;">
+          <div style="font-size:14px;font-weight:700;color:var(--danger);">${nIncomplete} incomplete report${nIncomplete!==1?'s':''}</div>
+          <div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap;">
+            ${nPending?`<span style="font-size:11px;color:var(--text3);">○ ${nPending} Pending</span>`:''}
+            ${nPartial?`<span style="font-size:11px;color:var(--warn);">◑ ${nPartial} Partial</span>`:''}
+            ${nChecking?`<span style="font-size:11px;color:var(--accent);">⟳ ${nChecking} Checking</span>`:''}
           </div>
-          <span style="font-size:12px;font-weight:700;color:${completePct===100?'var(--success)':'var(--accent)'};min-width:36px;text-align:right;">${completePct}%</span>
         </div>
-        <div style="font-size:10px;color:var(--text3);margin-top:4px;">${nComplete}/${b.reports.length} reports complete</div>
-      </div>
-    </div>`;
-  }).join('');
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+      </div>` : `<div style="background:var(--badge-done-bg);border:1px solid var(--success);border-radius:var(--rl);padding:11px 14px;display:flex;align-items:center;gap:8px;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+        <span style="font-size:13px;font-weight:600;color:var(--success);">All reports complete</span>
+      </div>`;
+  }
+
+  // ── Incomplete pane ──────────────────────────────────────────────────────
+  const incPane = document.getElementById('home-pane-incomplete');
+  if(incPane){
+    const incReports = [];
+    DB.brands.forEach(b=>{
+      b.reports.forEach(r=>{
+        const st = getReportStatus(r, b.stores);
+        if(st !== 'complete') incReports.push({r, b, st});
+      });
+    });
+    // Sort: checking first, then partial, then pending
+    const order = {checking:0,partial:1,pending:2};
+    incReports.sort((a,bb)=>(order[a.st]??3)-(order[bb.st]??3));
+    if(!incReports.length){
+      incPane.innerHTML = '<div class="empty">No incomplete reports</div>';
+    } else {
+      incPane.innerHTML = incReports.map(({r,b,st})=>{
+        const badgeMap = {checking:'badge-pending',partial:'badge-partial',pending:'badge-none'};
+        const labelMap = {checking:'Checking',partial:'Partial',pending:'Pending'};
+        const bc = badgeMap[st]||'badge-none', bt = labelMap[st]||'Pending';
+        return `<div class="card card-click" style="margin-bottom:10px;" onclick="openBrand('${b.id}');setTimeout(()=>viewFeedback('${r.id}'),80);">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+            <div>
+              <div style="font-size:11px;color:var(--text3);margin-bottom:3px;">${b.name}</div>
+              <div style="font-size:14px;font-weight:600;">${r.title}</div>
+            </div>
+            <span class="badge ${bc}" style="flex-shrink:0;">${bt}</span>
+          </div>
+          <div style="font-size:12px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:4px;">${r.file||''}</div>
+          ${r.inspection?.date?`<div style="font-size:11px;color:var(--text3);margin-top:4px;">${r.inspection.date}${r.inspection.checkedBy?' · '+r.inspection.checkedBy:''}</div>`:''}
+        </div>`;
+      }).join('');
+    }
+  }
+
+  // ── Brands pane ──────────────────────────────────────────────────────────
+  const brandsPane = document.getElementById('home-pane-brands');
+  if(brandsPane){
+    if(!DB.brands.length){ brandsPane.innerHTML='<div class="empty">No brands yet</div>'; }
+    else brandsPane.innerHTML=DB.brands.map(b=>{
+      let nComplete=0, nChecking=0, nPending=0;
+      b.reports.forEach(r=>{
+        const st=getReportStatus(r,b.stores);
+        if(st==='complete') nComplete++;
+        else if(st==='checking') nChecking++;
+        else nPending++;
+      });
+      const totalReports=b.reports.length||1;
+      const completePct=Math.round(nComplete/totalReports*100);
+      const logoEl=b.logo?`<img src="${b.logo}" style="width:100%;height:100%;object-fit:cover;border-radius:10px;"/>`:`<span>${b.logoText||''}</span>`;
+      return `<div class="brand-card" onclick="openBrand('${b.id}')">
+        <div class="brand-header">
+          <div class="brand-logo" style="background:${b.color}22;border:1px solid ${b.color}44;">${logoEl}</div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:15px;font-weight:600;">${b.name}</div>
+            <div style="font-size:12px;color:var(--text2);margin-top:2px;">${b.stores.length} store${b.stores.length!==1?'s':''} &bull; ${b.reports.length} report${b.reports.length!==1?'s':''}</div>
+          </div>
+          <div style="width:11px;height:11px;border-radius:50%;background:${b.color};flex-shrink:0;"></div>
+        </div>
+        <div style="padding:12px 16px;border-top:1px solid var(--border);background:var(--bg3);">
+          <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;">
+            ${nComplete?`<span style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;background:var(--badge-done-bg);color:var(--success);">✓ ${nComplete} Complete</span>`:''}
+            ${nChecking?`<span style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;background:#fff3e0;color:var(--warn);">⟳ ${nChecking} Checking</span>`:''}
+            ${nPending?`<span style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;background:var(--badge-none-bg);color:var(--text3);">○ ${nPending} Pending</span>`:''}
+            ${b.reports.length===0?`<span style="font-size:11px;color:var(--text3);">No reports yet</span>`:''}
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <div style="flex:1;background:var(--bg4);border-radius:4px;height:6px;overflow:hidden;">
+              <div style="width:${completePct}%;background:var(--success);height:6px;border-radius:4px;transition:width .5s;"></div>
+            </div>
+            <span style="font-size:12px;font-weight:700;color:${completePct===100?'var(--success)':'var(--accent)'};min-width:36px;text-align:right;">${completePct}%</span>
+          </div>
+          <div style="font-size:10px;color:var(--text3);margin-top:4px;">${nComplete}/${b.reports.length} reports complete</div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  // ── Stores pane ──────────────────────────────────────────────────────────
+  const storesPane = document.getElementById('home-pane-stores');
+  if(storesPane){
+    const allStores = [];
+    DB.brands.forEach(b=>b.stores.forEach(s=>allStores.push({s,b})));
+    if(!allStores.length){ storesPane.innerHTML='<div class="empty">No stores yet</div>'; }
+    else storesPane.innerHTML=allStores.map(({s,b})=>{
+      const storeReports = b.reports.filter(r=>!r.storeIds?.length || r.storeIds.includes(s.id) || r.storeId===s.id || (!r.storeId&&!r.storeIds?.length));
+      let nDone=0, nInc=0;
+      storeReports.forEach(r=>{
+        const st=getReportStatus(r,b.stores);
+        if(st==='complete') nDone++; else nInc++;
+      });
+      return `<div class="card card-click" style="margin-bottom:10px;" onclick="openBrand('${b.id}')">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="width:10px;height:10px;border-radius:50%;background:${s.color||b.color};flex-shrink:0;"></div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:14px;font-weight:600;">${s.name}</div>
+            <div style="font-size:12px;color:var(--text3);margin-top:1px;">${b.name}${s.location?' · '+s.location:''}</div>
+          </div>
+          <div style="text-align:right;flex-shrink:0;">
+            ${nInc?`<div style="font-size:11px;font-weight:600;color:var(--danger);">${nInc} incomplete</div>`:''}
+            ${nDone?`<div style="font-size:11px;color:var(--success);">${nDone} done</div>`:''}
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  // Show correct tab
+  homeTab(_homeTab);
 }
 
 /* ===== BRAND ===== */
