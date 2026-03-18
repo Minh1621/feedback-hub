@@ -2904,6 +2904,7 @@ function toggleArchivedReports(){
 
 function openReviewerReport(rid){
   DB.reviewerReportId=rid;
+  DB.editingFeedbackId=null; // reset editing state
   // itemFeedbacks: [{refId, note, photos:[dataURL]}]
   DB.itemFeedbacks=[];
   const b=reviewerBrand(), s=reviewerStore();
@@ -3220,15 +3221,19 @@ async function saveReviewerDraft(){
     draft:true
   };
   msg.innerHTML='<div class="alert alert-success">⏳ Saving...</div>';
-  // Check if feedback already exists for this store/report
-  const existing=r.feedbacks.find(f=>f.storeId===s.id);
+  // Find existing — check editingFeedbackId first, then by storeId (deduped)
+  const fbMapDraft={}; r.feedbacks.forEach(f=>{if(!fbMapDraft[f.storeId]||f.date>=fbMapDraft[f.storeId].date) fbMapDraft[f.storeId]=f;});
+  const existing=(DB.editingFeedbackId && r.feedbacks.find(f=>f.id===DB.editingFeedbackId)) || fbMapDraft[s.id] || null;
   if(existing){
     // Update existing — no notification sent
     await api('PUT',`/api/feedbacks/${existing.id}`,{text:feedbackObj.text,itemFeedbacks:feedbackObj.itemFeedbacks,photos:[]});
     existing.itemFeedbacks=feedbackObj.itemFeedbacks;
     existing.text=feedbackObj.text;
+    // Remove duplicates
+    r.feedbacks=r.feedbacks.filter(f=>f.storeId!==s.id);
+    r.feedbacks.push(existing);
   } else {
-    // Create new draft — use special endpoint that skips notification
+    // Create new draft — no notification
     const result=await api('POST','/api/feedbacks/draft',{...feedbackObj, report_id:r.id});
     if(result.id) feedbackObj.id=result.id;
     r.feedbacks.push(feedbackObj);
@@ -3243,30 +3248,36 @@ async function submitReviewerFeedback(){
   if(!allDone){ msg.innerHTML='<div class="alert alert-danger">Please complete all items before submitting.</div>'; return; }
   const b=reviewerBrand(), s=reviewerStore();
   const r=b.reports.find(r=>r.id===DB.reviewerReportId);
-  const feedbackObj={
-    storeId:s.id,
-    text:DB.itemFeedbacks.map((it,i)=>it.note?`Item ${i+1}: ${it.note}`:'').filter(Boolean).join(' | '),
-    itemFeedbacks:DB.itemFeedbacks.map(it=>({...it,photos:[...it.photos]})),
-    photos:[],
-    date:new Date().toISOString().slice(0,10)
-  };
+  const newText=DB.itemFeedbacks.map((it,i)=>it.note?`Item ${i+1}: ${it.note}`:'').filter(Boolean).join(' | ');
+  const newItems=DB.itemFeedbacks.map(it=>({...it,photos:[...it.photos]}));
+  const newDate=new Date().toISOString().slice(0,10);
   msg.innerHTML='<div class="alert alert-success">⏳ Submitting...</div>';
-  // Check if draft already exists — update it and trigger notification
-  const existing=r.feedbacks.find(f=>f.storeId===s.id);
+
+  // Find existing feedback — check DB.editingFeedbackId first, then by storeId
+  const fbMap={}; r.feedbacks.forEach(f=>{if(!fbMap[f.storeId]||f.date>=fbMap[f.storeId].date) fbMap[f.storeId]=f;});
+  const existing = (DB.editingFeedbackId && r.feedbacks.find(f=>f.id===DB.editingFeedbackId))
+    || fbMap[s.id] || null;
+
   if(existing){
-    await api('PUT',`/api/feedbacks/${existing.id}`,{text:feedbackObj.text,itemFeedbacks:feedbackObj.itemFeedbacks,photos:[]});
-    existing.itemFeedbacks=feedbackObj.itemFeedbacks;
-    existing.text=feedbackObj.text;
-    existing.date=feedbackObj.date;
-    // Trigger notification via separate endpoint
+    // UPDATE existing feedback
+    await api('PUT',`/api/feedbacks/${existing.id}`,{text:newText, itemFeedbacks:newItems, photos:[]});
+    existing.itemFeedbacks=newItems;
+    existing.text=newText;
+    existing.date=newDate;
+    // Remove any duplicate feedbacks for this store
+    r.feedbacks=r.feedbacks.filter(f=>f.storeId!==s.id);
+    r.feedbacks.push(existing);
+    // Trigger notification
     await api('POST','/api/feedbacks/notify',{feedback_id:existing.id, report_id:r.id, store_id:s.id});
   } else {
-    // New submission — normal POST which triggers notification
+    // New submission
+    const feedbackObj={storeId:s.id, text:newText, itemFeedbacks:newItems, photos:[], date:newDate};
     const result=await api('POST','/api/feedbacks',{...feedbackObj, report_id:r.id});
     if(result.id) feedbackObj.id=result.id;
     r.feedbacks.push(feedbackObj);
   }
   DB.itemFeedbacks=[];
+  DB.editingFeedbackId=null;
   msg.innerHTML='<div class="alert alert-success">✓ Feedback submitted!</div>';
   setTimeout(()=>{ renderReviewerHome(); goTo('s-reviewer-home'); },1200);
 }
@@ -4003,8 +4014,12 @@ async function changeAdminPass(){
 function editAllResponses(rid){
   const b=reviewerBrand(), s=reviewerStore();
   const r=b.reports.find(r=>r.id===rid);
-  const myFb=r.feedbacks.find(f=>f.storeId===s.id);
+  // Dedup — get latest feedback for this store
+  const fbMap={}; r.feedbacks.forEach(f=>{if(!fbMap[f.storeId]||f.date>=fbMap[f.storeId].date) fbMap[f.storeId]=f;});
+  const myFb=fbMap[s.id];
   if(!myFb) return;
+  // Store the existing feedback ID so submitReviewerFeedback can UPDATE it
+  DB.editingFeedbackId=myFb.id;
   // Pre-fill form using refId lookup — safe after reload
   const refs=r.refs&&r.refs.length?r.refs:[{id:'general',desc:'',photos:[]}];
   const existingByRefId={};
@@ -4013,8 +4028,8 @@ function editAllResponses(rid){
     const existing=existingByRefId[ref.id]||{refId:ref.id,note:'',photos:[]};
     return {refId:ref.id, note:existing.note||'', photos:[...(existing.photos||[])]};
   });
-  // Remove old feedback so form shows
-  r.feedbacks=r.feedbacks.filter(f=>f.storeId!==s.id);
+  // Keep feedback in r.feedbacks — do NOT remove it
+  // submitReviewerFeedback will find it by storeId and UPDATE
   document.getElementById('rv-submitted-view').style.display='none';
   document.getElementById('rv-feedback-form').style.display='';
   renderItemForms(r, b.color);
@@ -4032,6 +4047,7 @@ function editAllResponses(rid){
       if(it.photos.length) renderItemPhotoGrid(i);
       refreshReviewerItemStatus(i);
     });
+    checkAllItemsDone();
   },60);
 }
 
