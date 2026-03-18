@@ -2324,14 +2324,15 @@ function homeTab(tab){
   });
 }
 
-function renderHome(){
-  const tb=DB.brands.length;
-  const tr=DB.brands.reduce((a,b)=>a+b.reports.length,0);
-  const ts=DB.brands.reduce((a,b)=>a+b.stores.length,0);
+function renderHome(_brandsOverride){
+  const _brands = _brandsOverride || _brands;
+  const tb=_brands.length;
+  const tr=_brands.reduce((a,b)=>a+b.reports.length,0);
+  const ts=_brands.reduce((a,b)=>a+b.stores.length,0);
 
   // Count incomplete reports across all brands
   let nIncomplete=0, nPending=0, nChecking=0, nPartial=0;
-  DB.brands.forEach(b=>{
+  _brands.forEach(b=>{
     b.reports.forEach(r=>{
       const st=getReportStatus(r,b.stores);
       if(st!=='complete'){ nIncomplete++; }
@@ -2342,7 +2343,7 @@ function renderHome(){
   });
 
   // Stats row
-  const nIncompleteReports = DB.brands.reduce((a,b)=>a+b.reports.filter(r=>getReportStatus(r,b.stores)!=='complete').length, 0);
+  const nIncompleteReports = _brands.reduce((a,b)=>a+b.reports.filter(r=>getReportStatus(r,b.stores)!=='complete').length, 0);
   const nTotalReports = tr;
   const allComplete = nIncompleteReports === 0;
 
@@ -2383,7 +2384,7 @@ function renderHome(){
   const incPane = document.getElementById('home-pane-incomplete');
   if(incPane){
     const incReports = [];
-    DB.brands.forEach(b=>{
+    _brands.forEach(b=>{
       b.reports.forEach(r=>{
         const st = getReportStatus(r, b.stores);
         if(st !== 'complete') incReports.push({r, b, st});
@@ -2417,8 +2418,8 @@ function renderHome(){
   // ── Brands pane ──────────────────────────────────────────────────────────
   const brandsPane = document.getElementById('home-pane-brands');
   if(brandsPane){
-    if(!DB.brands.length){ brandsPane.innerHTML='<div class="empty">No brands yet</div>'; }
-    else brandsPane.innerHTML=DB.brands.map(b=>{
+    if(!_brands.length){ brandsPane.innerHTML='<div class="empty">No brands yet</div>'; }
+    else brandsPane.innerHTML=_brands.map(b=>{
       let nComplete=0, nChecking=0, nPending=0;
       b.reports.forEach(r=>{
         const st=getReportStatus(r,b.stores);
@@ -2461,7 +2462,7 @@ function renderHome(){
   const storesPane = document.getElementById('home-pane-stores');
   if(storesPane){
     const allStores = [];
-    DB.brands.forEach(b=>b.stores.forEach(s=>allStores.push({s,b})));
+    _brands.forEach(b=>b.stores.forEach(s=>allStores.push({s,b})));
     if(!allStores.length){ storesPane.innerHTML='<div class="empty">No stores yet</div>'; }
     else storesPane.innerHTML=allStores.map(({s,b})=>{
       const storeReports = b.reports.filter(r=>!r.storeIds?.length || r.storeIds.includes(s.id) || r.storeId===s.id || (!r.storeId&&!r.storeIds?.length));
@@ -3101,6 +3102,8 @@ async function doUpload(){
   renderRefItems();
   msg.innerHTML='<div class="alert alert-success">✓ Report uploaded!</div>';
   closeConfirm();
+  // Reload fresh data from DB so reviewer sees the new report immediately
+  await loadAllData();
   setTimeout(()=>{ msg.innerHTML=''; brandTab('reports'); goTo('s-brand'); },1200);
 }
 
@@ -5477,10 +5480,8 @@ function renderStaffHome(){
   });
 
   // ── Stats & brand list ─────────────────────────────────────────────────────
-  const orig=DB.brands;
-  DB.brands=allowedBrands;
-  renderHome();
-  DB.brands=orig;
+  // Pass allowedBrands as override — avoids race conditions from swapping DB.brands
+  renderHome(allowedBrands);
   // Apply permission restrictions after renderHome
   applyStaffPermissions();
 }
