@@ -679,7 +679,7 @@ label{
   <div class="topbar">
     <button class="back-btn" onclick="goTo('s-brand')">&#8592; Back</button>
     <div class="topbar-title" id="fb-screen-title">Feedback</div>
-    <button class="btn btn-sm" onclick="goEditReport(DB.currentReportId)">Edit</button>
+    <button id="report-edit-btn" class="btn btn-sm" onclick="goEditReport(DB.currentReportId)">Edit</button>
   </div>
   <div class="content">
     <div id="fb-pdf-box" style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);height:120px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:7px;margin-bottom:16px;cursor:pointer;transition:border-color .15s;" onclick="openReportPDF()">
@@ -1363,16 +1363,16 @@ label{
     <div class="card" style="margin-bottom:18px;">
       <div style="font-size:13px;font-weight:500;margin-bottom:10px;">Notify me when:</div>
       <label style="display:flex;align-items:center;gap:10px;font-size:13px;color:var(--text);margin-bottom:12px;cursor:pointer;">
-        <input type="checkbox" id="sf-notif-submit" checked style="width:16px;height:16px;"/> Store submits feedback
+        <input type="checkbox" id="sf-notif-submit" checked style="width:16px;height:16px;" onchange="saveStaffNotifPrefsOnly()"/> Store submits feedback
       </label>
       <label style="display:flex;align-items:center;gap:10px;font-size:13px;color:var(--text);margin-bottom:12px;cursor:pointer;">
-        <input type="checkbox" id="sf-notif-all-done" checked style="width:16px;height:16px;"/> All stores in a report have responded
+        <input type="checkbox" id="sf-notif-all-done" checked style="width:16px;height:16px;" onchange="saveStaffNotifPrefsOnly()"/> All stores in a report have responded
       </label>
       <label style="display:flex;align-items:center;gap:10px;font-size:13px;color:var(--text);margin-bottom:12px;cursor:pointer;">
-        <input type="checkbox" id="sf-notif-brand" checked style="width:16px;height:16px;"/> All reports in a brand are complete
+        <input type="checkbox" id="sf-notif-brand" checked style="width:16px;height:16px;" onchange="saveStaffNotifPrefsOnly()"/> All reports in a brand are complete
       </label>
       <label style="display:flex;align-items:center;gap:10px;font-size:13px;color:var(--text);margin-bottom:4px;cursor:pointer;">
-        <input type="checkbox" id="sf-notif-store" checked style="width:16px;height:16px;"/> A specific store completes all their reports
+        <input type="checkbox" id="sf-notif-store" checked style="width:16px;height:16px;" onchange="saveStaffNotifPrefsOnly()"/> A specific store completes all their reports
       </label>
     </div>
 
@@ -1429,8 +1429,18 @@ function scoreHTML(s, size){
 /* ===== THEME ===== */
 function toggleTheme(){
   const h=document.documentElement;
-  h.setAttribute('data-theme', h.getAttribute('data-theme')==='dark'?'light':'dark');
+  const newTheme=h.getAttribute('data-theme')==='dark'?'light':'dark';
+  h.setAttribute('data-theme', newTheme);
+  try{ localStorage.setItem('fh_theme', newTheme); }catch(e){}
 }
+function applyStoredTheme(){
+  try{
+    const saved=localStorage.getItem('fh_theme');
+    if(saved) document.documentElement.setAttribute('data-theme', saved);
+  }catch(e){}
+}
+// Apply theme immediately on script load
+applyStoredTheme();
 
 /* ===== CLOUDFLARE API ===== */
 const WORKER_URL = 'https://feedback-hub-api.liming6069.workers.dev';
@@ -2010,6 +2020,11 @@ function openStoreDetail(sid){
   // Store filter — reset on new store
   DB.storeDetailFilter='all';
   renderStoreDetailReports(b,s);
+  // Apply permissions
+  const storeUploadBtn=document.getElementById('store-upload-btn');
+  if(storeUploadBtn) storeUploadBtn.style.display=canUpload()?'':'none';
+  const storeEditBtn=document.getElementById('sd-store-edit-btn')||document.querySelector('#s-store-detail .btn-sm[onclick*="goEditStore"]');
+  if(storeEditBtn) storeEditBtn.style.display=canEdit()?'':'none';
   goTo('s-store-detail');
 }
 
@@ -2236,6 +2251,7 @@ function closeRemoveStoreOverlay(){
 }
 
 function goUploadForStore(sid){
+  if(!canUpload()){ showToast('⚠️ You do not have permission to upload reports.'); return; }
   // Open upload screen with this store pre-selected
   goUpload();
   setTimeout(()=>{
@@ -2622,6 +2638,9 @@ function viewFeedback(rid){
     mw.innerHTML=`<div style="text-align:center;padding:12px 0;font-size:13px;color:var(--success);">✓ All stores have responded</div>`;
   }
   goTo('s-feedback');
+  // Apply permission to Edit button on report detail
+  const rEditBtn=document.getElementById('report-edit-btn');
+  if(rEditBtn) rEditBtn.style.display=canEdit()?'':'none';
 }
 
 /* ===== BRAND FORM ===== */
@@ -3545,6 +3564,7 @@ let _editingReportId=null, _removingReportId=null, _pendingRemoveStoreAction=nul
 
 function goEditReport(rid){
   if(!rid){ console.warn('goEditReport: no rid'); return; }
+  if(!canEdit()){ showToast('⚠️ You do not have permission to edit reports.'); return; }
   _editingReportId=rid;
   // Search all brands for this report
   let foundBrand=null, r=null;
@@ -4340,6 +4360,12 @@ function buildStaffCardHTML({name,position,company,phone,location,avatar,initial
   </div>`;
 }
 
+/* ===== STAFF PERMISSION HELPERS ===== */
+function staffPerm(){ return (DB.role==='staff' ? (DB.staffData?.permission||'view') : 'admin'); }
+function canUpload(){ const p=staffPerm(); return p==='admin'||p==='upload'||p==='edit'; }
+function canEdit(){   const p=staffPerm(); return p==='admin'||p==='edit'; }
+function isViewOnly(){ return staffPerm()==='view'; }
+
 /* ===== STAFF HOME ===== */
 function renderStaffHome(){
   const staff=DB.staffData||{};
@@ -4389,6 +4415,31 @@ function renderStaffHome(){
   DB.brands=allowedBrands;
   renderHome();
   DB.brands=orig;
+  // Apply permission restrictions after renderHome
+  applyStaffPermissions();
+}
+
+function applyStaffPermissions(){
+  if(DB.role!=='staff') return;
+  const perm=DB.staffData?.permission||'view';
+
+  // ── Brand list buttons ───────────────────────────────────────────────────
+  // Hide + Upload report button on brand page (controlled per-page below)
+  const uploadBrandBtn=document.querySelector('#s-brand .btn-primary');
+  if(uploadBrandBtn) uploadBrandBtn.style.display=(perm==='view')?'none':'';
+
+  // ── Home page — hide + Brand button ─────────────────────────────────────
+  const addBrandBtn=document.querySelector('#s-home .btn-primary');
+  if(addBrandBtn) addBrandBtn.style.display='none'; // staff never adds brands
+
+  // ── Show permission badge on staff card ──────────────────────────────────
+  const permBadge=document.getElementById('staff-perm-badge');
+  if(permBadge){
+    const labels={view:'View only',upload:'Upload reports',edit:'Edit & upload'};
+    const colors={view:'var(--text3)',upload:'var(--accent)',edit:'var(--success)'};
+    permBadge.textContent=labels[perm]||perm;
+    permBadge.style.color=colors[perm]||'var(--text3)';
+  }
 }
 
 function openStaffSettings(){
@@ -4405,15 +4456,24 @@ function openStaffSettings(){
   if(document.getElementById('sf-settings-username')) document.getElementById('sf-settings-username').textContent=staff.username||'';
   if(document.getElementById('sf-pass-revealed')) document.getElementById('sf-pass-revealed').style.display='none';
   // Load saved notif email
-  if(document.getElementById('sf-notif-email-input')) document.getElementById('sf-notif-email-input').value=staff.notif_email||'';
-  if(staff.notif_email){
-    const track=document.getElementById('sf-notif-toggle-btn');
-    const knob=document.getElementById('sf-notif-knob-btn');
-    const sec=document.getElementById('sf-notif-email-section');
-    if(track){ track.style.background='var(--accent)'; }
-    if(knob){ knob.style.transform='translateX(16px)'; knob.style.background='#fff'; }
-    if(sec) sec.style.display='';
-  }
+  const emailInp=document.getElementById('sf-notif-email-input');
+  if(emailInp) emailInp.value=staff.notif_email||'';
+  // Restore toggle state
+  const hasEmail=!!(staff.notif_email);
+  const track=document.getElementById('sf-notif-toggle-btn');
+  const knob=document.getElementById('sf-notif-knob-btn');
+  const sec=document.getElementById('sf-notif-email-section');
+  if(track) track.style.background=hasEmail?'var(--accent)':'var(--bg3)';
+  if(knob){ knob.style.transform=hasEmail?'translateX(16px)':''; knob.style.background=hasEmail?'#fff':'var(--text3)'; }
+  if(sec) sec.style.display=hasEmail?'':'none';
+  // Restore saved notification preferences from DB
+  try{
+    const prefs=JSON.parse(staff.notif_prefs||'null')||{notifSubmit:true,notifAllDone:true,notifBrand:true,notifStore:true};
+    const cb1=document.getElementById('sf-notif-submit'); if(cb1) cb1.checked=prefs.notifSubmit!==false;
+    const cb2=document.getElementById('sf-notif-all-done'); if(cb2) cb2.checked=prefs.notifAllDone!==false;
+    const cb3=document.getElementById('sf-notif-brand'); if(cb3) cb3.checked=prefs.notifBrand!==false;
+    const cb4=document.getElementById('sf-notif-store'); if(cb4) cb4.checked=prefs.notifStore!==false;
+  }catch(e){}
   goTo('s-staff-settings');
 }
 
@@ -4434,13 +4494,50 @@ async function saveStaffNotif(){
   if(!email||!email.includes('@')){ msg.innerHTML='<div class="alert alert-danger">Please enter a valid email.</div>'; setTimeout(()=>msg.innerHTML='',2500); return; }
   msg.innerHTML='<div class="alert alert-success">⏳ Saving...</div>';
   const staff=DB.staffData||{};
-  await api('PUT',`/api/staff/${staff.staff_id}`,{...staff, notif_email:email, brand_ids:staff.brand_ids||[]});
-  if(DB.staffData) DB.staffData.notif_email=email;
-  // Update session
-  const raw=localStorage.getItem('fh_session');
-  if(raw){ try{ const s=JSON.parse(raw); if(s.staffData) s.staffData.notif_email=email; localStorage.setItem('fh_session',JSON.stringify(s)); }catch(e){} }
-  msg.innerHTML='<div class="alert alert-success">✓ Email saved!</div>';
-  setTimeout(()=>msg.innerHTML='',2500);
+  // Gather all notification preferences
+  const notifPrefs={
+    notifEnabled: document.getElementById('sf-notif-toggle-btn')?.style.background==='var(--accent)',
+    notifSubmit: document.getElementById('sf-notif-submit')?.checked??true,
+    notifAllDone: document.getElementById('sf-notif-all-done')?.checked??true,
+    notifBrand: document.getElementById('sf-notif-brand')?.checked??true,
+    notifStore: document.getElementById('sf-notif-store')?.checked??true,
+  };
+  const notifPrefsStr=JSON.stringify(notifPrefs);
+  // Save to DB
+  await api('PUT',`/api/staff/${staff.staff_id}`,{...staff, notif_email:email, notif_prefs:notifPrefsStr, brand_ids:staff.brand_ids||[]});
+  // Update in-memory staffData
+  if(DB.staffData){ DB.staffData.notif_email=email; DB.staffData.notif_prefs=notifPrefsStr; }
+  // Update localStorage session so it persists
+  try{
+    const raw=localStorage.getItem('fh_session');
+    if(raw){
+      const s=JSON.parse(raw);
+      if(s.staffData){ s.staffData.notif_email=email; s.staffData.notif_prefs=notifPrefsStr; }
+      localStorage.setItem('fh_session',JSON.stringify(s));
+    }
+  }catch(e){}
+  msg.innerHTML='<div class="alert alert-success">✓ Settings saved to all devices!</div>';
+  setTimeout(()=>msg.innerHTML='',3000);
+}
+
+function saveStaffNotifPrefsOnly(){
+  // Save just the checkbox preferences without requiring email
+  const staff=DB.staffData||{};
+  if(!staff.staff_id) return;
+  const notifPrefs={
+    notifEnabled: document.getElementById('sf-notif-toggle-btn')?.style.background==='var(--accent)',
+    notifSubmit: document.getElementById('sf-notif-submit')?.checked??true,
+    notifAllDone: document.getElementById('sf-notif-all-done')?.checked??true,
+    notifBrand: document.getElementById('sf-notif-brand')?.checked??true,
+    notifStore: document.getElementById('sf-notif-store')?.checked??true,
+  };
+  const notifPrefsStr=JSON.stringify(notifPrefs);
+  api('PUT',`/api/staff/${staff.staff_id}`,{...staff, notif_prefs:notifPrefsStr, brand_ids:staff.brand_ids||[]});
+  if(DB.staffData) DB.staffData.notif_prefs=notifPrefsStr;
+  try{
+    const raw=localStorage.getItem('fh_session');
+    if(raw){ const s=JSON.parse(raw); if(s.staffData) s.staffData.notif_prefs=notifPrefsStr; localStorage.setItem('fh_session',JSON.stringify(s)); }
+  }catch(e){}
 }
 
 function sfViewPass(){
