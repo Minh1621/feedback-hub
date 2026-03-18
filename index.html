@@ -466,7 +466,7 @@ label{
       <div id="brand-report-list"></div>
     </div>
     <div id="bpane-stores" style="display:none;">
-      ${DB.role==='admin'?`<button class="btn btn-primary btn-sm" style="width:100%;margin-bottom:14px;" onclick="goAddStore()">+ Add store</button>`:''}
+      <button id="brand-add-store-btn" class="btn btn-primary btn-sm" style="width:100%;margin-bottom:14px;display:none;" onclick="goAddStore()">+ Add store</button>
       <div id="brand-store-list"></div>
     </div>
   </div>
@@ -1254,7 +1254,14 @@ label{
           <input type="text" id="sf-cover-color-hex" value="#7c6fff" placeholder="#7c6fff" maxlength="7" style="width:90px;font-size:13px;font-family:'DM Mono',monospace;" oninput="sfSyncColorFromHex('cover')"/>
           <!-- Preset colors -->
           <div style="display:flex;gap:6px;flex-wrap:wrap;">
-            ${['#7c6fff','#6366f1','#ec4899','#f59e0b','#10b981','#3b82f6','#8b5cf6','#ef4444'].map(c=>`<div onclick="sfSetCoverColor('${c}')" style="width:22px;height:22px;border-radius:50%;background:${c};cursor:pointer;border:2px solid transparent;" class="sf-color-dot"></div>`).join('')}
+            <div onclick="sfSetCoverColor('#7c6fff')" style="width:22px;height:22px;border-radius:50%;background:#7c6fff;cursor:pointer;border:2px solid transparent;" class="sf-color-dot"></div>
+            <div onclick="sfSetCoverColor('#6366f1')" style="width:22px;height:22px;border-radius:50%;background:#6366f1;cursor:pointer;border:2px solid transparent;" class="sf-color-dot"></div>
+            <div onclick="sfSetCoverColor('#ec4899')" style="width:22px;height:22px;border-radius:50%;background:#ec4899;cursor:pointer;border:2px solid transparent;" class="sf-color-dot"></div>
+            <div onclick="sfSetCoverColor('#f59e0b')" style="width:22px;height:22px;border-radius:50%;background:#f59e0b;cursor:pointer;border:2px solid transparent;" class="sf-color-dot"></div>
+            <div onclick="sfSetCoverColor('#10b981')" style="width:22px;height:22px;border-radius:50%;background:#10b981;cursor:pointer;border:2px solid transparent;" class="sf-color-dot"></div>
+            <div onclick="sfSetCoverColor('#3b82f6')" style="width:22px;height:22px;border-radius:50%;background:#3b82f6;cursor:pointer;border:2px solid transparent;" class="sf-color-dot"></div>
+            <div onclick="sfSetCoverColor('#8b5cf6')" style="width:22px;height:22px;border-radius:50%;background:#8b5cf6;cursor:pointer;border:2px solid transparent;" class="sf-color-dot"></div>
+            <div onclick="sfSetCoverColor('#ef4444')" style="width:22px;height:22px;border-radius:50%;background:#ef4444;cursor:pointer;border:2px solid transparent;" class="sf-color-dot"></div>
           </div>
         </div>
       </div>
@@ -1276,8 +1283,15 @@ label{
         <div style="display:flex;align-items:center;gap:10px;">
           <input type="color" id="sf-company-color" value="#7c6fff" oninput="sfUpdatePreview()" style="width:44px;height:36px;border:1.5px solid var(--border);border-radius:8px;cursor:pointer;padding:2px;background:var(--bg2);"/>
           <input type="text" id="sf-company-color-hex" value="#7c6fff" placeholder="#7c6fff" maxlength="7" style="width:90px;font-size:13px;font-family:'DM Mono',monospace;" oninput="sfSyncColorFromHex('company')"/>
-          <div style="display:flex;gap:6px;flex-wrap:wrap;">
-            ${['#7c6fff','#6366f1','#ec4899','#f59e0b','#10b981','#3b82f6','#ef4444','#1a1a2e'].map(c=>`<div onclick="sfSetCompanyColor('${c}')" style="width:22px;height:22px;border-radius:50%;background:${c};cursor:pointer;border:2px solid transparent;" class="sf-color-dot"></div>`).join('')}
+<div style="display:flex;gap:6px;flex-wrap:wrap;">
+            <div onclick="sfSetCompanyColor('#7c6fff')" style="width:22px;height:22px;border-radius:50%;background:#7c6fff;cursor:pointer;border:2px solid transparent;" class="sf-color-dot"></div>
+            <div onclick="sfSetCompanyColor('#6366f1')" style="width:22px;height:22px;border-radius:50%;background:#6366f1;cursor:pointer;border:2px solid transparent;" class="sf-color-dot"></div>
+            <div onclick="sfSetCompanyColor('#ec4899')" style="width:22px;height:22px;border-radius:50%;background:#ec4899;cursor:pointer;border:2px solid transparent;" class="sf-color-dot"></div>
+            <div onclick="sfSetCompanyColor('#f59e0b')" style="width:22px;height:22px;border-radius:50%;background:#f59e0b;cursor:pointer;border:2px solid transparent;" class="sf-color-dot"></div>
+            <div onclick="sfSetCompanyColor('#10b981')" style="width:22px;height:22px;border-radius:50%;background:#10b981;cursor:pointer;border:2px solid transparent;" class="sf-color-dot"></div>
+            <div onclick="sfSetCompanyColor('#3b82f6')" style="width:22px;height:22px;border-radius:50%;background:#3b82f6;cursor:pointer;border:2px solid transparent;" class="sf-color-dot"></div>
+            <div onclick="sfSetCompanyColor('#ef4444')" style="width:22px;height:22px;border-radius:50%;background:#ef4444;cursor:pointer;border:2px solid transparent;" class="sf-color-dot"></div>
+            <div onclick="sfSetCompanyColor('#1a1a2e')" style="width:22px;height:22px;border-radius:50%;background:#1a1a2e;cursor:pointer;border:2px solid transparent;" class="sf-color-dot"></div>
           </div>
         </div>
       </div>
@@ -1772,6 +1786,11 @@ function openBrand(id){
   DB.currentBrandId=id; DB.brandFilter='all'; DB.brandTab='reports';
   const b=brand();
   document.getElementById('brand-topbar-title').textContent=b.name;
+  // Show Add store button only for admin
+  const addStoreBtn=document.getElementById('brand-add-store-btn');
+  if(addStoreBtn) addStoreBtn.style.display=(DB.role==='admin')?'':'none';
+  const brandEditBtn=document.getElementById('brand-edit-btn');
+  if(brandEditBtn) brandEditBtn.style.display=(DB.role==='admin')?'':'none';
   renderBrandHero(); brandTab('reports'); goTo('s-brand');
 }
 function renderBrandHero(){
