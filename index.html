@@ -3495,16 +3495,24 @@ function renderReviewerHome(){
     const myFb=_rvFbMap[s.id]||null;
     const insp=r.inspection||{};
     const totalItems=r.refs&&r.refs.length?r.refs.length:0;
-    // Count responded items using refId lookup
+    // Count responded items using refId lookup — exclude rejected (remarked) items
     let respondedItems=0;
     if(myFb){
       if(totalItems>0){
         const fbByRef={};
         (myFb.itemFeedbacks||[]).forEach(it=>{ if(it.refId) fbByRef[it.refId]=it; });
-        r.refs.forEach(ref=>{ const it=fbByRef[ref.id]; if(it&&(it.note||(it.photos&&it.photos.length))) respondedItems++; });
+        r.refs.forEach(ref=>{
+          const isRejected=!!(myFb.adminRemarks?.[ref.id+'_list']?.length||myFb.adminRemarks?.[ref.id]);
+          if(isRejected) return; // rejected item does not count as responded
+          const it=fbByRef[ref.id];
+          if(it&&(it.note||(it.photos&&it.photos.length))) respondedItems++;
+        });
         // Fallback: if no refId matches but itemFeedbacks exist with content, count them
         if(respondedItems===0){
-          respondedItems=(myFb.itemFeedbacks||[]).filter(it=>it.note||(it.photos&&it.photos.length)).length;
+          respondedItems=(myFb.itemFeedbacks||[]).filter(it=>{
+            const isRej=!!(myFb.adminRemarks?.[it.refId+'_list']?.length||myFb.adminRemarks?.[it.refId]);
+            return !isRej&&(it.note||(it.photos&&it.photos.length));
+          }).length;
           respondedItems=Math.min(respondedItems,totalItems);
         }
       } else {
@@ -3514,9 +3522,14 @@ function renderReviewerHome(){
     }
     const effectiveTotal=totalItems||1;
     const itemPct=Math.round(respondedItems/effectiveTotal*100);
+    // Check if any items are rejected
+    const hasRejectedItems = myFb && r.refs && r.refs.some(ref=>
+      !!(myFb.adminRemarks?.[ref.id+'_list']?.length||myFb.adminRemarks?.[ref.id])
+    );
     // Status badge
     let statusBadge, statusClass;
-    if(!myFb||respondedItems===0){ statusBadge='Pending'; statusClass='badge-pending'; }
+    if(hasRejectedItems){ statusBadge='Checking'; statusClass='badge-pending'; }
+    else if(!myFb||respondedItems===0){ statusBadge='Pending'; statusClass='badge-pending'; }
     else if(totalItems>0&&respondedItems<totalItems){ statusBadge='Partial'; statusClass='badge-partial'; }
     else { statusBadge='Done'; statusClass='badge-done'; }
     return `<div class="card card-click" onclick="openReviewerReport('${r.id}')">
@@ -3751,11 +3764,11 @@ function openReviewerReport(rid){
         }
         if(!it._rejected && it.photos.length) renderItemPhotoGrid(i);
         if(it._rejected){
-          // Auto-open rejected items
+          // Rejected items start CLOSED — store taps to open and respond
           const el=document.getElementById('rvi_'+i);
           const arrow=document.getElementById('rvi_arrow_'+i);
-          if(el) el.style.display='';
-          if(arrow) arrow.style.transform='rotate(180deg)';
+          if(el) el.style.display='none';
+          if(arrow) arrow.style.transform='rotate(0deg)';
         }
         refreshReviewerItemStatus(i);
       });
