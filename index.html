@@ -2115,8 +2115,10 @@ window.addEventListener('load', async ()=>{
 
 /* ===== HOME ===== */
 // Helper: get report completion status based on item responses
-// Status: 'pending' = no response, 'checking' = has rejected items, 'partial' = some responded (no rejects), 'complete' = all done with no rejects
+// Status: 'pending' = no response, 'checking' = has rejected items, 'partial' = some responded (no rejects), 'complete' = all done OR manually verified
 function getReportStatus(r, stores){
+  // Manually verified by checker — always complete regardless
+  if(r.verified) return 'complete';
   const targetStores=r.storeId?stores.filter(s=>s.id===r.storeId):stores;
   const totalItems=r.refs&&r.refs.length?r.refs.length:0;
   if(!r.feedbacks.length) return 'pending';
@@ -2148,6 +2150,38 @@ function getReportStatus(r, stores){
   if(allDone) return 'complete';
   if(anyDone) return 'partial';
   return 'pending';
+}
+
+// ── Verify report as complete ─────────────────────────────────────────────────
+async function verifyReportComplete(rid){
+  const b=brand(), r=b.reports.find(r=>r.id===rid);
+  if(!r) return;
+  const authorName=DB.staffData?.name||(DB.role==='admin'?'Admin':'Staff');
+  const today=new Date().toISOString().slice(0,10);
+  r.verified=true; r.verifiedBy=authorName; r.verifiedAt=today;
+  const btn=document.querySelector(`[onclick="verifyReportComplete('${rid}')"]`);
+  if(btn){ btn.disabled=true; btn.textContent='Verifying...'; }
+  await api('PUT',`/api/reports/${rid}`,{
+    title:r.title, desc:r.desc||'', storeId:r.storeId||'',
+    storeIds:r.storeIds||[], inspection:r.inspection||{}, refs:r.refs||[],
+    verified:true, verifiedBy:authorName, verifiedAt:today
+  });
+  showToast('✓ Report verified and marked complete!');
+  viewFeedback(rid);
+}
+
+// ── Undo verify ───────────────────────────────────────────────────────────────
+async function unverifyReport(rid){
+  const b=brand(), r=b.reports.find(r=>r.id===rid);
+  if(!r) return;
+  r.verified=false; r.verifiedBy=''; r.verifiedAt='';
+  await api('PUT',`/api/reports/${rid}`,{
+    title:r.title, desc:r.desc||'', storeId:r.storeId||'',
+    storeIds:r.storeIds||[], inspection:r.inspection||{}, refs:r.refs||[],
+    verified:false, verifiedBy:'', verifiedAt:''
+  });
+  showToast('Verification removed');
+  viewFeedback(rid);
 }
 
 function renderHome(){
@@ -2284,9 +2318,12 @@ function renderBrandReports(){
     });
     const _itemPctCard=_totalPossCard?Math.round(_totalRespCard/_totalPossCard*100):0;
     const _hasReject=_totalRejCard>0;
-    return `<div class="card card-click" style="margin-bottom:10px;" onclick="viewFeedback('${r.id}')">
+    return `<div class="card card-click" style="margin-bottom:10px;${r.verified?'border-color:var(--success);':''}" onclick="viewFeedback('${r.id}')">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
-        <div style="font-size:14px;font-weight:600;flex:1;">${r.title}</div>
+        <div style="display:flex;align-items:center;gap:6px;flex:1;min-width:0;">
+          <div style="font-size:14px;font-weight:600;flex:1;">${r.title}</div>
+          ${r.verified?`<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`:''}
+        </div>
         <span class="badge ${bc}">${bt}</span>
       </div>
       <div style="font-size:12px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:4px;">${r.file}</div>
@@ -2435,9 +2472,12 @@ function renderStoreDetailReports(b,s){
     const scoreNum=parseFloat(insp.score)||0;
     const scoreColor=scoreNum>=99?'var(--success)':scoreNum>=88?'var(--success)':scoreNum>=85?'var(--warn)':scoreNum>0?'var(--danger)':'var(--text)';
     const scoreLabel=scoreNum>=99?'Excellent':scoreNum>=88?'Very good':scoreNum>=85?'Good':scoreNum>0?'Low':'';
-    return `<div class="card card-click" style="margin-bottom:10px;" onclick="viewFeedback('${r.id}')">
+    return `<div class="card card-click" style="margin-bottom:10px;${r.verified?'border-color:var(--success);':''}" onclick="viewFeedback('${r.id}')">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
-        <div style="font-size:14px;font-weight:600;flex:1;">${r.title}</div>
+        <div style="display:flex;align-items:center;gap:6px;flex:1;min-width:0;">
+          <div style="font-size:14px;font-weight:600;flex:1;">${r.title}</div>
+          ${r.verified?`<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`:''}
+        </div>
         <span class="badge ${bc}">${bt}</span>
       </div>
       <div style="font-size:12px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:4px;">${r.file}</div>
@@ -3030,7 +3070,21 @@ function viewFeedback(rid){
   const mw=document.getElementById('fb-missing');
   let bottomHTML='';
 
-  // Submit to all remarked stores — single button
+  // ── VERIFIED banner if already verified ──────────────────────────────────
+  if(r.verified){
+    const verBy=r.verifiedBy||'Checker';
+    const verAt=r.verifiedAt||'';
+    bottomHTML+=`<div style="margin-top:10px;padding:14px 16px;background:var(--badge-done-bg);border:1.5px solid var(--success);border-radius:14px;display:flex;align-items:center;gap:10px;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+      <div style="flex:1;">
+        <div style="font-size:14px;font-weight:700;color:var(--success);">Verified Complete</div>
+        <div style="font-size:12px;color:var(--success);opacity:.8;margin-top:1px;">by ${verBy}${verAt?' · '+verAt:''}</div>
+      </div>
+      ${(canEdit()||DB.role==='admin')?`<button onclick="unverifyReport('${rid}')" style="font-size:11px;padding:4px 10px;border-radius:8px;border:1px solid var(--success);background:transparent;color:var(--success);cursor:pointer;">Undo</button>`:''}
+    </div>`;
+  }
+
+  // ── Submit to all remarked stores ─────────────────────────────────────────
   if(remarkedStores.length && (canEdit()||DB.role==='admin')){
     const storeNames=remarkedStores.map(s=>s.name).join(', ');
     bottomHTML+=`<div style="margin-top:10px;">
@@ -3061,8 +3115,15 @@ function viewFeedback(rid){
             <button class="btn btn-xs" style="color:var(--warn);border-color:var(--warn);" onclick="alertOneStore('${rid}','${s.id}')">Alert</button>
           </div>`).join('')}
       </div>`;
-  } else if(!remarkedStores.length){
-    bottomHTML+=`<div style="text-align:center;padding:12px 0;font-size:13px;color:var(--success);">✓ All stores have responded</div>`;
+  } else if(!remarkedStores.length && !r.verified){
+    // All responded, no remarks, not verified yet — show green status + verify button
+    bottomHTML+=`<div style="text-align:center;padding:10px 0 4px;font-size:13px;color:var(--success);">✓ All stores have responded</div>`;
+    if(canEdit()||DB.role==='admin'){
+      bottomHTML+=`<button onclick="verifyReportComplete('${rid}')" style="margin-top:8px;width:100%;padding:14px;border-radius:14px;background:var(--success);border:none;color:#fff;font-size:15px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 4px 14px rgba(34,197,94,.3);">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        Verify &amp; mark as complete
+      </button>`;
+    }
   }
 
   mw.innerHTML=bottomHTML;
@@ -4189,7 +4250,9 @@ async function doEditReport(){
     title:r.title, desc:r.desc, storeId:r.storeId||'',
     file:r.file, fileURL:r.fileURL||null,
     inspection:r.inspection, refs:r.refs,
-    date:r.date
+    storeIds:r.storeIds||[],
+    date:r.date,
+    verified:r.verified||false, verifiedBy:r.verifiedBy||'', verifiedAt:r.verifiedAt||''
   });
   msg.innerHTML='<div class="alert alert-success">✓ Report updated!</div>';
   setTimeout(()=>{ msg.innerHTML=''; viewFeedback(_editingReportId); },1200);
