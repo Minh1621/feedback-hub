@@ -1671,26 +1671,13 @@ label{
       <div id="ra-photos-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;"></div>
     </div>
 
-    <!-- Admin remark -->
-    <div style="padding:14px 20px;border-bottom:1px solid var(--border);">
-      <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Add remark</div>
-      <div style="font-size:12px;color:var(--text2);margin-bottom:10px;">Remark will reset this store's response and notify them to resubmit.</div>
-      <textarea id="ra-remark-input" placeholder="Write your remark for this store..." style="min-height:72px;font-size:14px;margin-bottom:0;"></textarea>
-      <div id="ra-remark-msg" style="margin-top:6px;"></div>
-      <button onclick="raSaveRemark()" style="margin-top:8px;width:100%;padding:10px;border-radius:10px;background:var(--accent);border:none;color:#fff;font-size:14px;font-weight:600;cursor:pointer;">Save remark &amp; notify store</button>
-    </div>
-
-    <!-- Actions -->
+    <!-- Remark -->
     <div style="padding:14px 20px 28px;">
-      <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;">Actions</div>
-      <button id="ra-send-review-btn" onclick="raSendForReview()" style="width:100%;padding:12px;border-radius:12px;border:1.5px solid var(--accent);background:transparent;color:var(--accent);font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:10px;">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-        Send for review (notify store to resubmit)
-      </button>
-      <button id="ra-delete-btn" onclick="raDeleteResponse()" style="width:100%;padding:12px;border-radius:12px;border:1.5px solid var(--danger);background:transparent;color:var(--danger);font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
-        Reset to no response only
-      </button>
+      <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Add remark</div>
+      <div style="font-size:12px;color:var(--text2);margin-bottom:10px;">Store will be reset to "No response" and notified to resubmit.</div>
+      <textarea id="ra-remark-input" placeholder="Write your remark for this store..." style="min-height:80px;font-size:14px;margin-bottom:0;"></textarea>
+      <div id="ra-remark-msg" style="margin-top:6px;"></div>
+      <button onclick="raSaveRemark()" style="margin-top:10px;width:100%;padding:13px;border-radius:12px;background:var(--accent);border:none;color:#fff;font-size:15px;font-weight:700;cursor:pointer;">Save remark</button>
     </div>
   </div>
 </div>
@@ -2918,12 +2905,13 @@ function viewFeedback(rid){
       const latestFbMap={};
       r.feedbacks.forEach(f=>{ if(!latestFbMap[f.storeId]||f.date>=latestFbMap[f.storeId].date) latestFbMap[f.storeId]=f; });
       const latestFbs=Object.values(latestFbMap);
-      // Collect responses for this ref — only count items with actual note or photo
+      // Count responses — only stores that have actual content (note OR photos) AND no remark (remark = reset)
       const responses=latestFbs.map(f=>{
         const s=b.stores.find(s=>s.id===f.storeId);
         const it=f.itemFeedbacks?f.itemFeedbacks.find(it=>it.refId===ref.id):null;
-        return {store:s, item:it, date:f.date};
-      }).filter(x=>x.item && (x.item.note||(x.item.photos&&x.item.photos.length)));
+        const hasRemark=!!(f.adminRemarks?.[ref.id+'_list']?.length || f.adminRemarks?.[ref.id]);
+        return {store:s, item:it, date:f.date, hasRemark};
+      }).filter(x=>x.item && (x.item.note||(x.item.photos&&x.item.photos.length)) && !x.hasRemark);
       const respCount=responses.length;
       return `<div style="background:var(--bg2);border:0.5px solid var(--border);border-radius:var(--rl);margin-bottom:10px;overflow:hidden;">
         <!-- Header row — tap to toggle -->
@@ -5873,10 +5861,6 @@ function openRespAction(fbId, refId, storeId, rid, storeName, itemName) {
   const delBtn = document.getElementById('ra-delete-btn');
   if (delBtn) delBtn.style.display = hasResponse ? '' : 'none';
 
-  // Send for review button — show when there's a response or existing feedback
-  const sendBtn = document.getElementById('ra-send-review-btn');
-  if (sendBtn) sendBtn.style.display = (hasResponse || fb) ? '' : 'none';
-
   document.getElementById('resp-action-overlay').style.display = 'flex';
 }
 
@@ -5885,35 +5869,6 @@ function closeRespAction() {
 }
 
 // Send for review — reset response + notify store without adding remark
-async function raSendForReview() {
-  const { fbId, refId, storeId, rid, storeName } = _raCtx;
-  const b = brand();
-  const r = b.reports.find(r => r.id === rid);
-  const fb = r?.feedbacks.find(f => f.id === fbId);
-  if (!fb) return;
-  const sendBtn = document.getElementById('ra-send-review-btn');
-  if (sendBtn) { sendBtn.disabled = true; sendBtn.textContent = 'Sending...'; }
-  // Reset this item's response
-  if (fb.itemFeedbacks) {
-    const it = fb.itemFeedbacks.find(it => it.refId === refId);
-    if (it) { it.note = ''; }
-  }
-  fb.text = (fb.itemFeedbacks || []).map((it, i) => it.note ? `Item ${i+1}: ${it.note}` : '').filter(Boolean).join(' | ');
-  await api('PUT', `/api/feedbacks/${fbId}`, {
-    text: fb.text, itemFeedbacks: fb.itemFeedbacks, photos: fb.photos || [], adminRemarks: fb.adminRemarks
-  });
-  try {
-    const _alerter = getAlerterInfo();
-    await api('POST', '/api/feedbacks/delete-notify', {
-      feedback_id: fbId, store_id: storeId, report_id: rid,
-      ref_id: refId, alerter_id: _alerter.id, alerter_role: _alerter.role
-    });
-  } catch(e) {}
-  closeRespAction();
-  showToast(`✓ ${storeName} notified to resubmit`);
-  viewFeedback(rid);
-}
-
 function openAnnotatorFromPanel(src, photoIdx) {
   const { fbId, refId } = _raCtx;
   closeRespAction();
@@ -5924,38 +5879,41 @@ async function raSaveRemark() {
   const { fbId, refId, storeId, rid } = _raCtx;
   const text = document.getElementById('ra-remark-input').value.trim();
   const msg = document.getElementById('ra-remark-msg');
-  if (!text) { msg.innerHTML = '<div class="alert alert-danger">Please enter a remark.</div>'; return; }
+  if (!text) { msg.innerHTML = '<div class="alert alert-danger">Please write a remark first.</div>'; return; }
+
   const b = brand();
   const r = b.reports.find(r => r.id === rid);
   const fb = r?.feedbacks.find(f => f.id === fbId);
   if (!fb) return;
   if (!fb.adminRemarks) fb.adminRemarks = {};
 
-  const authorName = DB.staffData?.name || (DB.role==='admin' ? 'Admin' : 'Staff');
-  const today = new Date().toISOString().slice(0,10);
-
-  // Append to multi-remark list
+  const authorName = DB.staffData?.name || (DB.role === 'admin' ? 'Admin' : 'Staff');
+  const today = new Date().toISOString().slice(0, 10);
   const listKey = refId + '_list';
+
+  // Migrate old single remark if needed
   if (!Array.isArray(fb.adminRemarks[listKey])) {
-    // Migrate old single remark if exists
     const old = fb.adminRemarks[refId];
     const oldAuthor = fb.adminRemarks._authors?.[refId] || null;
     fb.adminRemarks[listKey] = old ? [{ text: old, author: oldAuthor || 'Staff', date: today }] : [];
   }
+  // Append new remark
   fb.adminRemarks[listKey].push({ text, author: authorName, date: today });
-  // Keep legacy field in sync for backward compat
+  // Keep legacy fields in sync
   fb.adminRemarks[refId] = text;
   if (!fb.adminRemarks._authors) fb.adminRemarks._authors = {};
   fb.adminRemarks._authors[refId] = `${authorName} · ${today}`;
 
-  // Auto-reset store response to "No response" so store must resubmit
+  // Auto-reset this item's response to "No response"
   if (fb.itemFeedbacks) {
     const it = fb.itemFeedbacks.find(it => it.refId === refId);
     if (it) { it.note = ''; it.photos = it.photos || []; }
   }
   fb.text = (fb.itemFeedbacks || []).map((it, i) => it.note ? `Item ${i+1}: ${it.note}` : '').filter(Boolean).join(' | ');
 
-  msg.innerHTML = '<div class="alert alert-success">Saving remark...</div>';
+  const saveBtn = document.querySelector('#resp-action-overlay button[onclick="raSaveRemark()"]');
+  if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Saving...'; }
+
   await api('PUT', `/api/feedbacks/${fbId}`, {
     text: fb.text, itemFeedbacks: fb.itemFeedbacks, photos: fb.photos || [], adminRemarks: fb.adminRemarks
   });
@@ -5969,11 +5927,9 @@ async function raSaveRemark() {
     });
   } catch(e) {}
 
-  msg.innerHTML = '<div class="alert alert-success">✓ Remark saved — store notified to resubmit!</div>';
-  setTimeout(() => {
-    closeRespAction();
-    viewFeedback(rid);
-  }, 900);
+  closeRespAction();
+  showToast('✓ Remark saved — store notified to resubmit');
+  viewFeedback(rid);
 }
 
 function raDeleteResponse() {
