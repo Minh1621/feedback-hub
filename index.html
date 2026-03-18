@@ -447,7 +447,7 @@ label{
   <div class="topbar">
     <button class="back-btn" onclick="goTo('s-home')">&#8592; Back</button>
     <div class="topbar-title" id="brand-topbar-title">Brand</div>
-    <button class="btn btn-sm" onclick="editBrand()">Edit</button>
+    <button id="brand-edit-btn" class="btn btn-sm" onclick="editBrand()">Edit</button>
   </div>
   <div class="content">
     <div id="brand-hero" style="margin-bottom:18px;"></div>
@@ -1186,8 +1186,8 @@ label{
     <div class="field"><label>Username</label><input type="text" id="sf-username" placeholder="e.g. leangminh" autocomplete="off"/></div>
     <div class="field"><label id="sf-pass-label">Password</label>
       <div style="display:flex;gap:8px;">
-        <input type="password" id="sf-password" placeholder="Set a password" style="flex:1;" autocomplete="off"/>
-        <button class="btn btn-sm" onclick="sfTogglePass()">View</button>
+        <input type="password" id="sf-password" placeholder="Set a password (leave blank to keep)" style="flex:1;" autocomplete="off"/>
+        <button class="btn btn-sm" onclick="adminViewStaffPass()">View</button>
       </div>
     </div>
 
@@ -3602,18 +3602,14 @@ async function saveRvNotif(){
 }
 
 function adminViewStorePass(){
-  const sid=DB.currentStoreId;
-  let s=null;
-  for(const b of DB.brands){ s=b.stores.find(st=>st.id===sid); if(s) break; }
-  if(!s) return;
-  const shown=document.getElementById('es-pass-shown');
-  if(shown.style.display==='none'){
-    shown.textContent='Current: '+s.password;
-    shown.style.display='';
-    setTimeout(()=>{ shown.style.display='none'; },8000);
-  } else {
-    shown.style.display='none';
-  }
+  // 2-step: verify admin password first
+  _pendingAdminAction='view_store_pass';
+  document.getElementById('verify-admin-pass').value='';
+  document.getElementById('verify-msg').innerHTML='';
+  document.getElementById('verify-title').textContent='View store password';
+  document.getElementById('verify-subtitle').textContent='Enter admin password to view the store current password.';
+  document.getElementById('pass-verify-overlay').style.display='flex';
+  setTimeout(()=>document.getElementById('verify-admin-pass').focus(),100);
 }
 
 function openRvSettings(){
@@ -3665,12 +3661,39 @@ function doVerifyAdmin(){
     if(revealed&&s){
       revealed.textContent=s.password;
       revealed.style.display='';
-      masked.style.display='none';
-      setTimeout(()=>{ revealed.style.display='none'; masked.style.display=''; },10000);
+      if(masked) masked.style.display='none';
+      setTimeout(()=>{ revealed.style.display='none'; if(masked) masked.style.display=''; },10000);
     }
+  } else if(_pendingAdminAction==='view_store_pass'){
+    // Admin edit store — fetch and show current password
+    const sid=DB.currentStoreId;
+    let storeObj=null;
+    for(const b of DB.brands){ storeObj=b.stores.find(st=>st.id===sid); if(storeObj) break; }
+    const pw=storeObj?.password||'(not available)';
+    const shown=document.getElementById('es-pass-shown');
+    if(shown){
+      shown.innerHTML='<span style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:4px;">Current password</span><span style="font-size:15px;font-weight:700;letter-spacing:.08em;">'+pw+'</span>';
+      shown.style.display='';
+      setTimeout(()=>{ shown.style.display='none'; },15000);
+    }
+  } else if(_pendingAdminAction==='view_staff_pass'){
+    // Admin edit staff — show current password
+    const staffObj=DB_STAFF.find(s=>s.id===_sfEditingId);
+    const pw=staffObj?.password||'(not available)';
+    let showEl=document.getElementById('sf-pass-show-inline');
+    if(!showEl){
+      showEl=document.createElement('div');
+      showEl.id='sf-pass-show-inline';
+      showEl.style.cssText='margin-top:6px;padding:10px 12px;background:var(--bg3);border-radius:var(--r);font-size:14px;font-family:"DM Mono",monospace;letter-spacing:.08em;color:var(--text);';
+      const passField=document.getElementById('sf-password');
+      if(passField&&passField.closest('.field')) passField.closest('.field').appendChild(showEl);
+    }
+    showEl.innerHTML='<span style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:4px;">Current password</span><span style="font-size:15px;font-weight:700;letter-spacing:.08em;">'+pw+'</span>';
+    showEl.style.display='';
+    setTimeout(()=>{ showEl.style.display='none'; },15000);
   } else if(_pendingAdminAction==='change'){
-    const form=document.getElementById('rv-change-pass-form');
-    if(form){ form.style.display=''; }
+    openEmailVerifyForStore();
+    return;
   }
 }
 function doChangeRvPass(){
@@ -4854,6 +4877,18 @@ function sfToggleAllBrands(cb){
 function sfTogglePass(){
   const inp=document.getElementById('sf-password');
   inp.type=inp.type==='password'?'text':'password';
+}
+
+function adminViewStaffPass(){
+  // 2-step admin verify to show staff current password
+  if(!_sfEditingId){ sfTogglePass(); return; }
+  _pendingAdminAction='view_staff_pass';
+  document.getElementById('verify-admin-pass').value='';
+  document.getElementById('verify-msg').innerHTML='';
+  document.getElementById('verify-title').textContent='View staff password';
+  document.getElementById('verify-subtitle').textContent='Enter admin password to view this staff account password.';
+  document.getElementById('pass-verify-overlay').style.display='flex';
+  setTimeout(()=>document.getElementById('verify-admin-pass').focus(),100);
 }
 
 function onSfAvatarPick(input){
