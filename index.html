@@ -3948,12 +3948,25 @@ function alertOneStore(rid, sid){
   showAlertConfirm(`Send reminder to ${s.name}?`, ()=>{ sendReminder(s, r, b); });
 }
 async function sendReminder(store, report, brand){
-  const result = await api('POST','/api/alert',{report_id:report.id, store_id:store.id});
+  // Include current user as alerter so their name/photo appears in the email
+  const alerterInfo = getAlerterInfo();
+  const result = await api('POST','/api/alert',{
+    report_id:report.id, store_id:store.id,
+    alerter_id: alerterInfo.id,
+    alerter_role: alerterInfo.role
+  });
   if(result.sent){
     showToast(`Reminder sent to ${store.name}`);
   } else {
     showToast(`Alert sent — no email set for ${store.name}`);
   }
+}
+
+function getAlerterInfo(){
+  if(DB.role==='staff' && DB.staffData){
+    return { id: DB.staffData.staff_id||DB.staffData.id||null, role:'staff' };
+  }
+  return { id: null, role:'admin' };
 }
 function showAlertConfirm(msg, onConfirm){
   showGenericConfirm(msg, onConfirm);
@@ -5068,7 +5081,8 @@ function deleteStoreResponse(fbId, storeId, refId, rid){
         await api('PUT',`/api/feedbacks/${fbId}`,{text:fb.text,itemFeedbacks:fb.itemFeedbacks,photos:fb.photos||[]});
       }
       // Send notification to store to resubmit
-      await api('POST','/api/feedbacks/delete-notify',{feedback_id:fbId, store_id:storeId, report_id:rid, ref_id:refId});
+      const _alerter=getAlerterInfo();
+      await api('POST','/api/feedbacks/delete-notify',{feedback_id:fbId, store_id:storeId, report_id:rid, ref_id:refId, alerter_id:_alerter.id, alerter_role:_alerter.role});
       showToast('Response deleted — store notified');
       viewFeedback(rid);
     }
