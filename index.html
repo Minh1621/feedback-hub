@@ -1862,6 +1862,22 @@ function goTo(id){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
   window.scrollTo(0,0);
+  // Silently refresh data whenever reviewer returns to their home screen
+  if(id==='s-reviewer-home' && DB.role==='reviewer'){
+    _silentRvRefresh();
+  }
+}
+
+// Silent background refresh for reviewer — reloads data + re-renders without spinner/toast
+let _rvRefreshPending = false;
+async function _silentRvRefresh(){
+  if(_rvRefreshPending) return; // debounce concurrent calls
+  _rvRefreshPending = true;
+  try{
+    await loadAllData();
+    if(DB.role==='reviewer') renderReviewerHome();
+  } catch(e){ /* silent — don't disrupt UI */ }
+  _rvRefreshPending = false;
 }
 function brand(){ return DB.brands.find(b=>b.id===DB.currentBrandId); }
 
@@ -6628,6 +6644,16 @@ async function doExportData(){
 
 function openLightbox(src){ document.getElementById('lightbox-img').src=src; document.getElementById('lightbox').classList.add('open'); }
 function closeLightbox(){ document.getElementById('lightbox').classList.remove('open'); }
+
+// Refresh reviewer data when they switch back to the tab/app
+document.addEventListener('visibilitychange', ()=>{
+  if(document.visibilityState==='visible' && DB.role==='reviewer'){
+    const activeScreen = document.querySelector('.screen.active');
+    if(activeScreen && activeScreen.id==='s-reviewer-home'){
+      _silentRvRefresh();
+    }
+  }
+});
 </script>
 </body>
 </html>
