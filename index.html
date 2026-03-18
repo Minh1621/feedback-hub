@@ -5277,28 +5277,51 @@ document.addEventListener('DOMContentLoaded',()=>{ annInitEvents(); });
 /* ===== EMAIL VERIFY PASSWORD CHANGE ===== */
 let _evMode=null; // 'store' or 'staff'
 
-function openEmailVerifyForStore(){
+async function openEmailVerifyForStore(){
   _evMode='store';
   document.getElementById('ev-title').textContent='Change store password';
-  document.getElementById('ev-subtitle').textContent='We\'ll send a 6-digit code to your notification email';
-  document.getElementById('ev-email').value=DB_RV_SETTINGS?.notifEmail||'';
+  document.getElementById('ev-subtitle').textContent='A 6-digit code will be sent to your email';
+  // Pre-fill email from store record
+  const s=reviewerStore();
+  const preEmail=(s?.notif_email||s?.email||'');
+  document.getElementById('ev-email').value=preEmail;
   document.getElementById('ev-step1').style.display='';
   document.getElementById('ev-step2').style.display='none';
   document.getElementById('ev-step1-msg').innerHTML='';
   document.getElementById('ev-step2-msg').innerHTML='';
+  // Check rate limit before opening
+  const sid=DB.reviewerStoreId||'';
+  if(sid){
+    const countRes=await api('POST','/api/password-change-count',{entity_id:sid, entity_type:'store'});
+    if(countRes&&countRes.count>=2){
+      showPasswordLimitReached(); return;
+    }
+    const remaining=2-(countRes?.count||0);
+    document.getElementById('ev-subtitle').textContent=`You have ${remaining} password change${remaining!==1?'s':''} remaining this month`;
+  }
   document.getElementById('email-verify-overlay').style.display='flex';
 }
 
-function openEmailVerifyForStaff(){
+async function openEmailVerifyForStaff(){
   _evMode='staff';
   document.getElementById('ev-title').textContent='Change staff password';
-  document.getElementById('ev-subtitle').textContent='We\'ll send a 6-digit code to your notification email';
+  document.getElementById('ev-subtitle').textContent='A 6-digit code will be sent to your email';
   const staff=DB.staffData||{};
   document.getElementById('ev-email').value=staff.notif_email||'';
   document.getElementById('ev-step1').style.display='';
   document.getElementById('ev-step2').style.display='none';
   document.getElementById('ev-step1-msg').innerHTML='';
   document.getElementById('ev-step2-msg').innerHTML='';
+  // Check rate limit
+  const staffId=staff.staff_id||staff.id||'';
+  if(staffId){
+    const countRes=await api('POST','/api/password-change-count',{entity_id:staffId, entity_type:'staff'});
+    if(countRes&&countRes.count>=2){
+      showPasswordLimitReached(); return;
+    }
+    const remaining=2-(countRes?.count||0);
+    document.getElementById('ev-subtitle').textContent=`You have ${remaining} password change${remaining!==1?'s':''} remaining this month`;
+  }
   document.getElementById('email-verify-overlay').style.display='flex';
 }
 
@@ -5340,8 +5363,8 @@ async function evVerifyAndChange(){
   if(_evMode==='store'){
     const sid=DB.reviewerStoreId;
     const result=await api('POST','/api/store-change-password',{store_id:sid, new_password:newpass});
+    if(result&&result.limit_reached){ document.getElementById('email-verify-overlay').style.display='none'; showPasswordLimitReached(); return; }
     if(result&&result.ok){
-      // Update local session
       try{ const raw=localStorage.getItem('fh_session'); if(raw){ const s=JSON.parse(raw); s.password=newpass; localStorage.setItem('fh_session',JSON.stringify(s)); } }catch(e){}
       msg.innerHTML='<div class="alert alert-success">✓ Password changed successfully!</div>';
       setTimeout(()=>{ document.getElementById('email-verify-overlay').style.display='none'; },1500);
@@ -5349,6 +5372,7 @@ async function evVerifyAndChange(){
   } else if(_evMode==='staff'){
     const staff=DB.staffData||{};
     const result=await api('POST','/api/staff-change-password',{staff_id:staff.staff_id||staff.id, new_password:newpass});
+    if(result&&result.limit_reached){ document.getElementById('email-verify-overlay').style.display='none'; showPasswordLimitReached(); return; }
     if(result&&result.ok){
       if(DB.staffData) DB.staffData.password=newpass;
       try{ const raw=localStorage.getItem('fh_session'); if(raw){ const s=JSON.parse(raw); if(s.staffData) s.staffData.password=newpass; localStorage.setItem('fh_session',JSON.stringify(s)); } }catch(e){}
@@ -5356,6 +5380,29 @@ async function evVerifyAndChange(){
       setTimeout(()=>{ document.getElementById('email-verify-overlay').style.display='none'; },1500);
     } else { msg.innerHTML='<div class="alert alert-danger">Failed to change password.</div>'; }
   }
+}
+
+function showPasswordLimitReached(){
+  // Show a modal telling user they've hit the 2x/month limit with Telegram support link
+  const overlay=document.createElement('div');
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:80;display:flex;align-items:flex-end;justify-content:center;';
+  overlay.innerHTML=`
+    <div style="background:var(--bg);border-radius:20px 20px 0 0;padding:28px 24px;width:100%;max-width:480px;text-align:center;">
+      <div style="width:56px;height:56px;border-radius:50%;background:#fff3e0;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      </div>
+      <div style="font-size:18px;font-weight:700;margin-bottom:8px;">Password change limit reached</div>
+      <div style="font-size:14px;color:var(--text2);line-height:1.6;margin-bottom:20px;">
+        You can only change your password <strong>2 times per month</strong>. Your limit resets at the start of next month.<br><br>
+        If you need urgent help, please contact our support team on Telegram.
+      </div>
+      <a href="https://t.me/lmig25" target="_blank" style="display:flex;align-items:center;justify-content:center;gap:10px;background:#2AABEE;color:#fff;border-radius:12px;padding:14px;text-decoration:none;font-size:15px;font-weight:600;margin-bottom:12px;">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="#fff"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12L7.88 13.264l-2.962-.924c-.643-.204-.657-.643.136-.953l11.57-4.461c.537-.194 1.006.131.27.295z"/></svg>
+        Contact Support on Telegram
+      </a>
+      <button onclick="this.closest('div[style*=fixed]').remove()" style="width:100%;padding:12px;background:none;border:none;color:var(--text3);cursor:pointer;font-size:14px;">Close</button>
+    </div>`;
+  document.body.appendChild(overlay);
 }
 
 /* ===== STAFF EXPORT ===== */
