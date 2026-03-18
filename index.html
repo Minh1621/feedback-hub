@@ -501,9 +501,10 @@ label{
     <!-- Filter tabs -->
     <div style="display:flex;gap:6px;margin-bottom:14px;overflow-x:auto;padding-bottom:2px;">
       <button id="sdf-all"      class="btn btn-sm" style="border-radius:20px;flex-shrink:0;background:var(--accent);color:#fff;border-color:var(--accent);" onclick="setStoreDetailFilter('all')">All</button>
-      <button id="sdf-partial"  class="btn btn-sm" style="border-radius:20px;flex-shrink:0;" onclick="setStoreDetailFilter('partial')">Partial</button>
-      <button id="sdf-complete" class="btn btn-sm" style="border-radius:20px;flex-shrink:0;" onclick="setStoreDetailFilter('complete')">Complete</button>
       <button id="sdf-pending"  class="btn btn-sm" style="border-radius:20px;flex-shrink:0;" onclick="setStoreDetailFilter('pending')">Pending</button>
+      <button id="sdf-partial"  class="btn btn-sm" style="border-radius:20px;flex-shrink:0;" onclick="setStoreDetailFilter('partial')">Partial</button>
+      <button id="sdf-checking" class="btn btn-sm" style="border-radius:20px;flex-shrink:0;" onclick="setStoreDetailFilter('checking')">Checking</button>
+      <button id="sdf-complete" class="btn btn-sm" style="border-radius:20px;flex-shrink:0;" onclick="setStoreDetailFilter('complete')">Complete</button>
     </div>
     <div id="sd-report-list"></div>
   </div>
@@ -2612,7 +2613,7 @@ function renderBrandReports(){
     });
     const _itemPctCard=_totalPossCard?Math.round(_totalRespCard/_totalPossCard*100):0;
     const _hasReject=_totalRejCard>0;
-    return `<div class="card card-click" style="margin-bottom:10px;${r.verified?'border-color:var(--success);':''}" onclick="viewFeedback('${r.id}')">
+    return `<div class="card card-click" style="margin-bottom:10px;${borderStyle}" onclick="viewFeedback('${r.id}')">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
         <div style="display:flex;align-items:center;gap:6px;flex:1;min-width:0;">
           <div style="font-size:14px;font-weight:600;flex:1;">${r.title}</div>
@@ -2717,14 +2718,25 @@ function openStoreDetail(sid){
 }
 
 function getStoreReportStatus(r,sid){
+  if(r.verified) return 'complete';
   const fbMap={}; r.feedbacks.forEach(f=>{if(!fbMap[f.storeId]||f.date>=fbMap[f.storeId].date) fbMap[f.storeId]=f;});
   const myFb=fbMap[sid];
   if(!myFb) return 'pending';
+  // Check if any items have active rejection remarks → checking
+  const hasRejected = r.refs && r.refs.some(ref=>
+    !!(myFb.adminRemarks?.[ref.id+'_list']?.length || myFb.adminRemarks?.[ref.id])
+  );
+  if(hasRejected) return 'checking';
   const totalItems=r.refs&&r.refs.length?r.refs.length:0;
   if(totalItems===0) return (myFb.text||(myFb.itemFeedbacks&&myFb.itemFeedbacks.length))?'complete':'pending';
   const refMap={}; (myFb.itemFeedbacks||[]).forEach(it=>{if(it.refId) refMap[it.refId]=it;});
   let responded=0;
-  r.refs.forEach(ref=>{const it=refMap[ref.id]; if(it&&(it.note||(it.photos&&it.photos.length))) responded++;});
+  r.refs.forEach(ref=>{
+    const isRejected=!!(myFb.adminRemarks?.[ref.id+'_list']?.length||myFb.adminRemarks?.[ref.id]);
+    if(isRejected) return; // rejected items don't count
+    const it=refMap[ref.id];
+    if(it&&(it.note||(it.photos&&it.photos.length))) responded++;
+  });
   if(responded===0) responded=Math.min((myFb.itemFeedbacks||[]).filter(it=>it.note||(it.photos&&it.photos.length)).length,totalItems);
   if(responded===0) return 'pending';
   if(responded<totalItems) return 'partial';
@@ -2733,7 +2745,7 @@ function getStoreReportStatus(r,sid){
 
 function setStoreDetailFilter(f){
   DB.storeDetailFilter=f;
-  ['all','partial','complete','pending'].forEach(key=>{
+  ['all','pending','partial','checking','complete'].forEach(key=>{
     const btn=document.getElementById('sdf-'+key);
     if(!btn) return;
     if(key===f){ btn.style.background='var(--accent)'; btn.style.color='#fff'; btn.style.borderColor='var(--accent)'; }
@@ -2760,18 +2772,23 @@ function renderStoreDetailReports(b,s){
     let respondedItems=0;
     if(myFb&&totalItems>0){
       const refMap={}; (myFb.itemFeedbacks||[]).forEach(it=>{if(it.refId) refMap[it.refId]=it;});
-      r.refs.forEach(ref=>{const it=refMap[ref.id]; if(it&&(it.note||(it.photos&&it.photos.length))) respondedItems++;});
+      r.refs.forEach(ref=>{
+        const isRej=!!(myFb.adminRemarks?.[ref.id+'_list']?.length||myFb.adminRemarks?.[ref.id]);
+        if(isRej) return;
+        const it=refMap[ref.id]; if(it&&(it.note||(it.photos&&it.photos.length))) respondedItems++;
+      });
       if(respondedItems===0) respondedItems=Math.min((myFb.itemFeedbacks||[]).filter(it=>it.note||(it.photos&&it.photos.length)).length,totalItems);
     }
     const itemPct=totalItems?Math.round(respondedItems/totalItems*100):0;
-    let bc,bt;
-    if(st==='complete'){bc='badge-done';bt='Complete';}
-    else if(st==='checking'){bc='badge-pending';bt='Checking';}
-    else {bc='badge-none';bt='Pending';}
+    let bc,bt,borderStyle;
+    if(st==='complete'||r.verified){bc='badge-done';bt='Complete';borderStyle='border-color:var(--success);';}
+    else if(st==='checking'){bc='badge-pending';bt='Checking';borderStyle='border-color:var(--warn);';}
+    else if(st==='partial'){bc='badge-partial';bt='Partial';borderStyle='border-color:var(--accent);';}
+    else {bc='badge-none';bt='Pending';borderStyle='';}
     const scoreNum=parseFloat(insp.score)||0;
     const scoreColor=scoreNum>=99?'var(--success)':scoreNum>=88?'var(--success)':scoreNum>=85?'var(--warn)':scoreNum>0?'var(--danger)':'var(--text)';
     const scoreLabel=scoreNum>=99?'Excellent':scoreNum>=88?'Very good':scoreNum>=85?'Good':scoreNum>0?'Low':'';
-    return `<div class="card card-click" style="margin-bottom:10px;${r.verified?'border-color:var(--success);':''}" onclick="viewFeedback('${r.id}')">
+    return `<div class="card card-click" style="margin-bottom:10px;${borderStyle}" onclick="viewFeedback('${r.id}')">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
         <div style="display:flex;align-items:center;gap:6px;flex:1;min-width:0;">
           <div style="font-size:14px;font-weight:600;flex:1;">${r.title}</div>
