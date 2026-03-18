@@ -5242,26 +5242,45 @@ function openAnnotator(src, fbId, refId, photoIdx){
   const overlay=document.getElementById('photo-annotator-overlay');
   const canvas=document.getElementById('ann-canvas');
   const wrap=document.getElementById('ann-canvas-wrap');
-  const ctx=canvas.getContext('2d');
   _annCtx.fbId=fbId; _annCtx.refId=refId; _annCtx.photoIdx=parseInt(photoIdx);
   _annCtx.history=[]; _annCtx.redoStack=[];
-  const img=new Image();
-  img.onload=()=>{
-    // Size canvas to image, fitting screen
-    const maxW=wrap.clientWidth-20, maxH=wrap.clientHeight-20;
-    const scale=Math.min(maxW/img.width, maxH/img.height, 1);
-    canvas.width=Math.round(img.width*scale);
-    canvas.height=Math.round(img.height*scale);
-    ctx.drawImage(img,0,0,canvas.width,canvas.height);
-    _annCtx.imgData=ctx.getImageData(0,0,canvas.width,canvas.height);
-    annSetTool('pen');
-  };
-  img.src=src;
+  // Show overlay first so wrap has dimensions
   overlay.style.display='flex';
-  // Rebuild static color dots
-  document.querySelectorAll('.ann-color-dot').forEach(d=>{
-    d.style.border=d.style.background===_annCtx.color?'2px solid #fff':'2px solid transparent';
+  // Load image after a frame so layout is complete
+  requestAnimationFrame(()=>{
+    const ctx=canvas.getContext('2d');
+    const maxW=wrap.clientWidth;
+    const maxH=wrap.clientHeight;
+    const img=new Image();
+    img.crossOrigin='anonymous';
+    img.onload=()=>{
+      const scale=Math.min(maxW/img.width, maxH/img.height, 1);
+      canvas.width=Math.round(img.width*scale);
+      canvas.height=Math.round(img.height*scale);
+      // Center canvas manually
+      canvas.style.position='absolute';
+      canvas.style.left=Math.round((maxW-canvas.width)/2)+'px';
+      canvas.style.top=Math.round((maxH-canvas.height)/2)+'px';
+      canvas.style.transform='none';
+      ctx.drawImage(img,0,0,canvas.width,canvas.height);
+      _annCtx.imgData=ctx.getImageData(0,0,canvas.width,canvas.height);
+      annSetTool('pen');
+      annUpdateUndoRedoBtns();
+    };
+    img.onerror=()=>{ showToast('Could not load photo for annotation'); annClose(); };
+    img.src=src;
   });
+  // Refresh color swatch highlights
+  setTimeout(()=>{
+    document.querySelectorAll('.ann-color-dot').forEach(d=>{
+      const bg=d.style.background;
+      d.style.border=(bg===_annCtx.color||
+        (bg==='#111'&&_annCtx.color==='#000')||
+        (bg==='#000'&&_annCtx.color==='#000'))?'2px solid #fff':'2px solid transparent';
+    });
+  }, 50);
+  // Always re-attach events in case canvas was re-created
+  annAttachEvents();
 }
 
 function annSetTool(tool){
@@ -5283,8 +5302,13 @@ function annSetStroke(v){ _annCtx.stroke=parseInt(v); }
 
 function annGetPos(e, canvas){
   const r=canvas.getBoundingClientRect();
-  const touch=e.touches?e.touches[0]:e;
-  return {x:(touch.clientX-r.left)*(canvas.width/r.width), y:(touch.clientY-r.top)*(canvas.height/r.height)};
+  const touch=e.touches?e.touches[0]:(e.changedTouches?e.changedTouches[0]:e);
+  const scaleX=canvas.width/r.width;
+  const scaleY=canvas.height/r.height;
+  return {
+    x:Math.max(0,Math.min(canvas.width, (touch.clientX-r.left)*scaleX)),
+    y:Math.max(0,Math.min(canvas.height,(touch.clientY-r.top )*scaleY))
+  };
 }
 
 function annUndo(){
@@ -5345,8 +5369,10 @@ function annDrawArrow(ctx,x1,y1,x2,y2,stroke){
   ctx.closePath(); ctx.fillStyle=ctx.strokeStyle; ctx.fill();
 }
 
-function annInitEvents(){
+function annAttachEvents(){
   const canvas=document.getElementById('ann-canvas');
+  // Remove old listeners by replacing the canvas clone trick
+  // Instead, use a flag on the function itself and let _annCtx.drawing guard against duplicates
   if(canvas._annEventsAdded) return;
   canvas._annEventsAdded=true;
   let curPen=[];
@@ -5456,7 +5482,7 @@ function annClose(){
 }
 
 // Init annotator events on first use
-document.addEventListener('DOMContentLoaded',()=>{ annInitEvents(); });
+document.addEventListener('DOMContentLoaded',()=>{ /* annotator events attached on first open */ });
 
 
 
