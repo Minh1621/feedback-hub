@@ -3015,10 +3015,36 @@ function viewFeedback(rid){
 
   const responded=r.feedbacks.map(f=>f.storeId);
   const missing=targetStores.filter(s=>!responded.includes(s.id));
+
+  // Collect stores that have ANY remarked items across all refs — need resubmit
+  const fbMapBottom={};
+  r.feedbacks.forEach(f=>{ if(!fbMapBottom[f.storeId]||f.date>=fbMapBottom[f.storeId].date) fbMapBottom[f.storeId]=f; });
+  const remarkedStores=targetStores.filter(s=>{
+    const fb=fbMapBottom[s.id];
+    if(!fb||!fb.adminRemarks) return false;
+    return (r.refs||[]).some(ref=>
+      (fb.adminRemarks[ref.id+'_list']?.length>0) || !!fb.adminRemarks[ref.id]
+    );
+  });
+
   const mw=document.getElementById('fb-missing');
+  let bottomHTML='';
+
+  // Submit to all remarked stores — single button
+  if(remarkedStores.length && (canEdit()||DB.role==='admin')){
+    const storeNames=remarkedStores.map(s=>s.name).join(', ');
+    bottomHTML+=`<div style="margin-top:10px;">
+      <button onclick="submitAllRemarkedStores('${rid}')" style="width:100%;padding:14px;border-radius:14px;background:var(--accent);border:none;color:#fff;font-size:15px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 4px 14px rgba(124,111,255,.3);">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        Submit to ${remarkedStores.length} store${remarkedStores.length>1?'s':''} — notify to resubmit
+      </button>
+      <div style="font-size:11px;color:var(--text3);text-align:center;margin-top:6px;">${storeNames}</div>
+    </div>`;
+  }
+
   if(missing.length){
-    mw.innerHTML=`
-      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);padding:14px 16px;margin-top:4px;">
+    bottomHTML+=`
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);padding:14px 16px;margin-top:10px;">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
           <div>
             <div style="font-size:14px;font-weight:600;">Not yet responded (${missing.length})</div>
@@ -3035,9 +3061,11 @@ function viewFeedback(rid){
             <button class="btn btn-xs" style="color:var(--warn);border-color:var(--warn);" onclick="alertOneStore('${rid}','${s.id}')">Alert</button>
           </div>`).join('')}
       </div>`;
-  } else {
-    mw.innerHTML=`<div style="text-align:center;padding:12px 0;font-size:13px;color:var(--success);">✓ All stores have responded</div>`;
+  } else if(!remarkedStores.length){
+    bottomHTML+=`<div style="text-align:center;padding:12px 0;font-size:13px;color:var(--success);">✓ All stores have responded</div>`;
   }
+
+  mw.innerHTML=bottomHTML;
   goTo('s-feedback');
   // Apply permissions to all buttons on report detail
   const rEditBtn=document.getElementById('report-edit-btn');
@@ -5325,11 +5353,7 @@ function buildSortedResponsesHTML(ref, r, b, rid){
       </div>`;
     }).join(''):'';
 
-    // Submit to store button — shown when this store has remarks (needs to resubmit)
-    const submitBtn=canAct&&hasRemarks?`<button onclick="event.stopPropagation();submitToStore('${fbId}','${ref.id}','${store.id}','${rid}','${store.name}')" style="margin-top:6px;width:100%;padding:9px;border-radius:10px;background:var(--accent);border:none;color:#fff;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-      Submit to ${store.name} — notify to resubmit
-    </button>`:'';
+    // Submit to store button removed — now shown once at bottom of the report
 
     const clickHandler=canAct&&(hasResponse||fb||hasRemarks)?`onclick="openRespAction('${fbId}','${ref.id}','${store.id}','${rid}','${store.name}','${ref.name||'Item'}')" style="cursor:pointer;"`:'';
 
@@ -5345,8 +5369,6 @@ function buildSortedResponsesHTML(ref, r, b, rid){
       </div>
       <!-- Remarks list -->
       ${remarksHTML}
-      <!-- Submit to store button -->
-      ${submitBtn}
       <!-- Store response text -->
       ${hasResponse&&item.note?`<div style="font-size:13px;color:var(--text);line-height:1.6;margin-bottom:8px;padding-left:16px;border-left:2px solid var(--border2);margin-top:${hasRemarks?'8px':'0'}">${item.note}</div>`:''}
       <!-- Photos -->
@@ -5427,6 +5449,41 @@ async function submitToStore(fbId, refId, storeId, rid, storeName){
     });
     showToast(`✓ ${storeName} notified to resubmit`);
   } catch(e){ showToast('Failed to notify store'); }
+}
+
+// ── Submit to ALL remarked stores in one tap ───────────────────────────────────
+async function submitAllRemarkedStores(rid){
+  const b=brand(), r=b.reports.find(r=>r.id===rid);
+  if(!r) return;
+  const btn=document.querySelector(`[onclick="submitAllRemarkedStores('${rid}')"]`);
+  if(btn){ btn.disabled=true; btn.textContent='Sending...'; }
+
+  const fbMap={};
+  r.feedbacks.forEach(f=>{ if(!fbMap[f.storeId]||f.date>=fbMap[f.storeId].date) fbMap[f.storeId]=f; });
+  const targetStores=r.storeId?b.stores.filter(s=>s.id===r.storeId):b.stores;
+  const _alerter=getAlerterInfo();
+  let sent=0;
+
+  for(const s of targetStores){
+    const fb=fbMap[s.id];
+    if(!fb||!fb.adminRemarks) continue;
+    // Find all refs with remarks for this store
+    for(const ref of (r.refs||[])){
+      const hasRemark=(fb.adminRemarks[ref.id+'_list']?.length>0)||!!fb.adminRemarks[ref.id];
+      if(hasRemark){
+        try{
+          await api('POST','/api/feedbacks/delete-notify',{
+            feedback_id:fb.id, store_id:s.id, report_id:rid,
+            ref_id:ref.id, alerter_id:_alerter.id, alerter_role:_alerter.role
+          });
+          sent++;
+        }catch(e){}
+        break; // one notification per store is enough
+      }
+    }
+  }
+  showToast(`✓ ${sent} store${sent!==1?'s':''} notified to resubmit`);
+  viewFeedback(rid);
 }
 function openResponseNote(fbId, refId, storeId, rid){
   _rnCtx={fbId, refId, storeId, rid};
