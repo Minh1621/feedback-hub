@@ -2161,6 +2161,18 @@ async function verifyReportComplete(rid){
   r.verified=true; r.verifiedBy=authorName; r.verifiedAt=today;
   const btn=document.querySelector(`[onclick="verifyReportComplete('${rid}')"]`);
   if(btn){ btn.disabled=true; btn.textContent='Verifying...'; }
+
+  // Stamp verified event on all feedbacks
+  const fbMap={};
+  r.feedbacks.forEach(f=>{ if(!fbMap[f.storeId]||f.date>=fbMap[f.storeId].date) fbMap[f.storeId]=f; });
+  for(const fb of Object.values(fbMap)){
+    if(!Array.isArray(fb.timeline)) fb.timeline=[];
+    fb.timeline.push({type:'verified', date:today, by:authorName});
+    await api('PUT',`/api/feedbacks/${fb.id}`,{
+      adminRemarks:fb.adminRemarks, timeline:fb.timeline
+    });
+  }
+
   await api('PUT',`/api/reports/${rid}`,{
     title:r.title, desc:r.desc||'', storeId:r.storeId||'',
     storeIds:r.storeIds||[], inspection:r.inspection||{}, refs:r.refs||[],
@@ -2170,11 +2182,24 @@ async function verifyReportComplete(rid){
   viewFeedback(rid);
 }
 
-// ── Undo verify ───────────────────────────────────────────────────────────────
+// ── Undo verify — restores to checking or partial ────────────────────────────
 async function unverifyReport(rid){
   const b=brand(), r=b.reports.find(r=>r.id===rid);
   if(!r) return;
   r.verified=false; r.verifiedBy=''; r.verifiedAt='';
+
+  // Remove verified timeline entries from all feedbacks
+  const fbMap={};
+  r.feedbacks.forEach(f=>{ if(!fbMap[f.storeId]||f.date>=fbMap[f.storeId].date) fbMap[f.storeId]=f; });
+  for(const fb of Object.values(fbMap)){
+    if(Array.isArray(fb.timeline)){
+      fb.timeline=fb.timeline.filter(t=>t.type!=='verified');
+      await api('PUT',`/api/feedbacks/${fb.id}`,{
+        adminRemarks:fb.adminRemarks, timeline:fb.timeline
+      });
+    }
+  }
+
   await api('PUT',`/api/reports/${rid}`,{
     title:r.title, desc:r.desc||'', storeId:r.storeId||'',
     storeIds:r.storeIds||[], inspection:r.inspection||{}, refs:r.refs||[],
@@ -2878,21 +2903,61 @@ function viewFeedback(rid){
         if(!fb) return '';
         const firstSub=fb.firstSubmitted||fb.date||'';
         const lastEdit=fb.lastEdited||null;
-        const editCount=fb.editCount||0;
-        const isPerfect=editCount===0&&!lastEdit;
-        return `<div style="display:flex;align-items:flex-start;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);">
-          <div class="dot" style="background:${store.color||'#888'};margin-top:4px;flex-shrink:0;"></div>
-          <div style="flex:1;min-width:0;">
-            <div style="font-size:13px;font-weight:600;">${store.name}</div>
-            <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px;align-items:center;">
-              <span style="font-size:11px;color:var(--text3);">First submitted: <strong style="color:var(--text);">${firstSub}</strong></span>
-              ${lastEdit
-                ? `<span style="font-size:11px;padding:1px 8px;border-radius:20px;background:#fff8e1;color:#92400e;font-weight:600;">Last edited: ${lastEdit}</span>`
-                : isPerfect
-                  ? `<span style="font-size:11px;padding:1px 8px;border-radius:20px;background:#f0fdf4;color:#15803d;font-weight:600;">Perfect</span>`
-                  : ''}
+        const rejectedAt=fb.rejectedAt||null;
+        const resubmitAt=fb.resubmitAt||null;
+        const timeline=Array.isArray(fb.timeline)?fb.timeline:[];
+        // Get last verified entry
+        const verifiedEntry=timeline.filter(t=>t.type==='verified').slice(-1)[0]||null;
+        // Get all rejected entries for display
+        const rejectedEntries=timeline.filter(t=>t.type==='rejected');
+        // Get all resubmit_requested entries
+        const resubmitEntries=timeline.filter(t=>t.type==='resubmit_requested');
+
+        // Helper to build a timeline pill
+        function pill(icon, label, value, bg, color){
+          return `<div style="display:flex;align-items:center;gap:6px;padding:6px 0;border-bottom:0.5px solid var(--border);">
+            <div style="width:24px;height:24px;border-radius:6px;background:${bg};display:flex;align-items:center;justify-content:center;flex-shrink:0;">${icon}</div>
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;">${label}</div>
+              <div style="font-size:12px;font-weight:600;color:${color};">${value}</div>
             </div>
+          </div>`;
+        }
+
+        let rows='';
+        // 1. First submitted
+        if(firstSub) rows+=pill(
+          `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#15803d" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>`,
+          'First submitted', firstSub, '#f0fdf4', 'var(--success)'
+        );
+        // 2. Last resubmitted (last edit date = store edited after remark)
+        if(lastEdit&&lastEdit!==firstSub) rows+=pill(
+          `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#7c6fff" stroke-width="2.5"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.01"/></svg>`,
+          'Last resubmit', lastEdit, '#f3f0ff', 'var(--accent)'
+        );
+        // 3. Rejected entries (most recent)
+        rejectedEntries.slice(-2).forEach(re=>{ rows+=pill(
+          `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`,
+          `Rejected by ${re.by||'Staff'}`, re.date, '#fef2f2', 'var(--danger)'
+        );});
+        // 4. Resubmit requested (most recent)
+        resubmitEntries.slice(-1).forEach(re=>{ rows+=pill(
+          `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>`,
+          `Resubmit sent by ${re.by||'Staff'}`, re.date, '#fffbeb', 'var(--warn)'
+        );});
+        // 5. Verified
+        if(verifiedEntry) rows+=pill(
+          `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#15803d" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`,
+          `Verified by ${verifiedEntry.by||'Staff'}`, verifiedEntry.date, '#f0fdf4', 'var(--success)'
+        );
+
+        if(!rows) return '';
+        return `<div style="padding:8px 0 2px;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+            <div style="width:8px;height:8px;border-radius:50%;background:${store.color||'#888'};flex-shrink:0;"></div>
+            <span style="font-size:13px;font-weight:600;">${store.name}</span>
           </div>
+          <div style="padding-left:16px;">${rows}</div>
         </div>`;
       }).filter(Boolean).join('');
 
@@ -5525,6 +5590,7 @@ async function submitAllRemarkedStores(rid){
   r.feedbacks.forEach(f=>{ if(!fbMap[f.storeId]||f.date>=fbMap[f.storeId].date) fbMap[f.storeId]=f; });
   const targetStores=r.storeId?b.stores.filter(s=>s.id===r.storeId):b.stores;
   const _alerter=getAlerterInfo();
+  const todayStr=new Date().toISOString().slice(0,10);
   let sent=0;
 
   for(const s of targetStores){
@@ -5535,6 +5601,16 @@ async function submitAllRemarkedStores(rid){
       const hasRemark=(fb.adminRemarks[ref.id+'_list']?.length>0)||!!fb.adminRemarks[ref.id];
       if(hasRemark){
         try{
+          // Record resubmit_at and timeline
+          fb.resubmitAt = todayStr;
+          if(!Array.isArray(fb.timeline)) fb.timeline=[];
+          // Only add if not duplicate for today
+          const already=fb.timeline.find(t=>t.type==='resubmit_requested'&&t.date===todayStr);
+          if(!already) fb.timeline.push({type:'resubmit_requested', date:todayStr, by:_alerter.name||'Staff'});
+          await api('PUT',`/api/feedbacks/${fb.id}`,{
+            adminRemarks:fb.adminRemarks,
+            resubmit_at:fb.resubmitAt, timeline:fb.timeline
+          });
           await api('POST','/api/feedbacks/delete-notify',{
             feedback_id:fb.id, store_id:s.id, report_id:rid,
             ref_id:ref.id, alerter_id:_alerter.id, alerter_role:_alerter.role
@@ -6115,11 +6191,19 @@ async function raSaveRemark() {
   }
   fb.text = (fb.itemFeedbacks || []).map((it, i) => it.note ? `Item ${i+1}: ${it.note}` : '').filter(Boolean).join(' | ');
 
+  // Record rejected_at and timeline
+  const nowStr = today;
+  fb.rejectedAt = nowStr;
+  if (!Array.isArray(fb.timeline)) fb.timeline = [];
+  fb.timeline.push({ type: 'rejected', date: nowStr, by: authorName, note: text });
+
   const saveBtn = document.querySelector('#resp-action-overlay button[onclick="raSaveRemark()"]');
   if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Saving...'; }
 
   await api('PUT', `/api/feedbacks/${fbId}`, {
-    text: fb.text, itemFeedbacks: fb.itemFeedbacks, photos: fb.photos || [], adminRemarks: fb.adminRemarks
+    text: fb.text, itemFeedbacks: fb.itemFeedbacks, photos: fb.photos || [],
+    adminRemarks: fb.adminRemarks,
+    rejected_at: fb.rejectedAt, timeline: fb.timeline
   });
 
   // Notify store to resubmit
