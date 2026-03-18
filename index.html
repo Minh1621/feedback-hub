@@ -731,7 +731,7 @@ label{
 <!-- ======= REVIEWER: REPORT DETAIL ======= -->
 <div class="screen" id="s-reviewer-report">
   <div class="topbar">
-    <button class="back-btn" onclick="goTo('s-reviewer-home')">&#8592; Back</button>
+    <button class="back-btn" onclick="renderReviewerHome();goTo('s-reviewer-home')">&#8592; Back</button>
     <div class="topbar-title" id="rv-report-title">Report</div>
   </div>
   <div class="content">
@@ -903,7 +903,7 @@ label{
 <!-- ======= REVIEWER SETTINGS ======= -->
 <div class="screen" id="s-rv-settings">
   <div class="topbar">
-    <button class="back-btn" onclick="goTo('s-reviewer-home')">&#8592; Back</button>
+    <button class="back-btn" onclick="renderReviewerHome();goTo('s-reviewer-home')">&#8592; Back</button>
     <div class="topbar-title">Settings</div>
   </div>
   <div class="content">
@@ -1874,7 +1874,10 @@ async function _silentRvRefresh(){
   if(_rvRefreshPending) return; // debounce concurrent calls
   _rvRefreshPending = true;
   try{
-    await loadAllData();
+    // Fetch fresh data WITHOUT showing the loading overlay
+    await api('POST', '/api/init');
+    const data = await api('GET', '/api/brands');
+    if(Array.isArray(data)) DB.brands = data;
     if(DB.role==='reviewer') renderReviewerHome();
   } catch(e){ /* silent — don't disrupt UI */ }
   _rvRefreshPending = false;
@@ -3336,11 +3339,41 @@ async function deleteBrand(){
 }
 
 /* ===== REVIEWER ===== */
-function reviewerBrand(){ return DB.brands.find(b=>b.id===DB.reviewerBrandId); }
-function reviewerStore(){ const b=reviewerBrand(); return b?b.stores.find(s=>s.id===DB.reviewerStoreId):null; }
+function reviewerBrand(){
+  if(DB.reviewerBrandId) return DB.brands.find(b=>b.id===DB.reviewerBrandId);
+  // Fallback: find brand by storeId
+  if(DB.reviewerStoreId){
+    for(const b of DB.brands){ if(b.stores.find(s=>s.id===DB.reviewerStoreId)) return b; }
+  }
+  return null;
+}
+function reviewerStore(){
+  const b=reviewerBrand();
+  if(!b) return null;
+  const s=b.stores.find(s=>s.id===DB.reviewerStoreId);
+  if(!s && !DB.reviewerBrandId){
+    // If we found brand by storeId fallback, sync the brandId
+    DB.reviewerBrandId = b.id;
+  }
+  return s||null;
+}
 
 function renderReviewerHome(){
-  const b=reviewerBrand(), s=reviewerStore();
+  let b=reviewerBrand(), s=reviewerStore();
+  // Fallback: if brand/store lookup fails, try to find by storeId in all brands
+  if(!b || !s) {
+    const sid = DB.reviewerStoreId;
+    if(sid) {
+      for(const br of DB.brands){
+        const found = br.stores.find(st=>st.id===sid);
+        if(found){
+          DB.reviewerBrandId = br.id;
+          b = br; s = found;
+          break;
+        }
+      }
+    }
+  }
   if(!b||!s) return;
 
   // Topbar — always show app logo (same as login page)
@@ -5032,6 +5065,14 @@ async function doRvRefresh(){
   if(icon) icon.style.animation='spin .7s linear infinite';
   try{
     await loadAllData();
+    // Re-sync brand ID in case it shifted (storeId is the stable key)
+    if(DB.reviewerStoreId && !reviewerBrand()){
+      for(const br of DB.brands){
+        if(br.stores.find(s=>s.id===DB.reviewerStoreId)){
+          DB.reviewerBrandId=br.id; break;
+        }
+      }
+    }
     renderReviewerHome();
     showToast('Updated!');
   }catch(e){ showToast('Refresh failed'); }
