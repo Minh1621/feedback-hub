@@ -1775,8 +1775,18 @@ function getDeviceId(){
   } catch(e){ return 'dev_unknown'; }
 }
 
-async function api(method, path, body=null){
-  const opts = { method, headers: {'Content-Type':'application/json'} };
+async function api(method, path, body=null, adminPassword=null){
+  const headers = {'Content-Type':'application/json'};
+  // Send admin password header for sensitive endpoints that require it
+  const adminPass = adminPassword || (ADMIN_CREDS?.password) || null;
+  if (adminPass && (
+    path.startsWith('/api/store-password/') ||
+    path.startsWith('/api/staff-password/') ||
+    path === '/api/export-data'
+  )) {
+    headers['X-Admin-Password'] = adminPass;
+  }
+  const opts = { method, headers };
   if(body) opts.body = JSON.stringify(body);
   try {
     const res = await fetch(WORKER_URL + path, opts);
