@@ -3746,15 +3746,18 @@ function openReviewerReport(rid){
     DB.itemFeedbacks = refs.map(ref => {
       const existing = existingByRefId[ref.id] || {refId:ref.id,note:'',photos:[]};
       const isRejected = !!(myFb.adminRemarks?.[ref.id+'_list']?.length || myFb.adminRemarks?.[ref.id]);
-      // Rejected items are cleared so store must re-answer; non-rejected keep their answer
+      // Rejected items: clear for new input but preserve previous response for display
       return {
         refId: ref.id,
         note: isRejected ? '' : (existing.note||''),
         photos: isRejected ? [] : [...(existing.photos||[])],
-        _rejected: isRejected,  // mark for UI + validation
+        _rejected: isRejected,
         _adminRemark: isRejected
           ? (myFb.adminRemarks?.[ref.id+'_list']?.map(r=>r.text).join('; ') || myFb.adminRemarks?.[ref.id] || '')
-          : ''
+          : '',
+        // Keep previous response visible so store sees what was rejected
+        _prevNote: isRejected ? (existing.note||'') : '',
+        _prevPhotos: isRejected ? [...(existing.photos||[])] : []
       };
     });
     // Preserve existing adminRemarks on the fb object so they aren't lost on resubmit
@@ -3804,9 +3807,20 @@ function renderItemForms(r, brandColor){
     const _remarkText = _itFb._adminRemark || '';
     return `
     <div style="background:var(--bg2);border:1.5px solid ${_isRejected?'var(--danger)':'var(--border)'};border-radius:var(--rl);margin-bottom:10px;overflow:hidden;">
-      ${_isRejected ? `<div style="background:var(--alert-danger-bg);border-bottom:1px solid var(--alert-danger-border);padding:8px 14px;display:flex;align-items:center;gap:8px;">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-        <div style="font-size:12px;font-weight:600;color:var(--danger);">Rejected — please resubmit${_remarkText ? ': ' + _remarkText : ''}</div>
+      ${_isRejected ? `
+      <!-- Rejection header -->
+      <div style="background:var(--alert-danger-bg);border-bottom:1px solid var(--alert-danger-border);padding:10px 14px;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:${(_itFb._prevNote||(_itFb._prevPhotos&&_itFb._prevPhotos.length))?'10px':'0'};">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          <div style="font-size:12px;font-weight:600;color:var(--danger);">Rejected — please resubmit${_remarkText ? ': ' + _remarkText : ''}</div>
+        </div>
+        <!-- Previous response display -->
+        ${(_itFb._prevNote||(_itFb._prevPhotos&&_itFb._prevPhotos.length)) ? `
+        <div style="background:rgba(255,255,255,.6);border-radius:8px;padding:10px 12px;border:1px solid var(--alert-danger-border);">
+          <div style="font-size:10px;font-weight:700;color:var(--danger);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;">Your previous response</div>
+          ${_itFb._prevNote ? `<div style="font-size:13px;color:var(--text);line-height:1.5;margin-bottom:${_itFb._prevPhotos&&_itFb._prevPhotos.length?'8px':'0'};">${_itFb._prevNote}</div>` : ''}
+          ${_itFb._prevPhotos&&_itFb._prevPhotos.length ? `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:5px;">${_itFb._prevPhotos.map(p=>`<div style="aspect-ratio:1;border-radius:6px;overflow:hidden;"><img src="${p}" style="width:100%;height:100%;object-fit:cover;cursor:pointer;" onclick="openLightbox('${p}')"/></div>`).join('')}</div>` : ''}
+        </div>` : ''}
       </div>` : ''}
       <!-- Tap header to toggle -->
       <div onclick="toggleReviewerItem('rvi_${i}')" style="display:flex;align-items:center;gap:10px;padding:13px 14px;cursor:pointer;user-select:none;">
@@ -4019,7 +4033,7 @@ async function saveReviewerDraft(){
     const preservedRemarks = existing.adminRemarks || {};
     // Strip UI-only fields before sending to API
     const itemsForApi = feedbackObj.itemFeedbacks.map(it=>{
-      const {_rejected, _adminRemark, ...clean} = it;
+      const {_rejected, _adminRemark, _prevNote, _prevPhotos, ...clean} = it;
       return clean;
     });
     await api('PUT',`/api/feedbacks/${existing.id}`,{
@@ -4040,7 +4054,7 @@ async function saveReviewerDraft(){
   } else {
     // Create new draft — no notification
     const itemsForNewApi = feedbackObj.itemFeedbacks.map(it=>{
-      const {_rejected, _adminRemark, ...clean} = it;
+      const {_rejected, _adminRemark, _prevNote, _prevPhotos, ...clean} = it;
       return clean;
     });
     const result=await api('POST','/api/feedbacks/draft',{...feedbackObj, itemFeedbacks:itemsForNewApi, report_id:r.id});
@@ -4069,7 +4083,7 @@ async function submitReviewerFeedback(){
   const b=reviewerBrand(), s=reviewerStore();
   const r=b.reports.find(r=>r.id===DB.reviewerReportId);
   const newText=DB.itemFeedbacks.map((it,i)=>it.note?`Item ${i+1}: ${it.note}`:'').filter(Boolean).join(' | ');
-  const newItems=DB.itemFeedbacks.map(it=>({...it,photos:[...it.photos]}));
+  const newItems=DB.itemFeedbacks.map(it=>{ const {_rejected,_adminRemark,_prevNote,_prevPhotos,...clean}=it; return {...clean,photos:[...it.photos]}; });
   const newDate=new Date().toISOString().slice(0,10);
   msg.innerHTML='<div class="alert alert-success">⏳ Submitting...</div>';
 
