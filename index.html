@@ -3195,7 +3195,13 @@ function viewFeedback(rid){
           `Rejected by ${re.by||'Staff'}`, re.date, '#fef2f2', 'var(--danger)'
         );});
         // 4. Resubmit requested (most recent)
-        // Store resubmitted after rejection
+        // Report edited entries
+        const editedEntries=timeline.filter(t=>t.type==='report_edited');
+        editedEntries.forEach(re=>{ rows+=pill(
+          `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#534AB7" stroke-width="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`,
+          `Report edited by ${re.by||'Staff'}${re.note?' · '+re.note:''}`, re.date||'', '#EEEDFE', '#534AB7'
+        );});
+        // Store resubmitted after rejection or edit
         const resubmittedEntries=timeline.filter(t=>t.type==='resubmitted');
         resubmittedEntries.forEach(re=>{ rows+=pill(
           `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#7c6fff" stroke-width="2.5"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.01"/></svg>`,
@@ -3203,9 +3209,15 @@ function viewFeedback(rid){
         );});
         resubmitEntries.forEach(re=>{ rows+=pill(
           `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>`,
-          `Resubmit requested by ${re.by||'Staff'}${re.note?' · '+re.note:''}`, re.date||'', '#fffbeb', 'var(--warn)'
+          `Notified to resubmit by ${re.by||'Staff'}${re.note?' · '+re.note:''}`, re.date||'', '#fffbeb', 'var(--warn)'
         );});
-        // 5. Verified
+        // 5. Accepted item responses
+        const acceptedEntries=timeline.filter(t=>t.type==='accepted');
+        acceptedEntries.forEach(re=>{ rows+=pill(
+          `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#15803d" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`,
+          `Accepted by ${re.by||'Staff'}`, re.date||'', '#f0fdf4', 'var(--success)'
+        );});
+        // 6. Verified
         if(verifiedEntry) rows+=pill(
           `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#15803d" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`,
           `Verified by ${verifiedEntry.by||'Staff'}`, verifiedEntry.date, '#f0fdf4', 'var(--success)'
@@ -3421,7 +3433,31 @@ function viewFeedback(rid){
     </div>`;
   }
 
-  if(missing.length){
+  // ── Priority 1: Report edited after responses — must notify stores first ──
+  if(!r.verified && r.editedAfterResponse){
+    bottomHTML+=`<div style="margin-top:10px;padding:10px 14px;background:#fff8e1;border:1px solid #f5a62340;border-radius:12px;font-size:13px;color:#854F0B;">
+      ⚠ Report was edited — stores need to resubmit to review new items
+    </div>`;
+    if(canEdit()||DB.role==='admin'){
+      bottomHTML+=`<button onclick="submitEditNoticeToStores('${rid}')" style="margin-top:8px;width:100%;padding:14px;border-radius:14px;background:var(--warn);border:none;color:#fff;font-size:15px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 4px 14px rgba(245,166,35,.3);">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        Notify stores — submit again
+      </button>`;
+    }
+  }
+  // ── Priority 2: Some stores still have rejection remarks ─────────────────
+  else if(!r.verified && remarkedStores.length && (canEdit()||DB.role==='admin')){
+    const storeNames=remarkedStores.map(s=>s.name).join(', ');
+    bottomHTML+=`<div style="margin-top:10px;">
+      <button onclick="submitAllRemarkedStores('${rid}')" style="width:100%;padding:14px;border-radius:14px;background:var(--accent);border:none;color:#fff;font-size:15px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 4px 14px rgba(124,111,255,.3);">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        Submit rejection to ${remarkedStores.length} store${remarkedStores.length>1?'s':''} — notify to resubmit
+      </button>
+      <div style="font-size:11px;color:var(--text3);text-align:center;margin-top:6px;">${storeNames}</div>
+    </div>`;
+  }
+  // ── Priority 3: Some stores haven't responded at all ─────────────────────
+  else if(!r.verified && missing.length){
     bottomHTML+=`
       <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);padding:14px 16px;margin-top:10px;">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
@@ -3440,25 +3476,15 @@ function viewFeedback(rid){
             <button class="btn btn-xs" style="color:var(--warn);border-color:var(--warn);" onclick="alertOneStore('${rid}','${s.id}')">Alert</button>
           </div>`).join('')}
       </div>`;
-  } else if(!remarkedStores.length && !r.verified){
-    // All responded, no remarks, not verified yet
-    if(r.editedAfterResponse){
-      // Report was edited after stores responded — must notify stores to resubmit
-      bottomHTML+=`<div style="text-align:center;padding:10px 0 4px;font-size:13px;color:var(--warn);">⚠ Report was edited — stores need to resubmit</div>`;
-      if(canEdit()||DB.role==='admin'){
-        bottomHTML+=`<button onclick="submitEditNoticeToStores('${rid}')" style="margin-top:8px;width:100%;padding:14px;border-radius:14px;background:var(--warn);border:none;color:#fff;font-size:15px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 4px 14px rgba(245,166,35,.3);">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-          Notify stores — submit again
-        </button>`;
-      }
-    } else {
-      bottomHTML+=`<div style="text-align:center;padding:10px 0 4px;font-size:13px;color:var(--success);">✓ All stores have responded</div>`;
-      if(canEdit()||DB.role==='admin'){
-        bottomHTML+=`<button onclick="verifyReportComplete('${rid}')" style="margin-top:8px;width:100%;padding:14px;border-radius:14px;background:var(--success);border:none;color:#fff;font-size:15px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 4px 14px rgba(34,197,94,.3);">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-          Verify &amp; mark as complete
-        </button>`;
-      }
+  }
+  // ── Priority 4: All responded, no remarks, no edits — show Verify ────────
+  else if(!r.verified && !remarkedStores.length && !missing.length && !r.editedAfterResponse){
+    bottomHTML+=`<div style="text-align:center;padding:10px 0 4px;font-size:13px;color:var(--success);">✓ All stores have responded</div>`;
+    if(canEdit()||DB.role==='admin'){
+      bottomHTML+=`<button onclick="verifyReportComplete('${rid}')" style="margin-top:8px;width:100%;padding:14px;border-radius:14px;background:var(--success);border:none;color:#fff;font-size:15px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 4px 14px rgba(34,197,94,.3);">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        Verify &amp; mark as complete
+      </button>`;
     }
   }
 
@@ -4798,6 +4824,14 @@ async function doEditReport(){
   // Mark as edited if report already has responses from stores
   if(r.feedbacks && r.feedbacks.length > 0){
     r.editedAfterResponse = true;
+    // Record edit event on all feedbacks for history tracking
+    const _editAuthor = DB.staffData?.name||(DB.role==='admin'?'Admin':'Staff');
+    const _editTime = new Date().toISOString().slice(0,10)+' '+new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+    for(const fb of r.feedbacks){
+      if(!Array.isArray(fb.timeline)) fb.timeline=[];
+      fb.timeline.push({type:'report_edited', date:_editTime, by:_editAuthor, note:`Items: ${r.refs.length}`});
+      await api('PUT',`/api/feedbacks/${fb.id}`,{adminRemarks:fb.adminRemarks, timeline:fb.timeline});
+    }
   }
   // Save to DB
   await api('PUT',`/api/reports/${_editingReportId}`,{
