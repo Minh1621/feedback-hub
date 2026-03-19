@@ -832,9 +832,17 @@ label{
     <div class="card" style="margin-bottom:14px;">
       <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;">Preview</div>
       <div id="admin-card-preview" style="border-radius:12px;overflow:hidden;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,.1);"></div>
-      <div style="margin-bottom:14px;">
-        <div style="font-size:13px;font-weight:600;margin-bottom:8px;">Cover background</div>
-        <div style="display:flex;align-items:center;gap:10px;">
+
+      <!-- Cover mode toggle -->
+      <div style="font-size:13px;font-weight:600;margin-bottom:8px;">Cover background</div>
+      <div style="display:flex;gap:6px;margin-bottom:14px;">
+        <button id="admin-mode-color" class="btn btn-primary btn-sm" style="flex:1;" onclick="adminSetCoverMode('color')">Color</button>
+        <button id="admin-mode-photo" class="btn btn-sm" style="flex:1;" onclick="adminSetCoverMode('photo')">Photo</button>
+      </div>
+
+      <!-- Color section -->
+      <div id="admin-color-section">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
           <input type="color" id="admin-cover-color" value="#7c6fff" oninput="adminUpdatePreview()" style="width:44px;height:36px;border:1.5px solid var(--border);border-radius:8px;cursor:pointer;padding:2px;background:var(--bg2);"/>
           <input type="text" id="admin-cover-color-hex" value="#7c6fff" placeholder="#7c6fff" maxlength="7" style="width:90px;font-size:13px;font-family:'DM Mono',monospace;" oninput="adminSyncColorFromHex('cover')"/>
           <div style="display:flex;gap:6px;flex-wrap:wrap;">
@@ -848,13 +856,39 @@ label{
             <div onclick="adminSetCoverColor('#ef4444')" style="width:22px;height:22px;border-radius:50%;background:#ef4444;cursor:pointer;border:2px solid transparent;"></div>
           </div>
         </div>
-      </div>
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
-        <div>
-          <div style="font-size:13px;font-weight:600;">Gradient effect</div>
-          <div style="font-size:12px;color:var(--text2);">Blend color to light purple</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+          <div>
+            <div style="font-size:13px;font-weight:600;">Gradient effect</div>
+            <div style="font-size:12px;color:var(--text2);">Blend color to light purple</div>
+          </div>
+          <input type="checkbox" id="admin-cover-gradient" checked onchange="adminUpdatePreview()" style="width:18px;height:18px;accent-color:var(--accent);cursor:pointer;"/>
         </div>
-        <input type="checkbox" id="admin-cover-gradient" checked onchange="adminUpdatePreview()" style="width:18px;height:18px;accent-color:var(--accent);cursor:pointer;"/>
+      </div>
+
+      <!-- Photo section -->
+      <div id="admin-photo-section" style="display:none;">
+        <div style="font-size:12px;color:var(--text2);margin-bottom:8px;">Best size: <strong>800 × 160px</strong> (wide banner shape)</div>
+        <div id="admin-cover-photo-preview-wrap" style="display:none;margin-bottom:8px;border-radius:8px;overflow:hidden;height:70px;position:relative;">
+          <img id="admin-cover-photo-preview" src="" style="width:100%;height:100%;object-fit:cover;"/>
+          <button onclick="adminClearCoverPhoto()" style="position:absolute;top:6px;right:6px;background:rgba(0,0,0,.6);border:none;color:#fff;border-radius:50%;width:22px;height:22px;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+        <label style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1.5px dashed var(--border2);border-radius:10px;cursor:pointer;margin-bottom:10px;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          <div>
+            <div style="font-size:13px;font-weight:600;color:var(--text);">Upload cover photo</div>
+            <div style="font-size:11px;color:var(--text3);">JPG or PNG — wide banner image</div>
+          </div>
+          <input type="file" id="admin-cover-photo-input" accept="image/*" style="display:none;" onchange="onAdminCoverPhotoPick(this)"/>
+        </label>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+          <div>
+            <div style="font-size:13px;font-weight:600;">Dark overlay</div>
+            <div style="font-size:12px;color:var(--text2);">Darken photo so text is readable</div>
+          </div>
+          <input type="checkbox" id="admin-cover-overlay" checked onchange="adminUpdatePreview()" style="width:18px;height:18px;accent-color:var(--accent);cursor:pointer;"/>
+        </div>
       </div>
       <div style="margin-bottom:14px;">
         <div style="font-size:13px;font-weight:600;margin-bottom:8px;">Company name color</div>
@@ -2369,7 +2403,8 @@ function renderHome(_brandsOverride){
       name:_aName, position:_ap.position||'Administrator', company:_ap.company||'',
       phone:'', location:'',
       avatar:_ap.avatar||null, initials:_aInitials,
-      coverBg:_coverBg, companyColor:_compColor, avatarLeft:_avatarLeft
+      coverBg:_coverBg, companyColor:_compColor, avatarLeft:_avatarLeft,
+      coverPhoto:_ap.coverPhoto||null, coverOverlay:_ap.coverOverlay!==false
     });
   }
 
@@ -5754,6 +5789,16 @@ function openAdminProfile(){
   if(comc){ comc.value=ADMIN_PROFILE.companyColor||'#7c6fff'; }
   if(comch){ comch.value=ADMIN_PROFILE.companyColor||'#7c6fff'; }
   adminSetPhotoPos(ADMIN_PROFILE.photoPos||'left', true);
+  // Restore cover mode
+  const coverMode=ADMIN_PROFILE.coverMode||'color';
+  adminSetCoverMode(coverMode);
+  if(coverMode==='photo' && ADMIN_PROFILE.coverPhoto){
+    const wrap=document.getElementById('admin-cover-photo-preview-wrap');
+    const prev=document.getElementById('admin-cover-photo-preview');
+    if(wrap){ wrap.style.display=''; prev.src=ADMIN_PROFILE.coverPhoto; }
+    const ov=document.getElementById('admin-cover-overlay');
+    if(ov) ov.checked=ADMIN_PROFILE.coverOverlay!==false;
+  }
   adminUpdatePreview();
   const msg=document.getElementById('admin-profile-msg');
   if(msg) msg.innerHTML='';
@@ -5773,7 +5818,54 @@ function onAdminAvatarPick(input){
   });
 }
 
-function adminSetCoverColor(c){
+function adminSetCoverMode(mode){
+  ADMIN_PROFILE.coverMode=mode;
+  document.getElementById('admin-mode-color').className=mode==='color'?'btn btn-primary btn-sm':'btn btn-sm';
+  document.getElementById('admin-mode-photo').className=mode==='photo'?'btn btn-primary btn-sm':'btn btn-sm';
+  document.getElementById('admin-color-section').style.display=mode==='color'?'':'none';
+  document.getElementById('admin-photo-section').style.display=mode==='photo'?'':'none';
+  adminUpdatePreview();
+}
+
+function onAdminCoverPhotoPick(input){
+  if(!input.files[0]) return;
+  // Compress to 800×160 banner shape
+  const file=input.files[0];
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const img=new Image();
+    img.onload=()=>{
+      const canvas=document.createElement('canvas');
+      canvas.width=800; canvas.height=160;
+      const ctx=canvas.getContext('2d');
+      // Center crop to 5:1 ratio
+      const srcRatio=img.width/img.height;
+      const tgtRatio=800/160;
+      let sw,sh,sx,sy;
+      if(srcRatio>tgtRatio){ sh=img.height; sw=sh*tgtRatio; sx=(img.width-sw)/2; sy=0; }
+      else { sw=img.width; sh=sw/tgtRatio; sx=0; sy=(img.height-sh)/2; }
+      ctx.drawImage(img,sx,sy,sw,sh,0,0,800,160);
+      const data=canvas.toDataURL('image/jpeg',0.85);
+      ADMIN_PROFILE.coverPhoto=data;
+      // Show preview strip
+      const wrap=document.getElementById('admin-cover-photo-preview-wrap');
+      const prev=document.getElementById('admin-cover-photo-preview');
+      if(wrap){ wrap.style.display=''; prev.src=data; }
+      adminUpdatePreview();
+    };
+    img.src=e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function adminClearCoverPhoto(){
+  ADMIN_PROFILE.coverPhoto=null;
+  const wrap=document.getElementById('admin-cover-photo-preview-wrap');
+  if(wrap) wrap.style.display='none';
+  const inp=document.getElementById('admin-cover-photo-input');
+  if(inp) inp.value='';
+  adminUpdatePreview();
+}
   const cc=document.getElementById('admin-cover-color');
   const cch=document.getElementById('admin-cover-color-hex');
   if(cc) cc.value=c;
@@ -5821,14 +5913,27 @@ function adminUpdatePreview(){
   const compColor=document.getElementById('admin-company-color')?.value||ADMIN_PROFILE.companyColor||'#7c6fff';
   const photoPos=ADMIN_PROFILE.photoPos||'left';
   const avatar=ADMIN_PROFILE.avatar;
+  const coverPhoto=ADMIN_PROFILE.coverPhoto||null;
+  const coverMode=ADMIN_PROFILE.coverMode||'color';
+  const useOverlay=document.getElementById('admin-cover-overlay')?.checked!==false;
   const initials=(name||'A').split(' ').map(w=>w[0]).filter(Boolean).slice(0,2).join('').toUpperCase();
-  const bgStyle=useGrad?`background:linear-gradient(135deg,${coverColor} 0%,#c4b5fd 100%)`:`background:${coverColor}`;
+  // Build cover style
+  let coverStyle='';
+  let coverInner='';
+  if(coverMode==='photo' && coverPhoto){
+    coverStyle=`background:#000;height:80px;position:relative;overflow:hidden;`;
+    coverInner=`<img src="${coverPhoto}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;"/>
+    ${useOverlay?`<div style="position:absolute;inset:0;background:rgba(0,0,0,.3);"></div>`:''}`;
+  } else {
+    const bgStyle=useGrad?`background:linear-gradient(135deg,${coverColor} 0%,#c4b5fd 100%)`:`background:${coverColor}`;
+    coverStyle=`${bgStyle};height:80px;`;
+    coverInner='';
+  }
   const avatarHtml=avatar
     ?`<img src="${avatar}" style="width:54px;height:54px;border-radius:50%;object-fit:cover;border:3px solid #fff;"/>`
     :`<div style="width:54px;height:54px;border-radius:50%;background:${coverColor};border:3px solid #fff;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#fff;">${initials}</div>`;
-  const alignStyle=photoPos==='center'?'text-align:center;':photoPos==='right'?'text-align:right;display:flex;flex-direction:row-reverse;':'';
   preview.innerHTML=`
-    <div style="${bgStyle};height:80px;"></div>
+    <div style="${coverStyle}position:relative;">${coverInner}</div>
     <div style="background:var(--bg2);padding:0 14px 14px;position:relative;">
       <div style="margin-top:-27px;display:flex;align-items:flex-end;gap:0;${photoPos==='center'?'justify-content:center;':photoPos==='right'?'justify-content:flex-end;':''}">${avatarHtml}</div>
       <div style="margin-top:8px;${photoPos==='center'?'text-align:center;':photoPos==='right'?'text-align:right;':''}">
@@ -5863,6 +5968,8 @@ async function doSaveAdminProfile(){
   ADMIN_PROFILE.coverColor=document.getElementById('admin-cover-color')?.value||'#7c6fff';
   ADMIN_PROFILE.coverGradient=document.getElementById('admin-cover-gradient')?.checked!==false;
   ADMIN_PROFILE.companyColor=document.getElementById('admin-company-color')?.value||'#7c6fff';
+  ADMIN_PROFILE.coverMode=ADMIN_PROFILE.coverMode||'color';
+  ADMIN_PROFILE.coverOverlay=document.getElementById('admin-cover-overlay')?.checked!==false;
   saveAdminProfileToStorage();
   // Save profile to DB so it syncs across devices
   try{
@@ -5874,7 +5981,10 @@ async function doSaveAdminProfile(){
       coverColor:ADMIN_PROFILE.coverColor,
       coverGradient:ADMIN_PROFILE.coverGradient,
       companyColor:ADMIN_PROFILE.companyColor,
-      photoPos:ADMIN_PROFILE.photoPos
+      photoPos:ADMIN_PROFILE.photoPos,
+      coverMode:ADMIN_PROFILE.coverMode,
+      coverPhoto:ADMIN_PROFILE.coverPhoto||null,
+      coverOverlay:ADMIN_PROFILE.coverOverlay
     };
     await api('PUT','/api/admin/password',{
       username:ADMIN_CREDS.username,
@@ -6345,9 +6455,15 @@ function sfUpdatePreview(){
   });
 }
 
-function buildStaffCardHTML({name,position,company,phone,location,avatar,initials,coverBg,companyColor,avatarLeft}){
+function buildStaffCardHTML({name,position,company,phone,location,avatar,initials,coverBg,companyColor,avatarLeft,coverPhoto,coverOverlay}){
+  const coverContent = coverPhoto
+    ? `<img src="${coverPhoto}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;"/>
+       ${coverOverlay!==false?'<div style="position:absolute;inset:0;background:rgba(0,0,0,.28);"></div>':''}`
+    : '';
+  const coverStyle = coverPhoto ? 'background:#000;' : `background:${coverBg};`;
   return `<div style="border-radius:14px;overflow:hidden;box-shadow:0 2px 10px rgba(0,0,0,.08);">
-    <div style="height:70px;background:${coverBg};position:relative;">
+    <div style="${coverStyle}height:70px;position:relative;overflow:hidden;">
+      ${coverContent}
       <div style="position:absolute;bottom:-26px;left:${avatarLeft};transform:${avatarLeft==='50%'?'translateX(-50%)':'none'};width:54px;height:54px;border-radius:50%;overflow:hidden;border:3px solid var(--bg);background:var(--accent);display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.18);">
         ${avatar?`<img src="${avatar}" style="width:100%;height:100%;object-fit:cover;"/>`:`<span style="font-size:18px;font-weight:800;color:#fff;">${initials}</span>`}
       </div>
