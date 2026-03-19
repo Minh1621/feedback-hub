@@ -656,7 +656,7 @@ label{
 <!-- ======= VIEW FEEDBACK ======= -->
 <div class="screen" id="s-feedback">
   <div class="topbar">
-    <button class="back-btn" onclick="sdBack()">&#8592; Back</button>
+    <button class="back-btn" onclick="goTo('s-brand')">&#8592; Back</button>
     <div class="topbar-title" id="fb-screen-title">Feedback</div>
     <button class="btn btn-ghost btn-sm" onclick="goHome()" title="Home" style="padding:6px 8px;flex-shrink:0;">
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
@@ -3422,6 +3422,16 @@ function viewFeedback(rid){
     );
   });
 
+  // Check if we're waiting for store to resubmit (notified but not yet resubmitted)
+  const waitingForResubmit = targetStores.some(s=>{
+    const fb=fbMapBottom[s.id];
+    if(!fb||!Array.isArray(fb.timeline)) return false;
+    const tl=[...fb.timeline].sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+    if(!tl.length) return false;
+    const last=tl[tl.length-1];
+    return last.type==='resubmit_requested';
+  });
+
   const mw=document.getElementById('fb-missing');
   let bottomHTML='';
 
@@ -3442,7 +3452,7 @@ function viewFeedback(rid){
 
 
   // ── Priority 1+2: One smart notify button covering edited + rejection cases ─
-  if(!r.verified && (r.editedAfterResponse || remarkedStores.length) && (canEdit()||DB.role==='admin')){
+  if(!r.verified && !waitingForResubmit && (r.editedAfterResponse || remarkedStores.length) && (canEdit()||DB.role==='admin')){
     const hasEdited = r.editedAfterResponse;
     const hasRejected = remarkedStores.length > 0;
     // Determine which stores need to be notified
@@ -3483,6 +3493,16 @@ function viewFeedback(rid){
       <div style="font-size:11px;color:var(--text3);text-align:center;margin-top:6px;">${storeNames}</div>
     </div>`;
   }
+  // ── Waiting for resubmit banner ─────────────────────────────────────────
+  if(!r.verified && waitingForResubmit){
+    bottomHTML+=`<div style="margin-top:10px;padding:12px 16px;background:var(--bg2);border:1px solid var(--border);border-radius:12px;display:flex;align-items:center;gap:10px;">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      <div>
+        <div style="font-size:13px;font-weight:600;color:var(--text);">Waiting for store to resubmit</div>
+        <div style="font-size:11px;color:var(--text2);margin-top:2px;">Notification sent — store needs to respond</div>
+      </div>
+    </div>`;
+  }
   // ── Priority 3: Some stores haven't responded at all (show always when applicable) ──
   if(!r.verified && missing.length){
     bottomHTML+=`
@@ -3505,7 +3525,7 @@ function viewFeedback(rid){
       </div>`;
   }
   // ── Priority 4: ALL items responded by ALL stores, no remarks, no edits ────
-  if(!r.verified && !remarkedStores.length && !missing.length && !r.editedAfterResponse && overallPct===100){
+  if(!r.verified && !waitingForResubmit && !remarkedStores.length && !missing.length && !r.editedAfterResponse && overallPct===100){
     bottomHTML+=`<div style="text-align:center;padding:10px 0 4px;font-size:13px;color:var(--success);">✓ All stores have responded</div>`;
     if(canEdit()||DB.role==='admin'){
       bottomHTML+=`<button onclick="verifyReportComplete('${rid}')" style="margin-top:8px;width:100%;padding:14px;border-radius:14px;background:var(--success);border:none;color:#fff;font-size:15px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 4px 14px rgba(34,197,94,.3);">
