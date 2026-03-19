@@ -377,6 +377,13 @@ label{
 .content{padding:16px 16px calc(env(safe-area-inset-bottom) + 32px);}
 .topbar{padding-top:max(12px,env(safe-area-inset-top));}
 </style>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<script>
+  // Initialize EmailJS
+  (function(){
+    emailjs.init({ publicKey: 'DWnR4JlgDkuSf6k7t' });
+  })();
+</script>
 </head>
 <body>
 <div class="wrap">
@@ -1784,6 +1791,24 @@ applyStoredTheme();
 
 /* ===== CLOUDFLARE API ===== */
 const WORKER_URL = 'https://feedback-hub-api.liming6069.workers.dev';
+
+/* ===== EMAILJS ===== */
+const EJS_SERVICE  = 'service_8t3067c';
+const EJS_TEMPLATE = 'template_0uaipqs';
+
+async function sendEmailJS(toEmail, subject, message){
+  try {
+    await emailjs.send(EJS_SERVICE, EJS_TEMPLATE, {
+      to_email: toEmail,
+      subject:  subject,
+      message:  message,
+    });
+    return { ok: true };
+  } catch(e) {
+    console.error('EmailJS error:', e);
+    return { ok: false, error: e?.text || e?.message || String(e) };
+  }
+}
 
 // Generate or retrieve unique device ID
 function getDeviceId(){
@@ -5884,9 +5909,13 @@ async function testAdminEmail(){
   const msg=document.getElementById('notif-msg');
   if(!email||!email.includes('@')){ if(msg) msg.innerHTML='<div class="alert alert-danger">Enter an email first.</div>'; return; }
   if(msg) msg.innerHTML='<div class="alert alert-success">⏳ Sending test...</div>';
-  const result=await api('POST','/api/test-email',{email});
+  const result = await sendEmailJS(
+    email,
+    'FEEDBACK HUB — Test notification',
+    'Your email notifications are working correctly! ✅\n\nYou will receive notifications at this email when stores submit feedback.\n\nSent at: ' + new Date().toLocaleString()
+  );
   if(result.ok){
-    if(msg) msg.innerHTML='<div class="alert alert-success">✓ Test email sent to liming6069@gmail.com — check your inbox!</div>';
+    if(msg) msg.innerHTML='<div class="alert alert-success">✓ Test email sent to '+email+'— check inbox!</div>';
   } else {
     if(msg) msg.innerHTML='<div class="alert alert-danger">Failed: '+(result.error||'unknown error')+'</div>';
   }
