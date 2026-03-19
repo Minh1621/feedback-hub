@@ -3452,20 +3452,20 @@ function viewFeedback(rid){
     </div>`;
   }
 
-  // ── Priority 1: Report edited after responses — must notify stores first ──
+  // ── Priority 1: Report edited — show notify button (always when editedAfterResponse) ──
   if(!r.verified && r.editedAfterResponse){
     bottomHTML+=`<div style="margin-top:10px;padding:10px 14px;background:#fff8e1;border:1px solid #f5a62340;border-radius:12px;font-size:13px;color:#854F0B;">
-      ⚠ Report was edited — stores need to resubmit to review new items
+      ⚠ New items added — notify stores to review and resubmit
     </div>`;
     if(canEdit()||DB.role==='admin'){
       bottomHTML+=`<button onclick="submitEditNoticeToStores('${rid}')" style="margin-top:8px;width:100%;padding:14px;border-radius:14px;background:var(--warn);border:none;color:#fff;font-size:15px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 4px 14px rgba(245,166,35,.3);">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-        Notify stores — submit again
+        Notify stores — new items added, submit again
       </button>`;
     }
   }
   // ── Priority 2: Some stores still have rejection remarks ─────────────────
-  else if(!r.verified && remarkedStores.length && (canEdit()||DB.role==='admin')){
+  if(!r.verified && !r.editedAfterResponse && remarkedStores.length && (canEdit()||DB.role==='admin')){
     const storeNames=remarkedStores.map(s=>s.name).join(', ');
     bottomHTML+=`<div style="margin-top:10px;">
       <button onclick="submitAllRemarkedStores('${rid}')" style="width:100%;padding:14px;border-radius:14px;background:var(--accent);border:none;color:#fff;font-size:15px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 4px 14px rgba(124,111,255,.3);">
@@ -3475,8 +3475,8 @@ function viewFeedback(rid){
       <div style="font-size:11px;color:var(--text3);text-align:center;margin-top:6px;">${storeNames}</div>
     </div>`;
   }
-  // ── Priority 3: Some stores haven't responded at all ─────────────────────
-  else if(!r.verified && missing.length){
+  // ── Priority 3: Some stores haven't responded at all (show always when applicable) ──
+  if(!r.verified && missing.length){
     bottomHTML+=`
       <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);padding:14px 16px;margin-top:10px;">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
@@ -3497,7 +3497,7 @@ function viewFeedback(rid){
       </div>`;
   }
   // ── Priority 4: ALL items responded by ALL stores, no remarks, no edits ────
-  else if(!r.verified && !remarkedStores.length && !missing.length && !r.editedAfterResponse && overallPct===100){
+  if(!r.verified && !remarkedStores.length && !missing.length && !r.editedAfterResponse && overallPct===100){
     bottomHTML+=`<div style="text-align:center;padding:10px 0 4px;font-size:13px;color:var(--success);">✓ All stores have responded</div>`;
     if(canEdit()||DB.role==='admin'){
       bottomHTML+=`<button onclick="verifyReportComplete('${rid}')" style="margin-top:8px;width:100%;padding:14px;border-radius:14px;background:var(--success);border:none;color:#fff;font-size:15px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 4px 14px rgba(34,197,94,.3);">
