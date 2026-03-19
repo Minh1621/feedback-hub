@@ -4175,11 +4175,16 @@ function openReviewerReport(rid){
         }
         if(!it._rejected && it.photos.length) renderItemPhotoGrid(i);
         if(it._rejected){
-          // Rejected items start CLOSED — store taps to open and respond
+          // Rejected items start OPEN so store can immediately respond
           const el=document.getElementById('rvi_'+i);
           const arrow=document.getElementById('rvi_arrow_'+i);
-          if(el) el.style.display='none';
-          if(arrow) arrow.style.transform='rotate(0deg)';
+          if(el) el.style.display=''; // OPEN
+          if(arrow) arrow.style.transform='rotate(180deg)';
+          // Auto-open text input for rejected items
+          const box=document.getElementById('rvtext_'+i);
+          const btn=document.getElementById('rvtextbtn_'+i);
+          if(box) box.style.display='';
+          if(btn){ btn.style.background='var(--accent)'; btn.style.color='#fff'; btn.style.borderColor='var(--accent)'; }
         }
         refreshReviewerItemStatus(i);
       });
@@ -4328,8 +4333,13 @@ function refreshReviewerItemStatus(idx){
   const lbl=document.getElementById('rvi_status_'+idx);
   if(!lbl||!it) return;
   const hasContent=it.note.trim()||it.photos.length;
-  lbl.textContent=hasContent?'✓ Added':'Tap to respond';
-  lbl.style.color=hasContent?'var(--success)':'var(--text3)';
+  if(hasContent){
+    lbl.textContent='✓ Added'; lbl.style.color='var(--success)';
+  } else if(it._rejected){
+    lbl.textContent='↩ Response needed'; lbl.style.color='var(--danger)';
+  } else {
+    lbl.textContent='Tap to respond'; lbl.style.color='var(--text3)';
+  }
   // Keep text button highlighted if note present
   const btn=document.getElementById('rvtextbtn_'+idx);
   if(btn&&it.note.trim()){
