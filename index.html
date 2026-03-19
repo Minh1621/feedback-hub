@@ -3186,24 +3186,29 @@ function viewFeedback(rid){
       }
 
       let rows='';
-      // Deduplicate rejected entries — group by same minute, keep FIRST occurrence index
+      // Tag every timeline entry with its original index first
+      const _tl = timeline.map((t,i)=>({...t, _idx:i}));
+      // Deduplicate rejected entries — group by same minute, keep FIRST, count all
       const rejectedByMinute={};
-      timeline.forEach((t,i)=>{
-        if(t.type!=='rejected') return;
+      _tl.filter(t=>t.type==='rejected').forEach(t=>{
         const minute=(t.date||'').slice(0,16);
-        if(!rejectedByMinute[minute]){ rejectedByMinute[minute]={...t, count:1, _idx:i}; }
+        if(!rejectedByMinute[minute]){ rejectedByMinute[minute]={...t, count:1}; }
         else { rejectedByMinute[minute].count++; }
       });
-      // Deduplicate resubmitted entries by minute, keep FIRST occurrence index
+      // Deduplicate resubmitted by minute
       const resubmittedByMinute={};
-      timeline.forEach((t,i)=>{
-        if(t.type!=='resubmitted') return;
+      _tl.filter(t=>t.type==='resubmitted').forEach(t=>{
         const minute=(t.date||'').slice(0,16);
-        if(!resubmittedByMinute[minute]) resubmittedByMinute[minute]={...t, _idx:i};
+        if(!resubmittedByMinute[minute]) resubmittedByMinute[minute]={...t};
       });
-      // Tag all non-deduped entries with their original index
+      // Remove store_submitted that duplicate a resubmitted at same minute
+      const resubmittedMinutes=new Set(Object.keys(resubmittedByMinute));
       const deduplicatedTimeline=[
-        ...timeline.filter(t=>t.type!=='rejected'&&t.type!=='resubmitted').map((t,i)=>({...t, _idx:timeline.indexOf(t)})),
+        ..._tl.filter(t=>
+          t.type!=='rejected' &&
+          t.type!=='resubmitted' &&
+          !(t.type==='store_submitted' && resubmittedMinutes.has((t.date||'').slice(0,16)))
+        ),
         ...Object.values(rejectedByMinute),
         ...Object.values(resubmittedByMinute)
       ];
@@ -3244,8 +3249,8 @@ function viewFeedback(rid){
           `Rejected${entry.count>1?' ('+entry.count+' items)':''} · ${entry.by||'Staff'}`, entry.date, '#fef2f2', 'var(--danger)'
         );
         else if(entry.type==='resubmitted') rows+=pill(
-          `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#7c6fff" stroke-width="2.5"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.01"/></svg>`,
-          `Resubmitted · ${entry.by||'Store'}`, entry.date, '#f3f0ff', 'var(--accent)'
+          `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#15803d" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>`,
+          `Response submitted · ${entry.by||'Store'}`, entry.date, '#f0fdf4', 'var(--success)'
         );
         else if(entry.type==='resubmit_requested') rows+=pill(
           `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>`,
@@ -4539,7 +4544,6 @@ async function submitReviewerFeedback(){
     // Add resubmit event to timeline
     if(!Array.isArray(existing.timeline)) existing.timeline=[];
     existing.timeline.push({type:'resubmitted', date:_resubmitAt, by: DB.reviewerStoreName||''});
-    existing.timeline.push({type:'store_submitted', date:_resubmitAt, by: DB.reviewerStoreName||''});
     await api('PUT',`/api/feedbacks/${existing.id}`,{
       text:newText, itemFeedbacks:newItems, photos:[],
       adminRemarks:_preservedRemarks,
