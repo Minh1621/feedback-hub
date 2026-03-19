@@ -3186,21 +3186,24 @@ function viewFeedback(rid){
       }
 
       let rows='';
-      // Deduplicate rejected entries — group by same minute = one rejection round
+      // Deduplicate rejected entries — group by same minute, keep FIRST occurrence index
       const rejectedByMinute={};
-      timeline.filter(t=>t.type==='rejected').forEach(t=>{
+      timeline.forEach((t,i)=>{
+        if(t.type!=='rejected') return;
         const minute=(t.date||'').slice(0,16);
-        if(!rejectedByMinute[minute]){ rejectedByMinute[minute]={...t, count:1}; }
+        if(!rejectedByMinute[minute]){ rejectedByMinute[minute]={...t, count:1, _idx:i}; }
         else { rejectedByMinute[minute].count++; }
       });
-      // Deduplicate resubmitted entries by minute
+      // Deduplicate resubmitted entries by minute, keep FIRST occurrence index
       const resubmittedByMinute={};
-      timeline.filter(t=>t.type==='resubmitted').forEach(t=>{
+      timeline.forEach((t,i)=>{
+        if(t.type!=='resubmitted') return;
         const minute=(t.date||'').slice(0,16);
-        if(!resubmittedByMinute[minute]) resubmittedByMinute[minute]={...t};
+        if(!resubmittedByMinute[minute]) resubmittedByMinute[minute]={...t, _idx:i};
       });
+      // Tag all non-deduped entries with their original index
       const deduplicatedTimeline=[
-        ...timeline.filter(t=>t.type!=='rejected'&&t.type!=='resubmitted'),
+        ...timeline.filter(t=>t.type!=='rejected'&&t.type!=='resubmitted').map((t,i)=>({...t, _idx:timeline.indexOf(t)})),
         ...Object.values(rejectedByMinute),
         ...Object.values(resubmittedByMinute)
       ];
@@ -3208,23 +3211,20 @@ function viewFeedback(rid){
       // Use first_submitted entry from timeline if available (has time)
       const _timelineFirstSub = deduplicatedTimeline.find(t=>t.type==='first_submitted');
       const _firstSubDate = _timelineFirstSub?.date || firstSub;
-      // Sort by: date ASC → original insertion index ASC → type priority
-      // This preserves DB insertion order when dates are equal/ambiguous
+      // FIFO sort: _idx is set during dedup above (original timeline insertion index)
       const _typePriority={'first_submitted':0,'store_submitted':1,'report_edited':2,'rejected':3,'resubmit_requested':4,'resubmitted':5,'accepted':6,'verified':99};
       function _normD(d){ return (!d||d.length>10)?d||'':d+' 00:00'; }
-      // Tag deduplicatedTimeline entries with original index
-      const _taggedTl = deduplicatedTimeline.map((t,i)=>({...t,_idx:i}));
-      const _firstSubEntry = _firstSubDate ? [{type:'first_submitted',date:_firstSubDate,_idx:-1}] : [];
+      const _firstSubEntry = _firstSubDate ? [{type:'first_submitted', date:_firstSubDate, _idx:-1}] : [];
       const allEntries=[
         ..._firstSubEntry,
-        ..._taggedTl.filter(t=>t.type!=='first_submitted')
+        ...deduplicatedTimeline.filter(t=>t.type!=='first_submitted')
       ].sort((a,b)=>{
+        const ia=a._idx??999, ib=b._idx??999;
+        if(ia!==ib) return ia-ib;                              // primary: FIFO insertion order
         const da=_normD(a.date), db=_normD(b.date);
-        if(da!==db) return da.localeCompare(db);   // primary: date
-        const ia=a._idx??-1, ib=b._idx??-1;
-        if(ia!==ib) return ia-ib;                   // secondary: insertion order
+        if(da!==db) return da.localeCompare(db);               // secondary: date
         const pa=_typePriority[a.type]??50, pb=_typePriority[b.type]??50;
-        return pa-pb;                               // tertiary: type priority
+        return pa-pb;                                          // tertiary: type priority
       });
       allEntries.forEach(entry=>{
         if(entry.type==='first_submitted') rows+=pill(
