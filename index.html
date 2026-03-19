@@ -5866,6 +5866,8 @@ function adminClearCoverPhoto(){
   if(inp) inp.value='';
   adminUpdatePreview();
 }
+
+function adminSetCoverColor(c){
   const cc=document.getElementById('admin-cover-color');
   const cch=document.getElementById('admin-cover-color-hex');
   if(cc) cc.value=c;
