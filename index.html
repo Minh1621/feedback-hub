@@ -2155,7 +2155,7 @@ function getReportStatus(r, stores){
     else if(responded>0){ anyDone=true; }
   }
   if(anyRejected) return 'checking';
-  if(allDone) return 'partial';    // all responded but NOT verified → partial (needs verify)
+  if(allDone) return 'checking';   // all responded, no rejections → checking (awaiting admin verify)
   if(anyDone) return 'partial';    // some responded, no rejections → partial
   return 'pending';
 }
@@ -2666,7 +2666,7 @@ function getStoreReportStatus(r,sid){
   // No fallback count — new refs always unresponded (responded stays 0 for new items)
   if(responded===0) return 'pending';
   if(responded<totalItems) return 'partial';
-  return 'partial'; // all responded but not verified — admin must verify
+  return 'checking'; // all responded, no rejections — awaiting admin verify
 }
 
 function setStoreDetailFilter(f){
@@ -3439,17 +3439,7 @@ function viewFeedback(rid){
     </div>`;
   }
 
-  // ── Submit to all remarked stores ─────────────────────────────────────────
-  if(remarkedStores.length && (canEdit()||DB.role==='admin')){
-    const storeNames=remarkedStores.map(s=>s.name).join(', ');
-    bottomHTML+=`<div style="margin-top:10px;">
-      <button onclick="submitAllRemarkedStores('${rid}')" style="width:100%;padding:14px;border-radius:14px;background:var(--accent);border:none;color:#fff;font-size:15px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 4px 14px rgba(124,111,255,.3);">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-        Submit to ${remarkedStores.length} store${remarkedStores.length>1?'s':''} — notify to resubmit
-      </button>
-      <div style="font-size:11px;color:var(--text3);text-align:center;margin-top:6px;">${storeNames}</div>
-    </div>`;
-  }
+
 
   // ── Priority 1+2: One smart notify button covering edited + rejection cases ─
   if(!r.verified && (r.editedAfterResponse || remarkedStores.length) && (canEdit()||DB.role==='admin')){
@@ -3586,15 +3576,33 @@ async function submitCombinedNotice(rid){
       editedAfterResponse:false
     });
   }
-  // Send email notifications
+  // Send email notifications with item counts
   try{
     const _alerter=getAlerterInfo();
     for(const store of targetStores){
       if(!affectedSids.has(store.id)) continue;
       const hasRej=remarkedSids.has(store.id);
+      const fb=r.feedbacks.find(f=>f.storeId===store.id);
+      // Count rejection and pending items for this store
+      let rejCount=0, pendingCount=0;
+      if(fb){
+        const refMap={};
+        (fb.itemFeedbacks||[]).forEach(it=>{if(it.refId) refMap[it.refId]=it;});
+        r.refs.forEach(ref=>{
+          const it=refMap[ref.id];
+          const hasContent=it&&(it.note||(it.photos&&it.photos.length));
+          const hasRemark=!!(fb.adminRemarks?.[ref.id+'_list']?.length||fb.adminRemarks?.[ref.id]);
+          if(hasRemark) rejCount++;
+          else if(!hasContent) pendingCount++;
+        });
+      } else {
+        pendingCount=r.refs.length;
+      }
       await api('POST','/api/notify-resubmit',{
         store_id:store.id, report_id:rid,
         reason: r.editedAfterResponse&&hasRej?'both': r.editedAfterResponse?'edited':'rejection',
+        rejection_count:rejCount,
+        pending_count:pendingCount,
         alerter:_alerter
       });
     }
@@ -6363,6 +6371,9 @@ function annUpdateUndoRedoBtns(){
 }
 
 function openAnnotator(src, fbId, refId, photoIdx){
+  // Track which screen opened the annotator so we can return correctly
+  const activeScreen=document.querySelector('.screen.active');
+  _annCtx.fromScreen = activeScreen?.id==='s-reviewer-report' ? 'reviewer' : 'admin';
   const overlay=document.getElementById('photo-annotator-overlay');
   const canvas=document.getElementById('ann-canvas');
   const wrap=document.getElementById('ann-canvas-wrap');
@@ -6581,9 +6592,17 @@ async function annSave(){
   }
   annClose();
   showToast('✓ Annotated photo saved!');
-  if(DB.currentReportId){
+  // Return to correct screen based on who opened the annotator
+  if(_annCtx.fromScreen==='reviewer'){
+    // Reviewer: re-render reviewer report and stay on s-reviewer-report
+    renderReviewerReport(DB.reviewerReportId||DB.currentReportId);
+    setTimeout(()=>{
+      const itemCard=document.getElementById('rv_item_'+refId);
+      if(itemCard && itemCard.style.display==='none') itemCard.style.display='';
+    },80);
+  } else if(DB.currentReportId){
     viewFeedback(DB.currentReportId);
-    // Re-open the item card that was being annotated after viewFeedback re-renders
+    // Re-open the item card that was being annotated
     setTimeout(()=>{
       const itemCard=document.getElementById('ai_'+refId);
       const arrow=document.getElementById('ai_arrow_'+refId);
