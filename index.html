@@ -758,70 +758,6 @@ label{
   </div>
   <div class="content">
     <div id="settings-content"></div>
-    <!-- Admin notification settings -->
-    <div style="margin-bottom:16px;">
-      <div class="sec-label">Notifications</div>
-      <div class="card" style="padding:14px 16px;margin-bottom:10px;">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
-          <div>
-            <div style="font-size:14px;font-weight:600;">Enable notifications</div>
-            <div style="font-size:12px;color:var(--text2);margin-top:2px;">Get email alerts when stores respond</div>
-          </div>
-          <div id="notif-toggle" onclick="toggleNotif()" style="width:36px;height:20px;border-radius:10px;background:var(--bg3);border:1px solid var(--border2);cursor:pointer;position:relative;flex-shrink:0;transition:background .2s;">
-            <div id="notif-knob" style="position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:var(--text3);transition:all .2s;"></div>
-          </div>
-        </div>
-        <div id="notif-email-section" style="display:none;">
-          <div class="field" style="margin-bottom:10px;">
-            <label>Notification email</label>
-            <input type="email" id="notif-email" placeholder="e.g. admin@company.com"/>
-            <div style="font-size:11px;color:var(--text3);margin-top:5px;">Alerts sent to this email on all devices</div>
-          </div>
-          <div style="font-size:13px;font-weight:500;margin-bottom:10px;">Notify me when:</div>
-          <label style="display:flex;align-items:center;gap:10px;text-transform:none;font-size:13px;color:var(--text);margin-bottom:10px;cursor:pointer;">
-            <input type="checkbox" id="notif-on-submit" checked onchange="saveNotifSettings()"/> Store submits a response
-          </label>
-          <label style="display:flex;align-items:center;gap:10px;text-transform:none;font-size:13px;color:var(--text);margin-bottom:10px;cursor:pointer;">
-            <input type="checkbox" id="notif-all-done" checked onchange="saveNotifSettings()"/> All stores have responded
-          </label>
-          <label style="display:flex;align-items:center;gap:10px;text-transform:none;font-size:13px;color:var(--text);margin-bottom:10px;cursor:pointer;">
-            <input type="checkbox" id="notif-brand-complete" checked onchange="saveNotifSettings()"/> Brand report is complete
-          </label>
-          <label style="display:flex;align-items:center;gap:10px;text-transform:none;font-size:13px;color:var(--text);margin-bottom:14px;cursor:pointer;">
-            <input type="checkbox" id="notif-store-complete" checked onchange="saveNotifSettings()"/> Store report verified
-          </label>
-          <button class="btn btn-primary btn-full" onclick="saveNotifSettings()">Save notification settings</button>
-          <div id="notif-msg" style="margin-top:8px;"></div>
-        </div>
-      </div>
-    </div>
-    <!-- Admin account settings -->
-    <div style="margin-bottom:16px;">
-      <div class="sec-label">Account</div>
-      <div class="card" style="padding:14px 16px;">
-        <div style="font-size:14px;font-weight:600;margin-bottom:6px;" id="admin-username-display">Admin</div>
-        <div style="display:flex;gap:8px;margin-bottom:14px;">
-          <button class="btn btn-sm" onclick="openChangeUsername()">Change username</button>
-          <button class="btn btn-sm" onclick="openChangeAdminPassword()">Change password</button>
-        </div>
-        <div id="change-username-section" style="display:none;">
-          <div class="field" style="margin-bottom:10px;">
-            <label>New username</label>
-            <input type="text" id="new-admin-username" placeholder="New username"/>
-          </div>
-          <button class="btn btn-primary btn-sm" onclick="doChangeUsername()">Save username</button>
-          <div id="username-msg" style="margin-top:8px;"></div>
-        </div>
-        <div id="change-admin-pass-section" style="display:none;">
-          <div class="field" style="margin-bottom:10px;">
-            <label>New password</label>
-            <input type="password" id="new-admin-pass" placeholder="New password"/>
-          </div>
-          <button class="btn btn-primary btn-sm" onclick="doChangeAdminPass()">Save password</button>
-          <div id="admin-pass-msg" style="margin-top:8px;"></div>
-        </div>
-      </div>
-    </div>
     <div style="margin-bottom:16px;">
       <div class="sec-label">Display</div>
       <div class="card" style="padding:14px 16px;">
@@ -5408,6 +5344,67 @@ function loadSettingsFromStorage(){
 }
 
 function applySettingsToUI(){
+  // Render settings-content if empty (notifications + account sections)
+  const sc=document.getElementById('settings-content');
+  if(sc && !sc.querySelector('#notif-toggle')){
+    sc.innerHTML=`
+    <div style="margin-bottom:16px;">
+      <div class="sec-label">Notifications</div>
+      <div class="card" style="padding:14px 16px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+          <div>
+            <div style="font-size:14px;font-weight:600;">Enable notifications</div>
+            <div style="font-size:12px;color:var(--text2);margin-top:2px;">Get email alerts when stores respond</div>
+          </div>
+          <div id="notif-toggle" onclick="toggleNotif()" style="width:36px;height:20px;border-radius:10px;background:var(--bg3);border:1px solid var(--border2);cursor:pointer;position:relative;flex-shrink:0;transition:background .2s;">
+            <div id="notif-knob" style="position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:var(--text3);transition:all .2s;"></div>
+          </div>
+        </div>
+        <div id="notif-email-section" style="display:none;">
+          <div class="field" style="margin-bottom:10px;">
+            <label>Notification email</label>
+            <input type="email" id="notif-email" placeholder="e.g. admin@company.com"/>
+            <div style="font-size:11px;color:var(--text3);margin-top:5px;">Alerts sent to this email on all devices</div>
+          </div>
+          <div style="font-size:13px;font-weight:500;margin-bottom:10px;">Notify me when:</div>
+          <label style="display:flex;align-items:center;gap:10px;text-transform:none;font-size:13px;color:var(--text);margin-bottom:10px;cursor:pointer;">
+            <input type="checkbox" id="notif-on-submit" checked onchange="saveNotifSettings()"/> Store submits a response
+          </label>
+          <label style="display:flex;align-items:center;gap:10px;text-transform:none;font-size:13px;color:var(--text);margin-bottom:10px;cursor:pointer;">
+            <input type="checkbox" id="notif-all-done" checked onchange="saveNotifSettings()"/> All stores have responded
+          </label>
+          <label style="display:flex;align-items:center;gap:10px;text-transform:none;font-size:13px;color:var(--text);margin-bottom:10px;cursor:pointer;">
+            <input type="checkbox" id="notif-brand-complete" checked onchange="saveNotifSettings()"/> Brand report is complete
+          </label>
+          <label style="display:flex;align-items:center;gap:10px;text-transform:none;font-size:13px;color:var(--text);margin-bottom:14px;cursor:pointer;">
+            <input type="checkbox" id="notif-store-complete" checked onchange="saveNotifSettings()"/> Store report verified
+          </label>
+          <button class="btn btn-primary btn-full" onclick="saveNotifSettings()">Save notification settings</button>
+          <div id="notif-msg" style="margin-top:8px;"></div>
+        </div>
+      </div>
+    </div>
+    <div style="margin-bottom:16px;">
+      <div class="sec-label">Account</div>
+      <div class="card" style="padding:14px 16px;">
+        <div style="font-size:14px;font-weight:600;margin-bottom:6px;" id="admin-username-display">${ADMIN_CREDS?.username||'Admin'}</div>
+        <div style="display:flex;gap:8px;margin-bottom:0;">
+          <button class="btn btn-sm" onclick="openChangeUsername()">Change username</button>
+          <button class="btn btn-sm" onclick="openChangeAdminPassword()">Change password</button>
+        </div>
+        <div id="change-username-section" style="display:none;margin-top:12px;">
+          <div class="field" style="margin-bottom:10px;"><label>New username</label><input type="text" id="new-admin-username" placeholder="New username"/></div>
+          <button class="btn btn-primary btn-sm" onclick="doChangeUsername()">Save username</button>
+          <div id="username-msg" style="margin-top:8px;"></div>
+        </div>
+        <div id="change-admin-pass-section" style="display:none;margin-top:12px;">
+          <div class="field" style="margin-bottom:10px;"><label>New password</label><input type="password" id="new-admin-pass" placeholder="New password"/></div>
+          <button class="btn btn-primary btn-sm" onclick="doChangeAdminPass()">Save password</button>
+          <div id="admin-pass-msg" style="margin-top:8px;"></div>
+        </div>
+      </div>
+    </div>`;
+  }
   // Admin username display
   const adminDisp=document.getElementById('admin-username-display');
   if(adminDisp && ADMIN_CREDS) adminDisp.textContent=ADMIN_CREDS.username||'Admin';
