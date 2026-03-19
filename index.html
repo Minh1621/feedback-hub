@@ -2195,7 +2195,8 @@ async function verifyReportComplete(rid){
   } catch(e) {}
 
   showToast('✓ Report verified — all stores notified!');
-  viewFeedback(rid);
+  await loadAllData(); renderBrandReports(); renderHome();
+  renderBrandReports(); renderHome(); viewFeedback(rid);
 }
 
 // ── Undo verify — restores to checking or partial ────────────────────────────
@@ -2222,7 +2223,7 @@ async function unverifyReport(rid){
     verified:false, verifiedBy:'', verifiedAt:''
   });
   showToast('Verification removed');
-  viewFeedback(rid);
+  renderBrandReports(); renderHome(); viewFeedback(rid);
 }
 
 let _homeTab = 'brands';
@@ -2491,10 +2492,11 @@ function renderBrandReports(){
   // 0=pending, 1=partial, 2=checking, 3=complete
   function rStatusNum(r){
     const s=getReportStatus(r,b.stores);
-    return s==='complete'?3:s==='checking'?2:s==='partial'?1:0;
+    // Sort priority: checking first, then pending, partial, complete
+    return s==='checking'?0:s==='pending'?1:s==='partial'?2:3;
   }
 
-  // Sort: pending → partial → checking → complete
+  // Sort: checking → pending → partial → complete
   list.sort((a,bb)=> rStatusNum(a)-rStatusNum(bb));
 
   if(DB.brandFilter==='pending')  list=list.filter(r=>rStatusNum(r)===0);
@@ -2691,6 +2693,8 @@ function setStoreDetailFilter(f){
 
 function renderStoreDetailReports(b,s){
   const allReports=b.reports.filter(r=>reportVisibleToStore(r,s.id));
+  function _sdStatusNum(r){ const st=getStoreReportStatus(r,s.id); return st==='checking'?0:st==='pending'?1:st==='partial'?2:3; }
+  allReports.sort((a,bb)=>_sdStatusNum(a)-_sdStatusNum(bb));
   const el=document.getElementById('sd-report-list');
   if(!allReports.length){ el.innerHTML='<div class="empty">No reports sent to this store</div>'; return; }
   const filt=DB.storeDetailFilter||'all';
@@ -3681,7 +3685,8 @@ async function submitCombinedNotice(rid){
     }
   }catch(e){ console.log('Notify email failed:',e.message); }
   showToast('✓ Stores notified');
-  viewFeedback(rid);
+  await loadAllData(); renderBrandReports(); renderHome();
+  renderBrandReports(); renderHome(); viewFeedback(rid);
 }
 
 async function submitEditNoticeToStores(rid){
@@ -3713,7 +3718,7 @@ async function submitEditNoticeToStores(rid){
     editedAfterResponse:false
   });
   showToast('✓ Stores notified to resubmit');
-  viewFeedback(rid);
+  renderBrandReports(); renderHome(); viewFeedback(rid);
 }
 
 function buildSwatches(picked){
@@ -5615,7 +5620,7 @@ function saveRefEdit(refId, rid){
     file:r.file, fileURL:r.fileURL||null,
     inspection:r.inspection, refs:r.refs, date:r.date
   });
-  viewFeedback(rid);
+  renderBrandReports(); renderHome(); viewFeedback(rid);
 }
 function addRefPhotosInline(refId, rid, input){
   const b=brand(), r=b.reports.find(r=>r.id===rid);
@@ -6428,7 +6433,7 @@ async function deleteRemark(fbId, refId, storeId, rid, remarkIdx){
     text:fb.text, itemFeedbacks:fb.itemFeedbacks, photos:fb.photos||[], adminRemarks:fb.adminRemarks
   });
   showToast('Remark deleted');
-  viewFeedback(rid);
+  renderBrandReports(); renderHome(); viewFeedback(rid);
 }
 
 // ── Submit to store — notify store to resubmit for this item ──────────────────
@@ -6486,7 +6491,7 @@ async function submitAllRemarkedStores(rid){
     }
   }
   showToast(`✓ ${sent} store${sent!==1?'s':''} notified to resubmit`);
-  viewFeedback(rid);
+  renderBrandReports(); renderHome(); viewFeedback(rid);
 }
 function openResponseNote(fbId, refId, storeId, rid){
   _rnCtx={fbId, refId, storeId, rid};
@@ -7145,7 +7150,8 @@ async function inlineAcceptResponse(fbId, refId, storeId, rid) {
   fb.timeline.push({ type: 'accepted', date: today, by: authorName });
   await api('PUT', `/api/feedbacks/${fbId}`, { adminRemarks: fb.adminRemarks, timeline: fb.timeline });
   showToast('✓ Response accepted');
-  viewFeedback(rid);
+  renderBrandReports(); renderHome();
+  renderBrandReports(); renderHome(); viewFeedback(rid);
   // After accept: keep card CLOSED (collapse it back)
   setTimeout(() => {
     const card = document.getElementById('ai_' + refId);
@@ -7198,7 +7204,7 @@ async function inlineSaveRemark(fbId, refId, storeId, rid) {
     await api('POST', '/api/feedbacks/delete-notify', { feedback_id: fbId, store_id: storeId, report_id: rid, ref_id: refId, alerter_id: _alerter.id, alerter_role: _alerter.role });
   } catch(e) {}
   showToast('✓ Remark saved — store notified');
-  viewFeedback(rid);
+  renderBrandReports(); renderHome(); viewFeedback(rid);
   // After save remark: keep card CLOSED
   setTimeout(() => {
     const card = document.getElementById('ai_' + refId);
@@ -7238,7 +7244,8 @@ async function raAcceptResponse() {
 
   closeRespAction();
   showToast('✓ Response accepted');
-  viewFeedback(rid);
+  renderBrandReports(); renderHome();
+  renderBrandReports(); renderHome(); viewFeedback(rid);
   // After accept: close the item card
   setTimeout(() => {
     const itemCard = document.getElementById('ai_' + refId);
