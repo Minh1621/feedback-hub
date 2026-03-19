@@ -5087,6 +5087,15 @@ function doVerifyAdmin(){
   } else if(_pendingAdminAction==='change'){
     openEmailVerifyForStore();
     return;
+  } else if(_pendingAdminAction==='delete_staff'){
+    const staffId=_sfEditingId;
+    const staffName=DB_STAFF.find(s=>s.id===staffId)?.name||'staff';
+    api('DELETE',`/api/staff/${staffId}`).then(async()=>{
+      await loadStaff();
+      renderStaffList();
+      goTo('s-staff-list');
+      showToast(`✓ ${staffName} removed`);
+    });
   }
 }
 function doChangeRvPass(){
@@ -6804,11 +6813,21 @@ async function doSaveStaff(){
 async function doDeleteStaff(){
   if(!_sfEditingId) return;
   const s=DB_STAFF.find(s=>s.id===_sfEditingId);
-  if(!confirm(`Remove ${s?.name||'this staff account'}? This cannot be undone.`)) return;
-  await api('DELETE',`/api/staff/${_sfEditingId}`);
-  await loadStaff();
-  renderStaffList();
-  goTo('s-staff-list');
+  if(!s) return;
+  // Step 1 — confirm intent
+  showGenericConfirm(
+    `Remove "${s.name}"?\n\nThis will permanently delete the staff account. Admin password required.`,
+    ()=>{
+      // Step 2 — verify admin password
+      document.getElementById('verify-admin-pass').value='';
+      document.getElementById('verify-msg').innerHTML='';
+      document.getElementById('verify-title').textContent='Admin verification';
+      document.getElementById('verify-subtitle').textContent=`Enter admin password to remove "${s.name}".`;
+      _pendingAdminAction='delete_staff';
+      document.getElementById('pass-verify-overlay').style.display='flex';
+      setTimeout(()=>document.getElementById('verify-admin-pass').focus(),100);
+    }
+  );
 }
 
 
