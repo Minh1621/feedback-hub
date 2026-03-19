@@ -459,11 +459,11 @@ label{
     </div>
     <div id="bpane-reports">
       <div style="display:flex;gap:6px;margin-bottom:12px;overflow-x:auto;padding-bottom:2px;">
-        <button id="bf-all" class="btn btn-sm active" onclick="setBF('all')">All</button>
-        <button id="bf-pending" class="btn btn-sm" onclick="setBF('pending')">Pending</button>
-        <button id="bf-checking" class="btn btn-sm" onclick="setBF('checking')">Checking</button>
-        <button id="bf-partial" class="btn btn-sm" onclick="setBF('partial')">Partial</button>
-        <button id="bf-done" class="btn btn-sm" onclick="setBF('done')">Done</button>
+        <button id="bf-all"      style="border-radius:20px;flex-shrink:0;background:var(--accent);color:#fff;border:1px solid var(--accent);padding:5px 14px;font-size:12px;font-weight:600;cursor:pointer;" onclick="setBF('all')">All</button>
+        <button id="bf-pending"  style="border-radius:20px;flex-shrink:0;background:var(--bg2);color:var(--text2);border:1px solid var(--border2);padding:5px 14px;font-size:12px;font-weight:500;cursor:pointer;" onclick="setBF('pending')">Pending</button>
+        <button id="bf-partial"  style="border-radius:20px;flex-shrink:0;background:var(--bg2);color:var(--text2);border:1px solid var(--border2);padding:5px 14px;font-size:12px;font-weight:500;cursor:pointer;" onclick="setBF('partial')">Partial</button>
+        <button id="bf-checking" style="border-radius:20px;flex-shrink:0;background:var(--bg2);color:var(--text2);border:1px solid var(--border2);padding:5px 14px;font-size:12px;font-weight:500;cursor:pointer;" onclick="setBF('checking')">Checking</button>
+        <button id="bf-done"     style="border-radius:20px;flex-shrink:0;background:var(--bg2);color:var(--text2);border:1px solid var(--border2);padding:5px 14px;font-size:12px;font-weight:500;cursor:pointer;" onclick="setBF('done')">Complete</button>
       </div>
       <div id="brand-report-list"></div>
     </div>
@@ -2466,9 +2466,14 @@ function brandTab(tab){
 }
 function setBF(f){
   DB.brandFilter=f;
-  ['all','pending','checking','partial','done'].forEach(k=>{
+  ['all','pending','partial','checking','done'].forEach(k=>{
     const el=document.getElementById('bf-'+k);
-    if(el) el.classList.toggle('active',k===f);
+    if(!el) return;
+    if(k===f){
+      el.style.background='var(--accent)'; el.style.color='#fff'; el.style.borderColor='var(--accent)';
+    } else {
+      el.style.background='var(--bg2)'; el.style.color='var(--text2)'; el.style.borderColor='var(--border2)';
+    }
   });
   renderBrandReports();
 }
@@ -2481,15 +2486,16 @@ function renderBrandReports(){
   // 0=pending, 1=partial, 2=checking, 3=complete
   function rStatusNum(r){
     const s=getReportStatus(r,b.stores);
-    return s==='complete'?2:s==='checking'?1:0;
+    return s==='complete'?3:s==='checking'?2:s==='partial'?1:0;
   }
 
-  // Sort: pending → checking → complete
+  // Sort: pending → partial → checking → complete
   list.sort((a,bb)=> rStatusNum(a)-rStatusNum(bb));
 
   if(DB.brandFilter==='pending')  list=list.filter(r=>rStatusNum(r)===0);
-  if(DB.brandFilter==='checking') list=list.filter(r=>rStatusNum(r)===1);
-  if(DB.brandFilter==='done')     list=list.filter(r=>rStatusNum(r)===2);
+  if(DB.brandFilter==='partial')  list=list.filter(r=>rStatusNum(r)===1);
+  if(DB.brandFilter==='checking') list=list.filter(r=>rStatusNum(r)===2);
+  if(DB.brandFilter==='done')     list=list.filter(r=>rStatusNum(r)===3);
 
   const el=document.getElementById('brand-report-list');
   if(!list.length){ el.innerHTML='<div class="empty">No reports</div>'; return; }
@@ -2499,8 +2505,10 @@ function renderBrandReports(){
     let bc, bt;
     if(_archived)        { bc='badge-none';    bt='Archived'; }
     else if(_rStatus===0){ bc='badge-none';    bt='Pending'; }
-    else if(_rStatus===1){ bc='badge-pending'; bt='Checking'; }
+    else if(_rStatus===1){ bc='badge-partial'; bt='Partial'; }
+    else if(_rStatus===2){ bc='badge-pending'; bt='Checking'; }
     else                 { bc='badge-done';    bt='Complete'; }
+    const borderStyle=_rStatus===3?'border-color:var(--success);':_rStatus===2?'border-color:var(--warn);':_rStatus===1?'border-color:var(--accent);':'';
     const targetStore=r.storeId?b.stores.find(s=>s.id===r.storeId):null;
     const _targetStoresCard=r.storeId?b.stores.filter(s=>s.id===r.storeId):b.stores;
     const _totalItemsCard=r.refs&&r.refs.length?r.refs.length:1;
