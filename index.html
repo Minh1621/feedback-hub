@@ -736,7 +736,7 @@ label{
       <div id="rv-fb-msg"></div>
       <div style="display:flex;gap:10px;margin-top:14px;">
         <button class="btn btn-full" style="flex:1;" onclick="saveReviewerDraft()">Save</button>
-        <button id="rv-submit-btn" class="btn btn-primary btn-full" style="flex:1;" onclick="submitReviewerFeedback()">Submit</button>
+        <button id="rv-submit-btn" class="btn btn-primary btn-full" style="flex:1;display:none;" onclick="submitReviewerFeedback()">Submit</button>
       </div>
       <div id="rv-submit-hint" style="font-size:12px;color:var(--text3);text-align:center;margin-top:8px;">Fill all items to unlock Submit</div>
     </div>
@@ -3197,12 +3197,15 @@ function viewFeedback(rid){
         ...Object.values(rejectedByMinute)
       ];
       // Build all entries chronologically
+      // Use first_submitted entry from timeline if available (has time)
+      const _timelineFirstSub = timeline.find(t=>t.type==='first_submitted');
+      const _firstSubDate = _timelineFirstSub?.date || firstSub;
       const allEntries=[
-        ...(firstSub?[{type:'first_submitted',date:firstSub}]:[]),
-        ...deduplicatedTimeline
+        ...(_firstSubDate?[{type:'first_submitted',date:_firstSubDate}]:[]),
+        ...deduplicatedTimeline.filter(t=>t.type!=='first_submitted')
       ].sort((a,b)=>{
         const da=a.date||'', db=b.date||'';
-        return da.localeCompare(db);
+        return db.localeCompare(da); // newest first
       });
       allEntries.forEach(entry=>{
         if(entry.type==='first_submitted') rows+=pill(
@@ -4039,8 +4042,13 @@ function openReviewerReport(rid){
   r.feedbacks.forEach(f=>{ if(!_fbMapRv[f.storeId]||f.date>=_fbMapRv[f.storeId].date) _fbMapRv[f.storeId]=f; });
   const myFb=_fbMapRv[s.id]||null;
 
-  // Detect if this feedback has any rejected (remarked) items that need resubmission
-  const _hasRejectedItems = myFb && r.refs && r.refs.some(ref => {
+  // Detect if this feedback has any rejected items THAT NEED RESUBMISSION
+  // Only show form if: has adminRemarks AND last timeline event is NOT 'resubmitted'
+  const _lastTimelineEvent = myFb && Array.isArray(myFb.timeline) && myFb.timeline.length
+    ? [...myFb.timeline].sort((a,b)=>(a.date||'').localeCompare(b.date||'')).slice(-1)[0]
+    : null;
+  const _alreadyResubmitted = _lastTimelineEvent?.type === 'resubmitted';
+  const _hasRejectedItems = myFb && !_alreadyResubmitted && r.refs && r.refs.some(ref => {
     return !!(myFb.adminRemarks?.[ref.id+'_list']?.length || myFb.adminRemarks?.[ref.id]);
   });
 
@@ -4345,7 +4353,7 @@ function checkAllItemsDone(){
     allDone = DB.itemFeedbacks.length>0 && DB.itemFeedbacks.every(it=>it.note.trim()||it.photos.length);
   }
   const submitBtn=document.getElementById('rv-submit-btn');
-  const hint=document.getElementById('rv-all-done-hint');
+  const hint=document.getElementById('rv-submit-hint');
   if(submitBtn) submitBtn.style.display=allDone?'':'none';
   if(hint) hint.style.display=allDone?'none':'';
 }
@@ -4513,7 +4521,9 @@ async function submitReviewerFeedback(){
     await api('POST','/api/feedbacks/notify',{feedback_id:existing.id, report_id:r.id, store_id:s.id});
   } else {
     // New submission
-    const feedbackObj={storeId:s.id, text:newText, itemFeedbacks:newItems, photos:[], date:newDate};
+    const _subTime=new Date().toISOString().slice(0,10)+' '+new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+    const feedbackObj={storeId:s.id, text:newText, itemFeedbacks:newItems, photos:[], date:newDate,
+      timeline:[{type:'first_submitted',date:_subTime,by:DB.reviewerStoreName||''}]};
     const result=await api('POST','/api/feedbacks',{...feedbackObj, report_id:r.id});
     if(result.id) feedbackObj.id=result.id;
     r.feedbacks.push(feedbackObj);
