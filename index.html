@@ -3179,50 +3179,50 @@ function viewFeedback(rid){
         }
 
         let rows='';
-        // 1. First submitted
-        if(firstSub) rows+=pill(
-          `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#15803d" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>`,
-          'First submitted', firstSub, '#f0fdf4', 'var(--success)'
-        );
-        // 2. Last resubmitted (last edit date = store edited after remark)
-        if(lastEdit&&lastEdit!==firstSub) rows+=pill(
-          `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#7c6fff" stroke-width="2.5"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.01"/></svg>`,
-          'Last resubmit', lastEdit, '#f3f0ff', 'var(--accent)'
-        );
-        // 3. Rejected entries (most recent)
-        rejectedEntries.forEach(re=>{ rows+=pill(
-          `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`,
-          `Rejected by ${re.by||'Staff'}`, re.date, '#fef2f2', 'var(--danger)'
-        );});
-        // 4. Resubmit requested (most recent)
-        // Report edited entries
-        const editedEntries=timeline.filter(t=>t.type==='report_edited');
-        editedEntries.forEach(re=>{ rows+=pill(
-          `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#534AB7" stroke-width="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`,
-          `Report edited by ${re.by||'Staff'}${re.note?' · '+re.note:''}`, re.date||'', '#EEEDFE', '#534AB7'
-        );});
-        // Store resubmitted after rejection or edit
-        const resubmittedEntries=timeline.filter(t=>t.type==='resubmitted');
-        resubmittedEntries.forEach(re=>{ rows+=pill(
-          `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#7c6fff" stroke-width="2.5"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.01"/></svg>`,
-          `Resubmitted by ${re.by||'Store'}`, re.date||'', '#f3f0ff', 'var(--accent)'
-        );});
-        resubmitEntries.forEach(re=>{ rows+=pill(
-          `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>`,
-          `Notified to resubmit by ${re.by||'Staff'}${re.note?' · '+re.note:''}`, re.date||'', '#fffbeb', 'var(--warn)'
-        );});
-        // 5. Accepted item responses
-        const acceptedEntries=timeline.filter(t=>t.type==='accepted');
-        acceptedEntries.forEach(re=>{ rows+=pill(
-          `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#15803d" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`,
-          `Accepted by ${re.by||'Staff'}`, re.date||'', '#f0fdf4', 'var(--success)'
-        );});
-        // 6. Verified
-        if(verifiedEntry) rows+=pill(
-          `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#15803d" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`,
-          `Verified by ${verifiedEntry.by||'Staff'}`, verifiedEntry.date, '#f0fdf4', 'var(--success)'
-        );
-
+        // Sort ALL timeline entries chronologically
+        const allEntries=[
+          ...(firstSub?[{type:'first_submitted',date:firstSub}]:[]),
+          ...(lastEdit&&lastEdit!==firstSub?[{type:'last_resubmit',date:lastEdit}]:[]),
+          ...timeline
+        ].sort((a,b)=>{
+          const da=a.date||'', db=b.date||'';
+          return da.localeCompare(db);
+        });
+        allEntries.forEach(entry=>{
+          if(entry.type==='first_submitted') rows+=pill(
+            `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#15803d" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>`,
+            'First submitted', entry.date, '#f0fdf4', 'var(--success)'
+          );
+          else if(entry.type==='last_resubmit') rows+=pill(
+            `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#7c6fff" stroke-width="2.5"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.01"/></svg>`,
+            'Last resubmit', entry.date, '#f3f0ff', 'var(--accent)'
+          );
+          else if(entry.type==='report_edited') rows+=pill(
+            `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#534AB7" stroke-width="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`,
+            `Report edited by ${entry.by||'Staff'}`, entry.date, '#EEEDFE', '#534AB7'
+          );
+          else if(entry.type==='rejected') rows+=pill(
+            `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`,
+            `Rejected by ${entry.by||'Staff'}${entry.note?' · '+entry.note:''}`, entry.date, '#fef2f2', 'var(--danger)'
+          );
+          else if(entry.type==='resubmitted') rows+=pill(
+            `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#7c6fff" stroke-width="2.5"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.01"/></svg>`,
+            `Resubmitted by ${entry.by||'Store'}`, entry.date, '#f3f0ff', 'var(--accent)'
+          );
+          else if(entry.type==='resubmit_requested') rows+=pill(
+            `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>`,
+            `Notified to resubmit by ${entry.by||'Staff'}`, entry.date, '#fffbeb', 'var(--warn)'
+          );
+          else if(entry.type==='accepted') rows+=pill(
+            `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#15803d" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`,
+            `Accepted by ${entry.by||'Staff'}`, entry.date, '#f0fdf4', 'var(--success)'
+          );
+          else if(entry.type==='verified') rows+=pill(
+            `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#15803d" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`,
+            `Verified by ${entry.by||'Staff'}`, entry.date, '#f0fdf4', 'var(--success)'
+          );
+        });
+        
         if(!rows) return '';
         return `<div style="padding:8px 0 2px;">
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
@@ -4848,7 +4848,7 @@ async function doEditReport(){
     const _editTime = new Date().toISOString().slice(0,10)+' '+new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
     for(const fb of r.feedbacks){
       if(!Array.isArray(fb.timeline)) fb.timeline=[];
-      fb.timeline.push({type:'report_edited', date:_editTime, by:_editAuthor, note:`Items: ${r.refs.length}`});
+      fb.timeline.push({type:'report_edited', date:_editTime, by:_editAuthor});
       await api('PUT',`/api/feedbacks/${fb.id}`,{adminRemarks:fb.adminRemarks, timeline:fb.timeline});
     }
   }
