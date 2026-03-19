@@ -4037,6 +4037,64 @@ function toggleArchivedReports(){
   if(arrow) arrow.textContent='Hide ▲';
 }
 
+function buildReviewerHistory(fb, reportDate){
+  if(!fb) return '';
+  const timeline=Array.isArray(fb.timeline)?fb.timeline:[];
+  if(!timeline.length&&!reportDate) return '';
+  function rvPill(icon,label,date,bg,color){
+    const parts=label.split(' · ');
+    const action=parts[0]||'';
+    const who=parts.slice(1).join(' · ');
+    return '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:0.5px solid var(--border);">'
+      +'<div style="width:26px;height:26px;border-radius:7px;background:'+bg+';display:flex;align-items:center;justify-content:center;flex-shrink:0;">'+icon+'</div>'
+      +'<div style="flex:1;min-width:0;">'
+      +'<div style="font-size:12px;font-weight:500;color:var(--text);">'+action+(who?'<span style="color:var(--text2);font-weight:400;"> · '+who+'</span>':'')+'</div>'
+      +'<div style="font-size:11px;font-weight:500;color:'+color+';margin-top:2px;">'+(date||'')+'</div>'
+      +'</div></div>';
+  }
+  const rejByMin={};
+  timeline.forEach((t,i)=>{
+    if(t.type!=='rejected') return;
+    const m=(t.date||'').slice(0,16);
+    if(!rejByMin[m]) rejByMin[m]={...t,_idx:i,count:1}; else rejByMin[m].count++;
+  });
+  const deduped=[
+    ...timeline.filter(t=>t.type!=='rejected').map((t,i)=>({...t,_idx:i})),
+    ...Object.values(rejByMin)
+  ].sort((a,b)=>(a._idx??999)-(b._idx??999));
+  let rows='';
+  if(reportDate) rows+=rvPill(
+    '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#0f6e56" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>',
+    'Report submitted',reportDate,'#f0fdf4','var(--success)'
+  );
+  deduped.forEach(e=>{
+    if(e.type==='store_submitted'||e.type==='resubmitted') rows+=rvPill(
+      '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#0f6e56" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>',
+      'Response submitted · '+(e.by||'Store'),e.date||'','#f0fdf4','var(--success)'
+    );
+    else if(e.type==='rejected') rows+=rvPill(
+      '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#A32D2D" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>',
+      'Rejected'+(e.count>1?' ('+e.count+' items)':'')+' · '+(e.by||'Checker'),e.date||'','#fef2f2','var(--danger)'
+    );
+    else if(e.type==='resubmit_requested') rows+=rvPill(
+      '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#854F0B" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>',
+      'Notified to resubmit · '+(e.by||'Checker'),e.date||'','#fffbeb','var(--warn)'
+    );
+    else if(e.type==='accepted') rows+=rvPill(
+      '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#0f6e56" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>',
+      'Accepted · '+(e.by||'Checker'),e.date||'','#f0fdf4','var(--success)'
+    );
+    else if(e.type==='verified') rows+=rvPill(
+      '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#0f6e56" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>',
+      'Verified · '+(e.by||'Checker'),e.date||'','#f0fdf4','var(--success)'
+    );
+  });
+  if(!rows) return '';
+  return '<div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);padding:14px 16px;margin-top:14px;">'
+    +'<div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">Response history</div>'
+    +rows+'</div>';
+}
+
 function openReviewerReport(rid){
   DB.reviewerReportId=rid;
   DB.editingFeedbackId=null; // reset editing state
@@ -4155,7 +4213,8 @@ function openReviewerReport(rid){
             </div>
           </div>
         </div>`;
-      }).join('')}`;
+      }).join('')}
+      ${buildReviewerHistory(myFb, r.date||'')}`;
     formDiv.style.display='none';
   } else if(myFb && _hasRejectedItems) {
     // Has feedback but some items were rejected — show form pre-filled, rejected items cleared
