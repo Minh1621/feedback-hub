@@ -3185,16 +3185,20 @@ function viewFeedback(rid){
       // Deduplicate rejected entries — group by same minute = one rejection round
       const rejectedByMinute={};
       timeline.filter(t=>t.type==='rejected').forEach(t=>{
-        const minute=(t.date||'').slice(0,16); // "YYYY-MM-DD HH:MM"
-        if(!rejectedByMinute[minute]){
-          rejectedByMinute[minute]={...t, count:1};
-        } else {
-          rejectedByMinute[minute].count++;
-        }
+        const minute=(t.date||'').slice(0,16);
+        if(!rejectedByMinute[minute]){ rejectedByMinute[minute]={...t, count:1}; }
+        else { rejectedByMinute[minute].count++; }
+      });
+      // Deduplicate resubmitted entries by minute
+      const resubmittedByMinute={};
+      timeline.filter(t=>t.type==='resubmitted').forEach(t=>{
+        const minute=(t.date||'').slice(0,16);
+        if(!resubmittedByMinute[minute]) resubmittedByMinute[minute]={...t};
       });
       const deduplicatedTimeline=[
-        ...timeline.filter(t=>t.type!=='rejected'),
-        ...Object.values(rejectedByMinute)
+        ...timeline.filter(t=>t.type!=='rejected'&&t.type!=='resubmitted'),
+        ...Object.values(rejectedByMinute),
+        ...Object.values(resubmittedByMinute)
       ];
       // Build all entries chronologically
       // Use first_submitted entry from timeline if available (has time)
@@ -4213,7 +4217,7 @@ function renderItemForms(r, brandColor){
     <div style="background:var(--bg2);border:1.5px solid ${_isRejected?'var(--danger)':'var(--border)'};border-radius:var(--rl);margin-bottom:10px;overflow:hidden;">
       ${_isRejected ? `
       <!-- Rejection timeline — all rounds visible -->
-      <div style="background:var(--alert-danger-bg);border-bottom:1px solid var(--alert-danger-border);padding:10px 14px;">
+      <div id="rv_rej_banner_${i}" style="background:var(--alert-danger-bg);border-bottom:1px solid var(--alert-danger-border);padding:10px 14px;">
         ${(_itFb._allRemarks||[]).map((rm,rmi)=>`
         <div style="margin-bottom:8px;">
           <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
@@ -4340,6 +4344,9 @@ function refreshReviewerItemStatus(idx){
   } else {
     lbl.textContent='Tap to respond'; lbl.style.color='var(--text3)';
   }
+  // Hide rejection banner once reviewer has added a response
+  const banner=document.getElementById('rv_rej_banner_'+idx);
+  if(banner) banner.style.display=hasContent?'none':'';
   // Keep text button highlighted if note present
   const btn=document.getElementById('rvtextbtn_'+idx);
   if(btn&&it.note.trim()){
@@ -4508,7 +4515,7 @@ async function submitReviewerFeedback(){
   if(existing){
     // UPDATE existing feedback — preserve adminRemarks and resubmit timestamp
     const _preservedRemarks = DB._resubmitAdminRemarks || existing.adminRemarks || {};
-    const _resubmitAt = new Date().toISOString().slice(0,10);
+    const _resubmitAt = new Date().toISOString().slice(0,10)+' '+new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
     // Add resubmit event to timeline
     if(!Array.isArray(existing.timeline)) existing.timeline=[];
     existing.timeline.push({type:'resubmitted', date:_resubmitAt, by: DB.reviewerStoreName||''});
