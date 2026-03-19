@@ -755,9 +755,121 @@ label{
     <button class="btn btn-ghost btn-sm" onclick="doAdminRefresh()" title="Refresh" style="padding:6px 8px;flex-shrink:0;">
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
     </button>
+    <button class="btn btn-sm" onclick="openAdminProfile()" title="Edit profile" style="padding:6px 12px;flex-shrink:0;">Edit</button>
   </div>
   <div class="content">
     <div id="settings-content"></div>
+    <div style="height:40px;"></div>
+  </div>
+</div>
+
+
+<!-- ======= ADMIN PROFILE EDIT ======= -->
+<div class="screen" id="s-admin-profile">
+  <div class="topbar">
+    <button class="back-btn" onclick="applySettingsToUI();goTo('s-settings')">&#8592; Back</button>
+    <div class="topbar-title">Edit profile</div>
+    <button class="btn btn-ghost btn-sm" onclick="goHome()" title="Home" style="padding:6px 8px;flex-shrink:0;">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+    </button>
+  </div>
+  <div class="content">
+
+    <!-- Profile picture -->
+    <div style="display:flex;flex-direction:column;align-items:center;margin-bottom:24px;">
+      <div id="admin-avatar-preview" onclick="document.getElementById('admin-avatar-input').click()"
+        style="width:80px;height:80px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;border:3px solid var(--border);position:relative;">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        <div style="position:absolute;bottom:0;right:0;width:24px;height:24px;background:var(--accent);border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid var(--bg);">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+        </div>
+      </div>
+      <input type="file" id="admin-avatar-input" accept="image/*" style="display:none;" onchange="onAdminAvatarPick(this)"/>
+      <div style="font-size:12px;color:var(--text3);margin-top:8px;">Tap to change photo</div>
+    </div>
+
+    <!-- Account info -->
+    <div class="sec-label" style="margin-bottom:10px;">Account info</div>
+    <div class="field"><label>Display name</label><input type="text" id="admin-display-name" placeholder="e.g. Admin"/></div>
+    <div class="field"><label>Position / Title</label><input type="text" id="admin-position" placeholder="e.g. QC Manager"/></div>
+    <div class="field"><label>Company / Organization</label><input type="text" id="admin-company" placeholder="e.g. Eatmeout Group"/></div>
+
+    <!-- Login credentials -->
+    <div style="border-top:1px solid var(--border);margin:4px 0 16px;"></div>
+    <div class="sec-label" style="margin-bottom:10px;">Login credentials</div>
+    <div class="field"><label>Username</label>
+      <div style="display:flex;gap:8px;">
+        <input type="text" id="admin-username-edit" placeholder="Username" style="flex:1;"/>
+        <button class="btn btn-sm" onclick="doSaveAdminUsername()">Save</button>
+      </div>
+    </div>
+    <div class="field"><label>New password</label>
+      <input type="password" id="admin-new-pass" placeholder="New password"/>
+    </div>
+    <div class="field"><label>Confirm password</label>
+      <input type="password" id="admin-confirm-pass" placeholder="Confirm new password"/>
+    </div>
+    <div id="admin-profile-msg" style="margin-bottom:10px;"></div>
+    <button class="btn btn-primary btn-full" onclick="doSaveAdminProfile()">Save profile</button>
+
+    <!-- Card appearance -->
+    <div style="border-top:1px solid var(--border);margin:20px 0 16px;"></div>
+    <div class="sec-label" style="margin-bottom:10px;">Card appearance</div>
+    <div class="card" style="margin-bottom:14px;">
+      <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;">Preview</div>
+      <div id="admin-card-preview" style="border-radius:12px;overflow:hidden;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,.1);"></div>
+      <div style="margin-bottom:14px;">
+        <div style="font-size:13px;font-weight:600;margin-bottom:8px;">Cover background</div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <input type="color" id="admin-cover-color" value="#7c6fff" oninput="adminUpdatePreview()" style="width:44px;height:36px;border:1.5px solid var(--border);border-radius:8px;cursor:pointer;padding:2px;background:var(--bg2);"/>
+          <input type="text" id="admin-cover-color-hex" value="#7c6fff" placeholder="#7c6fff" maxlength="7" style="width:90px;font-size:13px;font-family:'DM Mono',monospace;" oninput="adminSyncColorFromHex('cover')"/>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;">
+            <div onclick="adminSetCoverColor('#7c6fff')" style="width:22px;height:22px;border-radius:50%;background:#7c6fff;cursor:pointer;border:2px solid transparent;"></div>
+            <div onclick="adminSetCoverColor('#6366f1')" style="width:22px;height:22px;border-radius:50%;background:#6366f1;cursor:pointer;border:2px solid transparent;"></div>
+            <div onclick="adminSetCoverColor('#ec4899')" style="width:22px;height:22px;border-radius:50%;background:#ec4899;cursor:pointer;border:2px solid transparent;"></div>
+            <div onclick="adminSetCoverColor('#f59e0b')" style="width:22px;height:22px;border-radius:50%;background:#f59e0b;cursor:pointer;border:2px solid transparent;"></div>
+            <div onclick="adminSetCoverColor('#10b981')" style="width:22px;height:22px;border-radius:50%;background:#10b981;cursor:pointer;border:2px solid transparent;"></div>
+            <div onclick="adminSetCoverColor('#3b82f6')" style="width:22px;height:22px;border-radius:50%;background:#3b82f6;cursor:pointer;border:2px solid transparent;"></div>
+            <div onclick="adminSetCoverColor('#8b5cf6')" style="width:22px;height:22px;border-radius:50%;background:#8b5cf6;cursor:pointer;border:2px solid transparent;"></div>
+            <div onclick="adminSetCoverColor('#ef4444')" style="width:22px;height:22px;border-radius:50%;background:#ef4444;cursor:pointer;border:2px solid transparent;"></div>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+        <div>
+          <div style="font-size:13px;font-weight:600;">Gradient effect</div>
+          <div style="font-size:12px;color:var(--text2);">Blend color to light purple</div>
+        </div>
+        <input type="checkbox" id="admin-cover-gradient" checked onchange="adminUpdatePreview()" style="width:18px;height:18px;accent-color:var(--accent);cursor:pointer;"/>
+      </div>
+      <div style="margin-bottom:14px;">
+        <div style="font-size:13px;font-weight:600;margin-bottom:8px;">Company name color</div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <input type="color" id="admin-company-color" value="#7c6fff" oninput="adminUpdatePreview()" style="width:44px;height:36px;border:1.5px solid var(--border);border-radius:8px;cursor:pointer;padding:2px;background:var(--bg2);"/>
+          <input type="text" id="admin-company-color-hex" value="#7c6fff" placeholder="#7c6fff" maxlength="7" style="width:90px;font-size:13px;font-family:'DM Mono',monospace;" oninput="adminSyncColorFromHex('company')"/>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;">
+            <div onclick="adminSetCompanyColor('#7c6fff')" style="width:22px;height:22px;border-radius:50%;background:#7c6fff;cursor:pointer;border:2px solid transparent;"></div>
+            <div onclick="adminSetCompanyColor('#6366f1')" style="width:22px;height:22px;border-radius:50%;background:#6366f1;cursor:pointer;border:2px solid transparent;"></div>
+            <div onclick="adminSetCompanyColor('#ec4899')" style="width:22px;height:22px;border-radius:50%;background:#ec4899;cursor:pointer;border:2px solid transparent;"></div>
+            <div onclick="adminSetCompanyColor('#f59e0b')" style="width:22px;height:22px;border-radius:50%;background:#f59e0b;cursor:pointer;border:2px solid transparent;"></div>
+            <div onclick="adminSetCompanyColor('#10b981')" style="width:22px;height:22px;border-radius:50%;background:#10b981;cursor:pointer;border:2px solid transparent;"></div>
+            <div onclick="adminSetCompanyColor('#3b82f6')" style="width:22px;height:22px;border-radius:50%;background:#3b82f6;cursor:pointer;border:2px solid transparent;"></div>
+            <div onclick="adminSetCompanyColor('#ef4444')" style="width:22px;height:22px;border-radius:50%;background:#ef4444;cursor:pointer;border:2px solid transparent;"></div>
+            <div onclick="adminSetCompanyColor('#111')" style="width:22px;height:22px;border-radius:50%;background:#111;cursor:pointer;border:2px solid transparent;"></div>
+          </div>
+        </div>
+      </div>
+      <div style="margin-bottom:4px;">
+        <div style="font-size:13px;font-weight:600;margin-bottom:8px;">Profile photo position</div>
+        <div style="display:flex;gap:8px;">
+          <button id="admin-pos-left" class="btn btn-primary btn-sm" style="flex:1;" onclick="adminSetPhotoPos('left')">Left</button>
+          <button id="admin-pos-center" class="btn btn-sm" style="flex:1;" onclick="adminSetPhotoPos('center')">Center</button>
+          <button id="admin-pos-right" class="btn btn-sm" style="flex:1;" onclick="adminSetPhotoPos('right')">Right</button>
+        </div>
+      </div>
+    </div>
+
+    <button class="btn btn-primary btn-full" style="margin-bottom:24px;" onclick="doSaveAdminProfile()">Save</button>
     <div style="height:40px;"></div>
   </div>
 </div>
@@ -5315,8 +5427,25 @@ function loadSettingsFromStorage(){
 function applySettingsToUI(){
   // Render settings-content if empty (notifications + account sections)
   const sc=document.getElementById('settings-content');
+  loadAdminProfile();
   if(sc && !sc.querySelector('#notif-toggle')){
+    const _adminInitials=(ADMIN_CREDS?.username||'A').slice(0,2).toUpperCase();
+    const _adminAvatarHtml=ADMIN_PROFILE?.avatar
+      ?`<img src="${ADMIN_PROFILE.avatar}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"/>`
+      :`<span style="font-size:22px;font-weight:700;color:#fff;">${_adminInitials}</span>`;
     sc.innerHTML=`
+    <!-- ADMIN PROFILE CARD -->
+    <div class="card" style="margin-bottom:16px;">
+      <div style="display:flex;align-items:center;gap:14px;">
+        <div style="width:56px;height:56px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;border:2px solid var(--border);">${_adminAvatarHtml}</div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:15px;font-weight:600;color:var(--text);">${ADMIN_PROFILE?.displayName||ADMIN_CREDS?.username||'Admin'}</div>
+          <div style="font-size:12px;color:var(--text2);margin-top:2px;">${ADMIN_PROFILE?.position||'Administrator'}</div>
+          ${ADMIN_PROFILE?.company?`<div style="font-size:11px;color:var(--accent);margin-top:1px;">${ADMIN_PROFILE.company}</div>`:''}
+        </div>
+        <button class="btn btn-sm" onclick="openAdminProfile()" style="flex-shrink:0;">Edit profile</button>
+      </div>
+    </div>
     <!-- APPEARANCE -->
     <div style="margin-bottom:16px;">
       <div class="sec-label">Appearance</div>
@@ -5506,6 +5635,191 @@ async function doChangeAdminPass(){
   const cpEl=document.getElementById('confirm-admin-pass'); if(cpEl) cpEl.value='';
   setTimeout(()=>{ msg.innerHTML=''; },2000);
 }
+// ── ADMIN PROFILE ────────────────────────────────────────────────
+let ADMIN_PROFILE = {
+  avatar: null,
+  displayName: '',
+  position: '',
+  company: '',
+  coverColor: '#7c6fff',
+  coverGradient: true,
+  companyColor: '#7c6fff',
+  photoPos: 'left'
+};
+
+function loadAdminProfile(){
+  try{
+    const raw=localStorage.getItem('fh_admin_profile');
+    if(raw) ADMIN_PROFILE={...ADMIN_PROFILE,...JSON.parse(raw)};
+  }catch(e){}
+}
+
+function saveAdminProfileToStorage(){
+  try{ localStorage.setItem('fh_admin_profile',JSON.stringify(ADMIN_PROFILE)); }catch(e){}
+}
+
+function openAdminProfile(){
+  loadAdminProfile();
+  // Populate fields
+  const dn=document.getElementById('admin-display-name');
+  const pos=document.getElementById('admin-position');
+  const comp=document.getElementById('admin-company');
+  const uname=document.getElementById('admin-username-edit');
+  if(dn) dn.value=ADMIN_PROFILE.displayName||ADMIN_CREDS?.username||'';
+  if(pos) pos.value=ADMIN_PROFILE.position||'';
+  if(comp) comp.value=ADMIN_PROFILE.company||'';
+  if(uname) uname.value=ADMIN_CREDS?.username||'';
+  // Avatar
+  const av=document.getElementById('admin-avatar-preview');
+  if(av){
+    if(ADMIN_PROFILE.avatar){
+      av.innerHTML=`<img src="${ADMIN_PROFILE.avatar}" style="width:100%;height:100%;object-fit:cover;"/>`;
+    } else {
+      const initials=(ADMIN_CREDS?.username||'A').slice(0,2).toUpperCase();
+      av.innerHTML=`<span style="font-size:26px;font-weight:700;color:#fff;">${initials}</span>
+        <div style="position:absolute;bottom:0;right:0;width:24px;height:24px;background:var(--accent);border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid var(--bg);">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+        </div>`;
+    }
+  }
+  // Card appearance
+  const cc=document.getElementById('admin-cover-color');
+  const cch=document.getElementById('admin-cover-color-hex');
+  const cg=document.getElementById('admin-cover-gradient');
+  const comc=document.getElementById('admin-company-color');
+  const comch=document.getElementById('admin-company-color-hex');
+  if(cc){ cc.value=ADMIN_PROFILE.coverColor||'#7c6fff'; }
+  if(cch){ cch.value=ADMIN_PROFILE.coverColor||'#7c6fff'; }
+  if(cg){ cg.checked=ADMIN_PROFILE.coverGradient!==false; }
+  if(comc){ comc.value=ADMIN_PROFILE.companyColor||'#7c6fff'; }
+  if(comch){ comch.value=ADMIN_PROFILE.companyColor||'#7c6fff'; }
+  adminSetPhotoPos(ADMIN_PROFILE.photoPos||'left', true);
+  adminUpdatePreview();
+  const msg=document.getElementById('admin-profile-msg');
+  if(msg) msg.innerHTML='';
+  goTo('s-admin-profile');
+}
+
+function onAdminAvatarPick(input){
+  if(!input.files[0]) return;
+  compressImage(input.files[0],400,0.85,data=>{
+    ADMIN_PROFILE.avatar=data;
+    const av=document.getElementById('admin-avatar-preview');
+    if(av) av.innerHTML=`<img src="${data}" style="width:100%;height:100%;object-fit:cover;"/>
+      <div style="position:absolute;bottom:0;right:0;width:24px;height:24px;background:var(--accent);border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid var(--bg);">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+      </div>`;
+    adminUpdatePreview();
+  });
+}
+
+function adminSetCoverColor(c){
+  const cc=document.getElementById('admin-cover-color');
+  const cch=document.getElementById('admin-cover-color-hex');
+  if(cc) cc.value=c;
+  if(cch) cch.value=c;
+  ADMIN_PROFILE.coverColor=c;
+  adminUpdatePreview();
+}
+
+function adminSetCompanyColor(c){
+  const comc=document.getElementById('admin-company-color');
+  const comch=document.getElementById('admin-company-color-hex');
+  if(comc) comc.value=c;
+  if(comch) comch.value=c;
+  ADMIN_PROFILE.companyColor=c;
+  adminUpdatePreview();
+}
+
+function adminSyncColorFromHex(type){
+  const hex=document.getElementById('admin-'+(type==='cover'?'cover':'company')+'-color-hex')?.value||'';
+  if(/^#[0-9a-fA-F]{6}$/.test(hex)){
+    if(type==='cover') adminSetCoverColor(hex);
+    else adminSetCompanyColor(hex);
+  }
+}
+
+function adminSetPhotoPos(pos, silent){
+  ADMIN_PROFILE.photoPos=pos;
+  ['left','center','right'].forEach(p=>{
+    const btn=document.getElementById('admin-pos-'+p);
+    if(!btn) return;
+    if(p===pos){ btn.classList.add('btn-primary'); btn.classList.remove('btn-sm'); btn.className='btn btn-primary btn-sm'; }
+    else { btn.className='btn btn-sm'; }
+  });
+  if(!silent) adminUpdatePreview();
+}
+
+function adminUpdatePreview(){
+  const preview=document.getElementById('admin-card-preview');
+  if(!preview) return;
+  const name=document.getElementById('admin-display-name')?.value||ADMIN_CREDS?.username||'Admin';
+  const pos=document.getElementById('admin-position')?.value||'Administrator';
+  const comp=document.getElementById('admin-company')?.value||'';
+  const coverColor=document.getElementById('admin-cover-color')?.value||ADMIN_PROFILE.coverColor||'#7c6fff';
+  const useGrad=document.getElementById('admin-cover-gradient')?.checked!==false;
+  const compColor=document.getElementById('admin-company-color')?.value||ADMIN_PROFILE.companyColor||'#7c6fff';
+  const photoPos=ADMIN_PROFILE.photoPos||'left';
+  const avatar=ADMIN_PROFILE.avatar;
+  const initials=(name||'A').split(' ').map(w=>w[0]).filter(Boolean).slice(0,2).join('').toUpperCase();
+  const bgStyle=useGrad?`background:linear-gradient(135deg,${coverColor} 0%,#c4b5fd 100%)`:`background:${coverColor}`;
+  const avatarHtml=avatar
+    ?`<img src="${avatar}" style="width:54px;height:54px;border-radius:50%;object-fit:cover;border:3px solid #fff;"/>`
+    :`<div style="width:54px;height:54px;border-radius:50%;background:${coverColor};border:3px solid #fff;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#fff;">${initials}</div>`;
+  const alignStyle=photoPos==='center'?'text-align:center;':photoPos==='right'?'text-align:right;display:flex;flex-direction:row-reverse;':'';
+  preview.innerHTML=`
+    <div style="${bgStyle};height:80px;"></div>
+    <div style="background:var(--bg2);padding:0 14px 14px;position:relative;">
+      <div style="margin-top:-27px;display:flex;align-items:flex-end;gap:0;${photoPos==='center'?'justify-content:center;':photoPos==='right'?'justify-content:flex-end;':''}">${avatarHtml}</div>
+      <div style="margin-top:8px;${photoPos==='center'?'text-align:center;':photoPos==='right'?'text-align:right;':''}">
+        <div style="font-size:15px;font-weight:700;color:var(--text);">${name||'Admin'}</div>
+        ${pos?`<div style="font-size:12px;color:var(--text2);">${pos}</div>`:''}
+        ${comp?`<div style="font-size:12px;font-weight:600;color:${compColor};">${comp}</div>`:''}
+      </div>
+    </div>`;
+}
+
+async function doSaveAdminUsername(){
+  const newUser=(document.getElementById('admin-username-edit')?.value||'').trim();
+  const msg=document.getElementById('admin-profile-msg');
+  if(!newUser){ if(msg) msg.innerHTML='<div class="alert alert-danger">Enter a username.</div>'; return; }
+  ADMIN_CREDS.username=newUser;
+  await api('PUT','/api/admin/password',{username:newUser,password:ADMIN_CREDS.password});
+  if(msg) msg.innerHTML='<div class="alert alert-success">✓ Username updated</div>';
+  setTimeout(()=>{ if(msg) msg.innerHTML=''; },2000);
+}
+
+async function doSaveAdminProfile(){
+  const name=(document.getElementById('admin-display-name')?.value||'').trim();
+  const pos=(document.getElementById('admin-position')?.value||'').trim();
+  const comp=(document.getElementById('admin-company')?.value||'').trim();
+  const np=(document.getElementById('admin-new-pass')?.value||'').trim();
+  const cp=(document.getElementById('admin-confirm-pass')?.value||'').trim();
+  const msg=document.getElementById('admin-profile-msg');
+  // Save profile data
+  ADMIN_PROFILE.displayName=name||ADMIN_CREDS?.username||'Admin';
+  ADMIN_PROFILE.position=pos;
+  ADMIN_PROFILE.company=comp;
+  ADMIN_PROFILE.coverColor=document.getElementById('admin-cover-color')?.value||'#7c6fff';
+  ADMIN_PROFILE.coverGradient=document.getElementById('admin-cover-gradient')?.checked!==false;
+  ADMIN_PROFILE.companyColor=document.getElementById('admin-company-color')?.value||'#7c6fff';
+  saveAdminProfileToStorage();
+  // Save password if provided
+  if(np){
+    if(np!==cp){ if(msg) msg.innerHTML='<div class="alert alert-danger">Passwords do not match.</div>'; return; }
+    if(np.length<4){ if(msg) msg.innerHTML='<div class="alert alert-danger">Password must be at least 4 characters.</div>'; return; }
+    ADMIN_CREDS.password=np;
+    await api('PUT','/api/admin/password',{username:ADMIN_CREDS.username,password:np});
+    const npEl=document.getElementById('admin-new-pass'); if(npEl) npEl.value='';
+    const cpEl=document.getElementById('admin-confirm-pass'); if(cpEl) cpEl.value='';
+  }
+  if(msg) msg.innerHTML='<div class="alert alert-success">✓ Profile saved</div>';
+  showToast('✓ Profile saved');
+  setTimeout(()=>{ if(msg) msg.innerHTML=''; },2000);
+  // Update settings-content avatar display
+  applySettingsToUI();
+}
+
 function exportStaffCredentials(){ openStaffExportVerify(); }
 function exportStoreCredentials(){ openExportVerify(); }
 
