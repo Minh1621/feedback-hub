@@ -4863,7 +4863,14 @@ async function doEditReport(){
     editedAfterResponse:r.editedAfterResponse||false
   });
   msg.innerHTML='<div class="alert alert-success">✓ Report updated!</div>';
-  setTimeout(()=>{ msg.innerHTML=''; viewFeedback(_editingReportId); },1200);
+  setTimeout(async ()=>{
+    msg.innerHTML='';
+    // Reload fresh data from server so all cards show updated percentages
+    await loadAllData();
+    renderBrandReports();
+    renderHome();
+    viewFeedback(_editingReportId);
+  },1200);
 }
 
 function confirmRemoveReport(rid){
