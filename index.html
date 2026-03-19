@@ -2038,7 +2038,7 @@ function doLogout(){
       homeTopbar.innerHTML=`
         <div id="home-app-logo" style="width:32px;height:32px;border-radius:8px;overflow:hidden;flex-shrink:0;"></div>
         <div style="font-size:15px;font-weight:800;color:var(--text);letter-spacing:-.01em;flex:1;">FEEDBACK HUB</div>
-        <button class="btn btn-sm btn-primary" onclick="openAddBrand()">+ Brand</button>
+
         <button class="btn btn-ghost btn-sm" onclick="applySettingsToUI();goTo('s-settings')" style="padding:6px 8px;">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
         </button>
@@ -2443,7 +2443,7 @@ function renderHome(_brandsOverride){
   // ── Brands pane ──────────────────────────────────────────────────────────
   const brandsPane = document.getElementById('home-pane-brands');
   if(brandsPane){
-    if(!_brands.length){ brandsPane.innerHTML='<div class="empty">No brands yet</div>'; }
+    if(!_brands.length){ brandsPane.innerHTML='<div class="empty">No brands yet</div>'+(DB.role==='admin'?`<div style="display:flex;justify-content:center;margin-top:8px;"><div onclick="openAddBrand()" style="width:48px;height:48px;border-radius:50%;background:var(--bg2);border:1.5px dashed var(--border2);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--accent);" ><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div></div>`:''); }
     else brandsPane.innerHTML=_brands.map(b=>{
       let nComplete=0, nChecking=0, nPending=0;
       b.reports.forEach(r=>{
@@ -2480,7 +2480,12 @@ function renderHome(_brandsOverride){
           <div style="font-size:10px;color:var(--text3);margin-top:4px;">${nComplete}/${b.reports.length} reports complete</div>
         </div>
       </div>`;
-    }).join('');
+    }).join('')
+    + (DB.role==='admin' ? `<div style="display:flex;justify-content:center;margin-top:8px;margin-bottom:4px;">
+        <div onclick="openAddBrand()" style="width:48px;height:48px;border-radius:50%;background:var(--bg2);border:1.5px dashed var(--border2);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--accent);transition:all .15s;" onmouseover="this.style.background='#EEEDFE';this.style.borderColor='var(--accent)'" onmouseout="this.style.background='var(--bg2)';this.style.borderColor='var(--border2)'">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        </div>
+      </div>` : '');
   }
 
   // ── Stores pane ──────────────────────────────────────────────────────────
@@ -5363,6 +5368,11 @@ async function loadAdminSettingsFromDB(){
       SETTINGS.notifBrandComplete=data.notif_brand_complete!==false;
       SETTINGS.notifStoreComplete=data.notif_store_complete!==false;
       saveSettingsToStorage();
+      // Load profile from DB — overrides localStorage so it syncs across devices
+      if(data.profile){
+        ADMIN_PROFILE={...ADMIN_PROFILE,...data.profile};
+        saveAdminProfileToStorage();
+      }
       // Apply to UI immediately so it shows on any device
       applySettingsToUI();
     }
@@ -5572,26 +5582,7 @@ function applySettingsToUI(){
         </button>
       </div>
     </div>
-    <!-- ADMIN ACCOUNT -->
-    <div style="margin-bottom:16px;">
-      <div class="sec-label">Admin account</div>
-      <div class="card">
-        <div class="sec-label" style="margin-bottom:8px;">Change admin username</div>
-        <div style="display:flex;gap:8px;margin-bottom:16px;">
-          <input type="text" id="new-admin-username" placeholder="New username" style="flex:1;"/>
-          <button class="btn btn-sm" onclick="doChangeUsername()">Save</button>
-        </div>
-        <div style="border-top:1px solid var(--border);padding-top:14px;">
-          <div class="sec-label" style="margin-bottom:8px;">Change admin password</div>
-          <input type="password" id="new-admin-pass" placeholder="New password" style="margin-bottom:10px;"/>
-          <div class="sec-label" style="margin-bottom:8px;">Confirm password</div>
-          <input type="password" id="confirm-admin-pass" placeholder="Confirm new password" style="margin-bottom:12px;"/>
-          <button class="btn btn-primary btn-full" onclick="doChangeAdminPass()">Update password</button>
-          <div id="admin-pass-msg" style="margin-top:8px;"></div>
-          <div id="username-msg" style="margin-top:4px;"></div>
-        </div>
-      </div>
-    </div>
+
     <!-- CONTACT SUPPORT -->
     <div style="margin-bottom:16px;">
       <a href="https://t.me/lmig25" target="_blank" style="display:flex;align-items:center;justify-content:center;gap:8px;padding:14px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);text-decoration:none;">
@@ -5835,6 +5826,29 @@ async function doSaveAdminProfile(){
   ADMIN_PROFILE.coverGradient=document.getElementById('admin-cover-gradient')?.checked!==false;
   ADMIN_PROFILE.companyColor=document.getElementById('admin-company-color')?.value||'#7c6fff';
   saveAdminProfileToStorage();
+  // Save profile to DB so it syncs across devices
+  try{
+    const profileForDB={
+      displayName:ADMIN_PROFILE.displayName,
+      position:ADMIN_PROFILE.position,
+      company:ADMIN_PROFILE.company,
+      avatar:ADMIN_PROFILE.avatar||null,
+      coverColor:ADMIN_PROFILE.coverColor,
+      coverGradient:ADMIN_PROFILE.coverGradient,
+      companyColor:ADMIN_PROFILE.companyColor,
+      photoPos:ADMIN_PROFILE.photoPos
+    };
+    await api('PUT','/api/admin/password',{
+      username:ADMIN_CREDS.username,
+      password:ADMIN_CREDS.password,
+      notif_email:SETTINGS.notifEmail||'',
+      notif_on_submit:SETTINGS.notifOnSubmit,
+      notif_all_done:SETTINGS.notifAllDone,
+      notif_brand_complete:SETTINGS.notifBrandComplete,
+      notif_store_complete:SETTINGS.notifStoreComplete,
+      profile:profileForDB
+    });
+  }catch(e){ console.error('Profile DB save error:',e); }
   // Save password if provided
   if(np){
     if(np!==cp){ if(msg) msg.innerHTML='<div class="alert alert-danger">Passwords do not match.</div>'; return; }
