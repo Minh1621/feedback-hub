@@ -5885,9 +5885,12 @@ async function testAdminEmail(){
   if(!email||!email.includes('@')){ if(msg) msg.innerHTML='<div class="alert alert-danger">Enter an email first.</div>'; return; }
   if(msg) msg.innerHTML='<div class="alert alert-success">⏳ Sending test...</div>';
   const result=await api('POST','/api/test-email',{email});
-  if(result.ok){ if(msg) msg.innerHTML='<div class="alert alert-success">✓ Test email sent!</div>'; }
-  else { if(msg) msg.innerHTML='<div class="alert alert-danger">Failed: '+(result.error||'unknown error')+'</div>'; }
-  setTimeout(()=>{ if(msg) msg.innerHTML=''; },3000);
+  if(result.ok){
+    if(msg) msg.innerHTML='<div class="alert alert-success">✓ Test email sent to liming6069@gmail.com — check your inbox!</div>';
+  } else {
+    if(msg) msg.innerHTML='<div class="alert alert-danger">Failed: '+(result.error||'unknown error')+'</div>';
+  }
+  setTimeout(()=>{ if(msg) msg.innerHTML=''; },5000);
 }
 function toggleNotif(){
   SETTINGS.notifEnabled=!SETTINGS.notifEnabled;
