@@ -626,7 +626,7 @@ label{
       <div id="pdf-drop-zone" style="border:2px dashed var(--border2);border-radius:var(--rl);padding:20px;text-align:center;cursor:pointer;" onclick="document.getElementById('pdf-input').click()">
         <div style="font-size:13px;color:var(--text2);" id="pdf-lbl">Tap to select PDF</div>
       </div>
-      <input type="file" id="pdf-input" accept=".pdf" style="display:none;" onchange="onPdfPick(this)"/>
+      <input type="file" id="pdf-input" accept=".pdf" style="display:none;" onchange="onPDFPick(this)"/>
     </div>
     <div style="margin-bottom:16px;">
       <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:6px;">Send to stores</label>
@@ -2930,6 +2930,9 @@ function onPDFPick(input){
   DB.pendingUploadURL=URL.createObjectURL(file);
   const lbl=document.getElementById('pdf-lbl');
   if(lbl){ lbl.textContent=file.name; lbl.style.color='var(--success)'; }
+  // Show upload button now that PDF is selected
+  const uploadBtn=document.getElementById('upload-report-btn');
+  if(uploadBtn) uploadBtn.style.display='';
 }
 
 /* ===== REFERENCE ITEMS ===== */
@@ -2953,7 +2956,7 @@ function removeRefItem(id){
 function renderRefItems(){
   const el=document.getElementById('ref-items-list');
   const uploadBtn=document.getElementById('upload-report-btn');
-  if(uploadBtn) uploadBtn.style.display=DB.pendingRefs.length?'':'none';
+  if(uploadBtn) uploadBtn.style.display=(DB.pendingRefs.length||DB.pendingUpload)?'':'none';
   if(!DB.pendingRefs.length){ el.innerHTML='<div style="font-size:13px;color:var(--text3);text-align:center;padding:12px 0;">No items yet</div>'; return; }
   el.innerHTML=DB.pendingRefs.map((ref,i)=>{
     const isOpen = ref._open !== false;
