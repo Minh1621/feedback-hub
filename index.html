@@ -6605,6 +6605,9 @@ function openAddStaff(){
   document.getElementById('sf-username').value='';
   document.getElementById('sf-password').value='';
   document.getElementById('sf-pass-label').textContent='Password';
+  // Always reset the password reveal element
+  const showEl=document.getElementById('sf-pass-show-inline');
+  if(showEl){ showEl.style.display='none'; showEl.innerHTML=''; }
   document.getElementById('sf-avatar-preview').innerHTML=`<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><div style="position:absolute;bottom:0;right:0;width:24px;height:24px;background:var(--accent);border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid var(--bg);"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></div>`;
   document.getElementById('sf-perm-view').checked=true;
   document.getElementById('sf-brand-all').checked=true;
@@ -6640,6 +6643,9 @@ function openEditStaff(id){
   document.getElementById('sf-username').value=s.username||'';
   document.getElementById('sf-password').value='';
   document.getElementById('sf-pass-label').textContent='New password (leave blank to keep)';
+  // ── Always reset the password reveal element ──────────────────────────
+  const showEl=document.getElementById('sf-pass-show-inline');
+  if(showEl){ showEl.style.display='none'; showEl.innerHTML=''; }
   // Avatar
   const prev=document.getElementById('sf-avatar-preview');
   if(s.avatar){
