@@ -2342,7 +2342,7 @@ function renderHome(_brandsOverride){
 
   // ── Admin profile card (only for admin role) ──────────────────────────────
   if(DB.role==='admin'){
-    loadAdminProfile();
+    loadAdminProfile(); // load from localStorage first for instant render
     let adminCard=document.getElementById('admin-home-card');
     if(!adminCard){
       adminCard=document.createElement('div');
@@ -2365,6 +2365,25 @@ function renderHome(_brandsOverride){
       phone:'', location:'',
       avatar:_ap.avatar||null, initials:_aInitials,
       coverBg:_coverBg, companyColor:_compColor, avatarLeft:_avatarLeft
+    });
+    // Also sync from DB in background — updates card on other devices
+    syncAdminProfileFromDB().then(()=>{
+      const _ap2=ADMIN_PROFILE||{};
+      const _uname2=ADMIN_CREDS?.username||'Admin';
+      const _aName2=_ap2.displayName||_uname2;
+      const _aInitials2=_aName2.split(' ').map(w=>w[0]).filter(Boolean).slice(0,2).join('').toUpperCase();
+      const _coverColor2=_ap2.coverColor||'#7c6fff';
+      const _coverBg2=(_ap2.coverGradient!==false)?`linear-gradient(135deg,${_coverColor2} 0%,#a78bfa 100%)`:_coverColor2;
+      const _compColor2=_ap2.companyColor||'#7c6fff';
+      const _avatarPos2=_ap2.photoPos||'left';
+      const _avatarLeft2=_avatarPos2==='center'?'50%':_avatarPos2==='right'?'calc(100% - 44px)':'16px';
+      const card=document.getElementById('admin-home-card');
+      if(card) card.innerHTML=buildStaffCardHTML({
+        name:_aName2, position:_ap2.position||'Administrator', company:_ap2.company||'',
+        phone:'', location:'',
+        avatar:_ap2.avatar||null, initials:_aInitials2,
+        coverBg:_coverBg2, companyColor:_compColor2, avatarLeft:_avatarLeft2
+      });
     });
   }
 
@@ -5374,30 +5393,7 @@ function showToast(msg){
 
 /* ===== DB SETTINGS SYNC ===== */
 async function loadAdminSettingsFromDB(){
-  try{
-    const data=await api('GET','/api/admin/settings');
-    if(data && !data.error){
-      // DB is source of truth — always overwrite local settings
-      SETTINGS.notifEnabled=!!(data.notif_email);
-      SETTINGS.notifEmail=data.notif_email||'';
-      SETTINGS.notifOnSubmit=data.notif_on_submit!==false;
-      SETTINGS.notifAllDone=data.notif_all_done!==false;
-      SETTINGS.notifBrandComplete=data.notif_brand_complete!==false;
-      SETTINGS.notifStoreComplete=data.notif_store_complete!==false;
-      saveSettingsToStorage();
-      // Load profile from DB — overrides localStorage so it syncs across devices
-      if(data.profile){
-        ADMIN_PROFILE={...ADMIN_PROFILE,...data.profile};
-        saveAdminProfileToStorage();
-      }
-      // Apply to UI immediately so it shows on any device
-      applySettingsToUI();
-    }
-  }catch(e){
-    // Fallback to localStorage if DB fails
-    loadSettingsFromStorage();
-    applySettingsToUI();
-  }
+  await syncAdminProfileFromDB();
 }
 
 async function loadRvSettingsFromDB(storeId){
@@ -5691,6 +5687,36 @@ function loadAdminProfile(){
     const raw=localStorage.getItem('fh_admin_profile');
     if(raw) ADMIN_PROFILE={...ADMIN_PROFILE,...JSON.parse(raw)};
   }catch(e){}
+}
+
+// Load profile from DB and sync to localStorage — called after login/restore
+async function syncAdminProfileFromDB(){
+  try{
+    const data=await api('GET','/api/admin/settings');
+    if(data && !data.error){
+      // Update ADMIN_CREDS from DB
+      if(data.username) ADMIN_CREDS.username=data.username;
+      // Update profile from DB — DB always wins over localStorage
+      if(data.profile){
+        ADMIN_PROFILE={...ADMIN_PROFILE,...data.profile};
+        saveAdminProfileToStorage();
+      }
+      // Update notif settings
+      SETTINGS.notifEnabled=!!(data.notif_email);
+      SETTINGS.notifEmail=data.notif_email||'';
+      SETTINGS.notifOnSubmit=data.notif_on_submit!==false;
+      SETTINGS.notifAllDone=data.notif_all_done!==false;
+      SETTINGS.notifBrandComplete=data.notif_brand_complete!==false;
+      SETTINGS.notifStoreComplete=data.notif_store_complete!==false;
+      saveSettingsToStorage();
+      applySettingsToUI();
+    }
+  }catch(e){
+    // Fallback to localStorage
+    loadAdminProfile();
+    loadSettingsFromStorage();
+    applySettingsToUI();
+  }
 }
 
 function saveAdminProfileToStorage(){
