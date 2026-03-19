@@ -1853,31 +1853,27 @@ async function loadAllData(reviewerStoreId=null){
   try {
     await api('POST', '/api/init');
     if(reviewerStoreId){
-      // Lightweight load — only this store's data
       const data = await api('GET', `/api/reviewer-data/${reviewerStoreId}`);
       if(data && data.brand){
-        // Merge into DB.brands — replace or add this brand
         const idx = DB.brands.findIndex(b => b.id === data.brand.id);
         if(idx !== -1) DB.brands[idx] = data.brand;
         else DB.brands = [data.brand];
       } else if(data && data.error){
-        showToast('⚠️ Failed to load data — ' + data.error);
+        console.error('Reviewer data error:', data.error);
       }
     } else {
-      // Full load for admin/staff
       const data = await api('GET', '/api/brands');
       if(Array.isArray(data)){
         DB.brands = data;
       } else if(data && data.error){
         console.error('Load error:', data.error);
-        showToast('⚠️ Failed to load data — check connection');
       }
     }
   } catch(e) {
     console.error('Load error:', e);
-    showToast('⚠️ Failed to load data — check connection');
+  } finally {
+    showLoadingOverlay(false);
   }
-  showLoadingOverlay(false);
 }
 
 function showLoadingOverlay(show){
@@ -1988,47 +1984,63 @@ async function doLogin(){
   if(!u||!p){ errEl.style.display='block'; errEl.textContent='Please enter username and password.'; return; }
   const btn=document.querySelector('#s-login .btn-primary');
   if(btn){ btn.textContent='Signing in...'; btn.disabled=true; }
-  const result=await api('POST','/api/login',{username:u, password:p, device_id:getDeviceId()});
-  if(btn){ btn.textContent='Sign in →'; btn.disabled=false; }
-  if(result.error){
-    errEl.style.display='block'; errEl.textContent=result.error||'Incorrect username or password.'; return;
-  }
-  await loadAllData(result.role==='reviewer' ? result.store_id : null);
-  DB.role=result.role;
-  if(result.role==='admin'){
-    saveSession('admin', null, null);
-    // Load notif settings from DB into local SETTINGS
-    await loadAdminSettingsFromDB();
-    renderHome(); renderHomeAppLogo(); goTo('s-home');
-  } else if(result.role==='staff'){
-    DB.role='staff';
-    DB.staffData=result;
-    saveSession('staff', null, null, result);
-    // Apply staff's saved theme preference
-    try{
-      const prefs=JSON.parse(result.notif_prefs||'null');
-      if(prefs?.theme){
-        localStorage.setItem('fh_theme', prefs.theme);
-        document.documentElement.setAttribute('data-theme', prefs.theme);
-      }
-    }catch(e){}
-    renderStaffHome();
-    goTo('s-home');
-  } else if(result.role==='reviewer'){
-    DB.reviewerBrandId=result.brand_id; DB.reviewerStoreId=result.store_id;
-    saveSession('reviewer', result.brand_id, result.store_id);
-    // Immediately save notif_email from login response to localStorage
-    if(result.notif_email){
-      const sid=result.store_id;
-      const raw=localStorage.getItem('fh_rv_settings_'+sid);
-      let local={};
-      try{ local=raw?JSON.parse(raw):{} }catch(e){}
-      local.notifEnabled=true;
-      local.notifEmail=result.notif_email;
-      localStorage.setItem('fh_rv_settings_'+sid, JSON.stringify(local));
+
+  try {
+    const result=await api('POST','/api/login',{username:u, password:p, device_id:getDeviceId()});
+    if(btn){ btn.textContent='Sign in →'; btn.disabled=false; }
+
+    if(!result || result.error){
+      errEl.style.display='block';
+      errEl.textContent=result?.error||'Incorrect username or password.';
+      return;
     }
-    await loadRvSettingsFromDB(result.store_id);
-    renderReviewerHome(); goTo('s-reviewer-home');
+
+    await loadAllData(result.role==='reviewer' ? result.store_id : null);
+    DB.role=result.role;
+
+    if(result.role==='admin'){
+      saveSession('admin', null, null);
+      await loadAdminSettingsFromDB();
+      renderHome(); renderHomeAppLogo(); goTo('s-home');
+    } else if(result.role==='staff'){
+      DB.role='staff';
+      DB.staffData=result;
+      saveSession('staff', null, null, result);
+      try{
+        const prefs=JSON.parse(result.notif_prefs||'null');
+        if(prefs?.theme){
+          localStorage.setItem('fh_theme', prefs.theme);
+          document.documentElement.setAttribute('data-theme', prefs.theme);
+        }
+      }catch(e){}
+      renderStaffHome();
+      goTo('s-home');
+    } else if(result.role==='reviewer'){
+      DB.reviewerBrandId=result.brand_id;
+      DB.reviewerStoreId=result.store_id;
+      saveSession('reviewer', result.brand_id, result.store_id);
+      if(result.notif_email){
+        const sid=result.store_id;
+        try{
+          const raw=localStorage.getItem('fh_rv_settings_'+sid);
+          let local=raw?JSON.parse(raw):{};
+          local.notifEnabled=true;
+          local.notifEmail=result.notif_email;
+          localStorage.setItem('fh_rv_settings_'+sid, JSON.stringify(local));
+        }catch(e){}
+      }
+      await loadRvSettingsFromDB(result.store_id);
+      renderReviewerHome(); goTo('s-reviewer-home');
+    } else {
+      errEl.style.display='block';
+      errEl.textContent='Login failed — unknown role. Please try again.';
+    }
+  } catch(e) {
+    if(btn){ btn.textContent='Sign in →'; btn.disabled=false; }
+    showLoadingOverlay(false);
+    errEl.style.display='block';
+    errEl.textContent='Login error: ' + e.message;
+    console.error('Login error:', e);
   }
 }
 function doLogout(){
