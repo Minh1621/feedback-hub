@@ -607,9 +607,9 @@ label{
     </div>
     <div class="field"><label>Logo text <span style="font-size:11px;color:var(--text3);">(shown when no logo)</span></label><input id="nb-logo-text" type="text" placeholder="e.g. GG" maxlength="4"/></div>
     <div id="brand-form-msg"></div>
-    <button class="btn btn-primary btn-full" id="brand-form-btn" onclick="doSaveBrand()">Create brand</button>
+    <button class="btn btn-primary btn-full" id="brand-form-btn" onclick="saveBrand()">Create brand</button>
     <div style="height:20px;"></div>
-    <button id="brand-delete-btn" class="btn btn-danger btn-full" style="display:none;" onclick="confirmDeleteBrand()">Delete brand</button>
+    <button id="brand-delete-btn" class="btn btn-danger btn-full" style="display:none;" onclick="deleteBrand()">Delete brand</button>
     <div style="height:40px;"></div>
   </div>
 </div>
@@ -3895,6 +3895,7 @@ function onLogoPick(input){
 function openAddBrand(){
   DB.editingBrandId=null; DB.pickedColor=BRAND_COLORS[0]; DB.pendingLogo=null;
   document.getElementById('nb-name').value='';
+  const lt=document.getElementById('nb-logo-text'); if(lt) lt.value='';
   document.getElementById('add-brand-title').textContent='New brand';
   document.getElementById('brand-form-btn').textContent='Create brand';
   document.getElementById('brand-delete-btn').style.display='none';
@@ -3919,36 +3920,57 @@ function editBrand(){
 }
 async function saveBrand(){
   const name=document.getElementById('nb-name').value.trim();
+  const logoTextEl=document.getElementById('nb-logo-text');
+  const logoText=(logoTextEl&&logoTextEl.value.trim())||'';
   const msg=document.getElementById('brand-form-msg');
+  const btn=document.getElementById('brand-form-btn');
   if(!name){ msg.innerHTML='<div class="alert alert-danger">Please enter a brand name.</div>'; return; }
-  if(DB.editingBrandId){
-    const b=DB.brands.find(b=>b.id===DB.editingBrandId);
-    b.name=name; b.color=DB.pickedColor;
-    if(DB.pendingLogo) b.logo=DB.pendingLogo;
-    await api('PUT',`/api/brands/${b.id}`,{name:b.name,color:b.color,logo:b.logo||null,logoText:b.logoText||'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>'});
-    msg.innerHTML='<div class="alert alert-success">✓ Brand updated!</div>';
-    setTimeout(()=>{ msg.innerHTML=''; DB.currentBrandId=DB.editingBrandId; renderBrandHero(); document.getElementById('brand-topbar-title').textContent=name; renderHome(); goTo('s-brand'); },1200);
-  } else {
-    const newBrand={id:'b'+Date.now(),name,color:DB.pickedColor,logo:DB.pendingLogo||null,logoText:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>',stores:[],reports:[]};
-    DB.brands.push(newBrand);
-    await api('POST','/api/brands',newBrand);
-    msg.innerHTML='<div class="alert alert-success">✓ Brand created!</div>';
-    setTimeout(()=>{ msg.innerHTML=''; renderHome(); goTo('s-home'); },1200);
+  btn.disabled=true; btn.textContent='Saving...';
+  msg.innerHTML='';
+  try {
+    if(DB.editingBrandId){
+      const b=DB.brands.find(b=>b.id===DB.editingBrandId);
+      if(!b){ msg.innerHTML='<div class="alert alert-danger">Brand not found.</div>'; return; }
+      b.name=name; b.color=DB.pickedColor; b.logoText=logoText;
+      if(DB.pendingLogo) b.logo=DB.pendingLogo;
+      const res=await api('PUT',`/api/brands/${b.id}`,{name:b.name,color:b.color,logo:b.logo||null,logoText});
+      if(res&&res.error) throw new Error(res.error);
+      msg.innerHTML='<div class="alert alert-success">✓ Brand updated!</div>';
+      setTimeout(()=>{ msg.innerHTML=''; DB.currentBrandId=DB.editingBrandId; renderBrandHero(); document.getElementById('brand-topbar-title').textContent=name; renderHome(); goTo('s-brand'); },1200);
+    } else {
+      const newBrand={id:'b'+Date.now(),name,color:DB.pickedColor||'#7c6fff',logo:DB.pendingLogo||null,logoText,stores:[],reports:[]};
+      const res=await api('POST','/api/brands',{id:newBrand.id,name:newBrand.name,color:newBrand.color,logo:newBrand.logo,logoText:newBrand.logoText});
+      if(res&&res.error) throw new Error(res.error);
+      DB.brands.push(newBrand);
+      msg.innerHTML='<div class="alert alert-success">✓ Brand created!</div>';
+      setTimeout(()=>{ msg.innerHTML=''; renderHome(); goTo('s-home'); },1200);
+    }
+  } catch(e) {
+    msg.innerHTML='<div class="alert alert-danger">Failed: '+e.message+'</div>';
+  } finally {
+    btn.disabled=false;
+    btn.textContent=DB.editingBrandId?'Save changes':'Create brand';
   }
 }
+
 async function deleteBrand(){
-  if(DB.role==='staff'){ showToast('⚠️ You do not have permission to delete brands.'); return; }
+  if(DB.role==='staff'){ showToast('⚠️ No permission to delete brands.'); return; }
   const b=brand();
-  if(!b) return;
+  if(!b){ showToast('Brand not found.'); return; }
   showGenericConfirm(
     `Delete "${b.name}"?\n\nAll stores, reports and feedback will be permanently removed.`,
     async ()=>{
-      await api('DELETE',`/api/brands/${b.id}`);
-      DB.brands=DB.brands.filter(br=>br.id!==DB.currentBrandId);
-      DB.currentBrandId=null;
-      renderHome();
-      goTo('s-home');
-      showToast('Brand deleted');
+      try {
+        const res=await api('DELETE',`/api/brands/${b.id}`);
+        if(res&&res.error) throw new Error(res.error);
+        DB.brands=DB.brands.filter(br=>br.id!==b.id);
+        DB.currentBrandId=null;
+        renderHome();
+        goTo('s-home');
+        showToast('✓ Brand deleted');
+      } catch(e) {
+        showToast('Failed to delete: '+e.message);
+      }
     }
   );
 }
