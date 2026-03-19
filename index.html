@@ -7545,18 +7545,17 @@ async function doStaffExportVerify(){
   const pass=document.getElementById('staff-export-pass').value;
   const msg=document.getElementById('staff-export-msg');
   if(!pass){ msg.innerHTML='<div class="alert alert-danger">Please enter password.</div>'; return; }
-  // Verify against DB
   const btn=document.querySelector('#staff-export-overlay .btn-primary');
   if(btn){ btn.textContent='Verifying...'; btn.disabled=true; }
   try{
     const check=await fetch(WORKER_URL+'/api/export-data',{
-      headers:{'X-Admin-Password':pass,'Content-Type':'application/json'}
+      headers:{'X-Admin-Password':pass}
     });
     const data=await check.json();
-    if(check.status===401||data.error){ 
+    if(!check.ok||data.error){
       msg.innerHTML='<div class="alert alert-danger">Incorrect password.</div>';
       if(btn){ btn.textContent='Download'; btn.disabled=false; }
-      return; 
+      return;
     }
     document.getElementById('staff-export-overlay').style.display='none';
     if(btn){ btn.textContent='Download'; btn.disabled=false; }
@@ -8043,20 +8042,21 @@ function closeExportVerify(){
 function doExportVerify(){
   const pass=document.getElementById('export-admin-pass').value;
   const msg=document.getElementById('export-verify-msg');
-  if(pass!==ADMIN_CREDS.password){
-    msg.innerHTML='<div class="alert alert-danger">Incorrect password. Please try again.</div>';
-    return;
-  }
+  if(!pass){ msg.innerHTML='<div class="alert alert-danger">Please enter password.</div>'; return; }
   closeExportVerify();
-  doExportData();
+  doExportData(pass);
 }
-async function doExportData(){
+async function doExportData(adminPass){
   showToast('Fetching data...');
   var nl = String.fromCharCode(10);
   var data;
   try {
-    data = await api('GET', '/api/export-data');
-    if(data.error) throw new Error(data.error);
+    // Must send X-Admin-Password header — worker requires it
+    const res = await fetch(WORKER_URL+'/api/export-data', {
+      headers: { 'X-Admin-Password': adminPass||ADMIN_CREDS.password }
+    });
+    data = await res.json();
+    if(!res.ok || data.error) throw new Error(data?.error||'Unauthorized — wrong password');
   } catch(e) {
     showToast('Export failed: ' + e.message);
     return;
