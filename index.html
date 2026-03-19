@@ -615,9 +615,9 @@ label{
     </div>
     <div class="field"><label>Logo text <span style="font-size:11px;color:var(--text3);">(shown when no logo)</span></label><input id="nb-logo-text" type="text" placeholder="e.g. GG" maxlength="4"/></div>
     <div id="brand-form-msg"></div>
-    <button class="btn btn-primary btn-full" id="brand-form-btn" onclick="doSaveBrand()">Create brand</button>
+    <button class="btn btn-primary btn-full" id="brand-form-btn" onclick="saveBrand()">Create brand</button>
     <div style="height:20px;"></div>
-    <button id="brand-delete-btn" class="btn btn-danger btn-full" style="display:none;" onclick="confirmDeleteBrand()">Delete brand</button>
+    <button id="brand-delete-btn" class="btn btn-danger btn-full" style="display:none;" onclick="deleteBrand()">Delete brand</button>
     <div style="height:40px;"></div>
   </div>
 </div>
@@ -638,8 +638,14 @@ label{
     <div class="field"><label>Description</label><textarea id="r-desc" placeholder="Optional notes for the store..." style="min-height:60px;"></textarea></div>
     <div style="margin-bottom:16px;">
       <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:6px;">PDF file *</label>
-      <div id="pdf-drop-zone" style="border:2px dashed var(--border2);border-radius:var(--rl);padding:20px;text-align:center;cursor:pointer;" onclick="document.getElementById('pdf-input').click()">
-        <div style="font-size:13px;color:var(--text2);" id="pdf-lbl">Tap to select PDF</div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div id="pdf-drop-zone" style="width:54px;height:54px;border-radius:12px;background:var(--bg3);border:1.5px dashed var(--border2);display:flex;align-items:center;justify-content:center;overflow:hidden;cursor:pointer;flex-shrink:0;" onclick="document.getElementById('pdf-input').click()">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+        </div>
+        <div style="flex:1;min-width:0;">
+          <button class="btn btn-sm" onclick="document.getElementById('pdf-input').click()" style="margin-bottom:4px;">Select PDF</button>
+          <div id="pdf-lbl" style="font-size:12px;color:var(--text3);margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">No file selected</div>
+        </div>
       </div>
       <input type="file" id="pdf-input" accept=".pdf" style="display:none;" onchange="onPDFPick(this)"/>
     </div>
@@ -3116,6 +3122,9 @@ function onPDFPick(input){
   DB.pendingUploadURL=URL.createObjectURL(file);
   const lbl=document.getElementById('pdf-lbl');
   if(lbl){ lbl.textContent=file.name; lbl.style.color='var(--success)'; }
+  // Update drop zone to show success state
+  const dz=document.getElementById('pdf-drop-zone');
+  if(dz){ dz.style.borderColor='var(--success)'; dz.style.background='var(--success)18'; dz.innerHTML=`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`; }
   // Show upload button only if ref items also exist
   const uploadBtn=document.getElementById('upload-report-btn');
   if(uploadBtn) uploadBtn.style.display=DB.pendingRefs.length?'':'none';
@@ -3272,7 +3281,9 @@ async function doUpload(){
   DB.pendingUpload=null; DB.pendingUploadURL=null; DB.pendingRefs=[];
   ['r-title','r-desc','r-store-name','r-checked-by','r-score'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
   const lbl=document.getElementById('pdf-lbl');
-  if(lbl){ lbl.textContent='Tap to select PDF'; lbl.style.color=''; }
+  if(lbl){ lbl.textContent='No file selected'; lbl.style.color=''; }
+  const dz=document.getElementById('pdf-drop-zone');
+  if(dz){ dz.style.borderColor=''; dz.style.background=''; dz.innerHTML=`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>`; }
   const dateEl=document.getElementById('r-inspect-date');
   if(dateEl) dateEl.value=new Date().toISOString().slice(0,10);
   renderRefItems();
@@ -3959,17 +3970,19 @@ function editBrand(){
 }
 async function saveBrand(){
   const name=document.getElementById('nb-name').value.trim();
+  const logoTextInput=document.getElementById('nb-logo-text');
+  const logoText=logoTextInput?logoTextInput.value.trim()||'🏷️':'🏷️';
   const msg=document.getElementById('brand-form-msg');
   if(!name){ msg.innerHTML='<div class="alert alert-danger">Please enter a brand name.</div>'; return; }
   if(DB.editingBrandId){
     const b=DB.brands.find(b=>b.id===DB.editingBrandId);
-    b.name=name; b.color=DB.pickedColor;
+    b.name=name; b.color=DB.pickedColor; b.logoText=logoText;
     if(DB.pendingLogo) b.logo=DB.pendingLogo;
-    await api('PUT',`/api/brands/${b.id}`,{name:b.name,color:b.color,logo:b.logo||null,logoText:b.logoText||'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>'});
+    await api('PUT',`/api/brands/${b.id}`,{name:b.name,color:b.color,logo:b.logo||null,logoText:b.logoText});
     msg.innerHTML='<div class="alert alert-success">✓ Brand updated!</div>';
     setTimeout(()=>{ msg.innerHTML=''; DB.currentBrandId=DB.editingBrandId; renderBrandHero(); document.getElementById('brand-topbar-title').textContent=name; renderHome(); goTo('s-brand'); },1200);
   } else {
-    const newBrand={id:'b'+Date.now(),name,color:DB.pickedColor,logo:DB.pendingLogo||null,logoText:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>',stores:[],reports:[]};
+    const newBrand={id:'b'+Date.now(),name,color:DB.pickedColor,logo:DB.pendingLogo||null,logoText,stores:[],reports:[]};
     DB.brands.push(newBrand);
     await api('POST','/api/brands',newBrand);
     msg.innerHTML='<div class="alert alert-success">✓ Brand created!</div>';
@@ -7531,29 +7544,60 @@ function openStaffExportVerify(){
 async function doStaffExportVerify(){
   const pass=document.getElementById('staff-export-pass').value;
   const msg=document.getElementById('staff-export-msg');
-  if(pass!==ADMIN_CREDS.password){ msg.innerHTML='<div class="alert alert-danger">Incorrect password.</div>'; return; }
-  document.getElementById('staff-export-overlay').style.display='none';
-  await doExportStaffData();
+  if(!pass){ msg.innerHTML='<div class="alert alert-danger">Please enter password.</div>'; return; }
+  // Verify against DB
+  const btn=document.querySelector('#staff-export-overlay .btn-primary');
+  if(btn){ btn.textContent='Verifying...'; btn.disabled=true; }
+  try{
+    const check=await fetch(WORKER_URL+'/api/export-data',{
+      headers:{'X-Admin-Password':pass,'Content-Type':'application/json'}
+    });
+    const data=await check.json();
+    if(check.status===401||data.error){ 
+      msg.innerHTML='<div class="alert alert-danger">Incorrect password.</div>';
+      if(btn){ btn.textContent='Download'; btn.disabled=false; }
+      return; 
+    }
+    document.getElementById('staff-export-overlay').style.display='none';
+    if(btn){ btn.textContent='Download'; btn.disabled=false; }
+    await doExportAllData(data);
+  }catch(e){
+    msg.innerHTML='<div class="alert alert-danger">Export failed: '+e.message+'</div>';
+    if(btn){ btn.textContent='Download'; btn.disabled=false; }
+  }
 }
 
-async function doExportStaffData(){
-  showToast('Fetching staff data...');
+async function doExportAllData(data){
   try {
-    const data=await api('GET','/api/export-data');
+    if(!data) {
+      // fallback fetch
+      const res=await fetch(WORKER_URL+'/api/export-data',{headers:{'X-Admin-Password':ADMIN_CREDS.password}});
+      data=await res.json();
+    }
     if(!data||data.error) throw new Error(data?.error||'Failed');
-    const nl=String.fromCharCode(10);
+    const nl='\n';
     const L=[];
-    const line=t=>L.push(t||'');
+    const line=t=>L.push(t===undefined?'':t);
     const now=new Date();
-    const dd=String(now.getDate()).padStart(2,'0'),mm=String(now.getMonth()+1).padStart(2,'0'),yyyy=now.getFullYear();
+    const dd=String(now.getDate()).padStart(2,'0'),mm2=String(now.getMonth()+1).padStart(2,'0'),yyyy=now.getFullYear();
     const hh=String(now.getHours()).padStart(2,'0'),min=String(now.getMinutes()).padStart(2,'0');
     line('========================================');
-    line('  FEEDBACK HUB — Staff Data Export');
-    line('  Exported : '+dd+'-'+mm+'-'+yyyy+' '+hh+':'+min);
+    line('  FEEDBACK HUB — Full Data Export');
+    line('  Exported : '+dd+'-'+mm2+'-'+yyyy+' '+hh+':'+min);
     line('  Admin    : '+(data.admin?.username||'-'));
     line('========================================');
     line();
-    line('  STAFF ACCOUNTS ('+((data.staff||[]).length)+')');
+
+    // Admin
+    line('  ADMIN ACCOUNT');
+    line('----------------------------------------');
+    line('  Username : '+(data.admin?.username||'-'));
+    line('  Password : '+(data.admin?.password||'-'));
+    line('  Notif email: '+(data.admin?.notif_email||'-'));
+    line();
+
+    // Staff
+    line('  STAFF ACCOUNTS ('+(data.staff||[]).length+')');
     line('----------------------------------------');
     (data.staff||[]).forEach((s,i)=>{
       line();
@@ -7561,28 +7605,49 @@ async function doExportStaffData(){
       line('  Position : '+s.position);
       line('  Company  : '+s.company);
       line('  Phone    : '+s.phone);
-      line('  Location : '+s.location);
       line('  Username : '+s.username);
       line('  Password : '+s.password);
       line('  Email    : '+s.notif_email);
       line('  Permission: '+s.permission);
-      const bids=JSON.parse(s.brand_ids||'[]');
-      line('  Brands   : '+(bids.length===0?'All brands':bids.join(', ')));
-      line('  Created  : '+s.created_at);
+    });
+    line();
+
+    // Brands & Stores
+    line('  BRANDS ('+( data.brands||[]).length+')');
+    line('----------------------------------------');
+    (data.brands||[]).forEach((b,i)=>{
+      line();
+      line('  Brand #'+(i+1)+': '+(b.name||b.id));
+      const bStores=(data.stores||[]).filter(s=>s.brand_id===b.id);
+      line('  Stores ('+bStores.length+'):');
+      bStores.forEach((s,j)=>{
+        line('    Store #'+(j+1)+': '+s.name);
+        line('    Username : '+s.username);
+        line('    Password : '+s.password);
+        line('    Phone    : '+(s.phone||'-'));
+        line('    Location : '+(s.location||'-'));
+        line('    Email    : '+(s.notif_email||s.email||'-'));
+      });
+      const bReports=(data.reports||[]).filter(r=>r.brand_id===b.id);
+      line('  Reports ('+bReports.length+'):');
+      bReports.forEach((r,j)=>{
+        const fbCount=(data.feedbacks||[]).filter(f=>f.report_id===r.id).length;
+        line('    Report #'+(j+1)+': '+r.title+' ('+r.date+') — '+fbCount+' responses');
+      });
     });
     line();
     line('========================================');
-    line('  END OF STAFF EXPORT');
+    line('  END OF EXPORT');
     line('========================================');
     const txt=L.join(nl);
     const blob=new Blob([txt],{type:'text/plain;charset=utf-8'});
     const url=URL.createObjectURL(blob);
     const a=document.createElement('a');
-    a.href=url; a.download='feedback-hub-staff-'+dd+'-'+mm+'-'+yyyy+'.txt';
+    a.href=url; a.download='feedback-hub-export-'+dd+'-'+mm2+'-'+yyyy+'.txt';
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    showToast('Staff data downloaded!');
-  } catch(e){ showToast('Export failed: '+e.message); }
+    showToast('✓ Data exported!');
+  }catch(e){ showToast('Export failed: '+e.message); }
 }
 
 
