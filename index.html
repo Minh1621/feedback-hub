@@ -2155,7 +2155,7 @@ function getReportStatus(r, stores){
     else if(responded>0){ anyDone=true; }
   }
   if(anyRejected) return 'checking';
-  if(allDone) return 'complete';   // all responded, no rejections → complete (pending verify)
+  if(allDone) return 'partial';    // all responded but NOT verified → partial (needs verify)
   if(anyDone) return 'partial';    // some responded, no rejections → partial
   return 'pending';
 }
@@ -2666,7 +2666,7 @@ function getStoreReportStatus(r,sid){
   // No fallback count — new refs always unresponded (responded stays 0 for new items)
   if(responded===0) return 'pending';
   if(responded<totalItems) return 'partial';
-  return 'complete';
+  return 'partial'; // all responded but not verified — admin must verify
 }
 
 function setStoreDetailFilter(f){
