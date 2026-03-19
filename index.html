@@ -4541,9 +4541,11 @@ async function submitReviewerFeedback(){
     // UPDATE existing feedback — preserve adminRemarks and resubmit timestamp
     const _preservedRemarks = DB._resubmitAdminRemarks || existing.adminRemarks || {};
     const _resubmitAt = new Date().toISOString().slice(0,10)+' '+new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
-    // Add resubmit event to timeline
     if(!Array.isArray(existing.timeline)) existing.timeline=[];
-    existing.timeline.push({type:'resubmitted', date:_resubmitAt, by: DB.reviewerStoreName||''});
+    // Determine if this is FIRST submission or RESUBMISSION after rejection
+    const _alreadySubmitted = existing.timeline.some(t=>t.type==='store_submitted'||t.type==='resubmitted');
+    const _timelineType = _alreadySubmitted ? 'resubmitted' : 'store_submitted';
+    existing.timeline.push({type:_timelineType, date:_resubmitAt, by: DB.reviewerStoreName||''});
     await api('PUT',`/api/feedbacks/${existing.id}`,{
       text:newText, itemFeedbacks:newItems, photos:[],
       adminRemarks:_preservedRemarks,
