@@ -5602,19 +5602,6 @@ function applySettingsToUI(){
     <!-- DATA EXPORT -->
     <div style="margin-bottom:16px;">
       <div class="sec-label">Data export</div>
-      <div class="card" style="margin-bottom:10px;">
-        <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          <div>
-            <div style="font-size:14px;font-weight:600;">Download staff accounts</div>
-            <div style="font-size:12px;color:var(--text2);margin-top:2px;">Export all staff usernames and passwords</div>
-          </div>
-        </div>
-        <button class="btn btn-primary btn-full" onclick="exportStaffCredentials()">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right:6px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Download staff data
-        </button>
-      </div>
       <div class="card">
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
@@ -7568,9 +7555,10 @@ async function doStaffExportVerify(){
   }
 }
 
+// ── STAFF EXPORT — Admin info + Staff accounts only ──────────────────────
 async function doExportAllData(data){
   try {
-    if(!data) {
+    if(!data){
       const res=await fetch(WORKER_URL+'/api/export-data',{
         method:'POST',
         headers:{'Content-Type':'application/json'},
@@ -7579,79 +7567,76 @@ async function doExportAllData(data){
       data=await res.json();
     }
     if(!data||data.error) throw new Error(data?.error||'Failed');
+
     const nl='\n';
     const L=[];
-    const line=t=>L.push(t===undefined?'':t);
+    const line=t=>L.push(t===undefined||t===null?'':String(t));
     const now=new Date();
-    const dd=String(now.getDate()).padStart(2,'0'),mm2=String(now.getMonth()+1).padStart(2,'0'),yyyy=now.getFullYear();
-    const hh=String(now.getHours()).padStart(2,'0'),min=String(now.getMinutes()).padStart(2,'0');
+    const dd=String(now.getDate()).padStart(2,'0');
+    const mm=String(now.getMonth()+1).padStart(2,'0');
+    const yyyy=now.getFullYear();
+    const hh=String(now.getHours()).padStart(2,'0');
+    const min=String(now.getMinutes()).padStart(2,'0');
+    const admin=data.admin||{};
+    const staff=data.staff||[];
+
     line('========================================');
-    line('  FEEDBACK HUB — Full Data Export');
-    line('  Exported : '+dd+'-'+mm2+'-'+yyyy+' '+hh+':'+min);
-    line('  Admin    : '+(data.admin?.username||'-'));
+    line('  FEEDBACK HUB — Staff Accounts Export');
+    line('  Exported : '+dd+'-'+mm+'-'+yyyy+' '+hh+':'+min);
     line('========================================');
     line();
 
-    // Admin
-    line('  ADMIN ACCOUNT');
-    line('----------------------------------------');
-    line('  Username : '+(data.admin?.username||'-'));
-    line('  Password : '+(data.admin?.password||'-'));
-    line('  Notif email: '+(data.admin?.notif_email||'-'));
+    // Admin account
+    line('[ ADMIN ACCOUNT ]');
+    line('  Username          : '+(admin.username||'-'));
+    line('  Password          : '+(admin.password||'-'));
+    line('  Notification email: '+(admin.notif_email||'-'));
+    line('  Notify on submit  : '+(admin.notif_on_submit?'Yes':'No'));
+    line('  Notify all done   : '+(admin.notif_all_done?'Yes':'No'));
+    line('  Notify brand done : '+(admin.notif_brand_complete?'Yes':'No'));
+    line('  Notify store done : '+(admin.notif_store_complete?'Yes':'No'));
     line();
 
-    // Staff
-    line('  STAFF ACCOUNTS ('+(data.staff||[]).length+')');
+    // Staff accounts
+    line('[ STAFF ACCOUNTS ] ('+staff.length+')');
     line('----------------------------------------');
-    (data.staff||[]).forEach((s,i)=>{
-      line();
-      line('  Staff #'+(i+1)+': '+s.name);
-      line('  Position : '+s.position);
-      line('  Company  : '+s.company);
-      line('  Phone    : '+s.phone);
-      line('  Username : '+s.username);
-      line('  Password : '+s.password);
-      line('  Email    : '+s.notif_email);
-      line('  Permission: '+s.permission);
-    });
-    line();
-
-    // Brands & Stores
-    line('  BRANDS ('+( data.brands||[]).length+')');
-    line('----------------------------------------');
-    (data.brands||[]).forEach((b,i)=>{
-      line();
-      line('  Brand #'+(i+1)+': '+(b.name||b.id));
-      const bStores=(data.stores||[]).filter(s=>s.brand_id===b.id);
-      line('  Stores ('+bStores.length+'):');
-      bStores.forEach((s,j)=>{
-        line('    Store #'+(j+1)+': '+s.name);
-        line('    Username : '+s.username);
-        line('    Password : '+s.password);
-        line('    Phone    : '+(s.phone||'-'));
-        line('    Location : '+(s.location||'-'));
-        line('    Email    : '+(s.notif_email||s.email||'-'));
+    if(!staff.length){
+      line('  No staff accounts found.');
+    } else {
+      staff.forEach((s,i)=>{
+        line();
+        line('  Staff #'+(i+1));
+        line('  Name      : '+(s.name||'-'));
+        line('  Position  : '+(s.position||'-'));
+        line('  Company   : '+(s.company||'-'));
+        line('  Phone     : '+(s.phone||'-'));
+        line('  Location  : '+(s.location||'-'));
+        line('  Username  : '+(s.username||'-'));
+        line('  Password  : '+(s.password||'-'));
+        line('  Email     : '+(s.notif_email||'-'));
+        line('  Permission: '+(s.permission||'-'));
+        line('  Created   : '+(s.created_at||'-'));
       });
-      const bReports=(data.reports||[]).filter(r=>r.brand_id===b.id);
-      line('  Reports ('+bReports.length+'):');
-      bReports.forEach((r,j)=>{
-        const fbCount=(data.feedbacks||[]).filter(f=>f.report_id===r.id).length;
-        line('    Report #'+(j+1)+': '+r.title+' ('+r.date+') — '+fbCount+' responses');
-      });
-    });
+    }
     line();
     line('========================================');
+    line('  Total staff: '+staff.length);
     line('  END OF EXPORT');
     line('========================================');
+
     const txt=L.join(nl);
     const blob=new Blob([txt],{type:'text/plain;charset=utf-8'});
     const url=URL.createObjectURL(blob);
     const a=document.createElement('a');
-    a.href=url; a.download='feedback-hub-export-'+dd+'-'+mm2+'-'+yyyy+'.txt';
+    a.href=url;
+    a.download='feedback-hub-staff-'+dd+'-'+mm+'-'+yyyy+'.txt';
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    showToast('✓ Data exported!');
-  }catch(e){ showToast('Export failed: '+e.message); }
+    showToast('✓ Staff data downloaded!');
+  }catch(e){
+    console.error('Staff export error:',e);
+    showToast('Export failed: '+e.message);
+  }
 }
 
 
@@ -8055,6 +8040,7 @@ function doExportVerify(){
 }
 async function doExportData(adminPass){
   showToast('Fetching data...');
+  var nl = '\n';
   var data;
   try {
     const res = await fetch(WORKER_URL+'/api/export-data', {
@@ -8064,10 +8050,77 @@ async function doExportData(adminPass){
     });
     data = await res.json();
     if(!res.ok || data.error) throw new Error(data?.error||'Incorrect password');
+  } catch(e) { showToast('Export failed: ' + e.message); return; }
+  try {
+    var now=new Date();
+    var dd=String(now.getDate()).padStart(2,'0');
+    var mm=String(now.getMonth()+1).padStart(2,'0');
+    var yyyy=now.getFullYear();
+    var hh=String(now.getHours()).padStart(2,'0');
+    var min=String(now.getMinutes()).padStart(2,'0');
+    var brands=data.brands||[];
+    var stores=data.stores||[];
+    var reports=data.reports||[];
+    var feedbacks=data.feedbacks||[];
+    var L=[];
+    var line=function(t){ L.push(t===undefined||t===null?'':String(t)); };
+    line('========================================');
+    line('  FEEDBACK HUB - Store / Reviewer Export');
+    line('  Exported : '+dd+'-'+mm+'-'+yyyy+' '+hh+':'+min);
+    line('  Brands: '+brands.length+' | Stores: '+stores.length);
+    line('========================================');
+    line();
+    brands.forEach(function(b,bi){
+      line('----------------------------------------');
+      line('  BRAND '+(bi+1)+': '+(b.name||'').toUpperCase());
+      line('----------------------------------------');
+      line();
+      var bStores=stores.filter(function(s){ return s.brand_id===b.id; });
+      if(!bStores.length){ line('  (no stores)'); line(); return; }
+      bStores.forEach(function(s,si){
+        line('  Store '+(si+1)+': '+s.name);
+        line('  ----------------------');
+        line('  Username          : '+(s.username||'-'));
+        line('  Password          : '+(s.password||'-'));
+        line('  Login email       : '+(s.email||'-'));
+        line('  Notification email: '+(s.notif_email||'-'));
+        line('  Phone             : '+(s.phone||'-'));
+        line('  Location          : '+(s.location||'-'));
+        line();
+        var sReports=reports.filter(function(r){
+          try{ var ids=JSON.parse(r.store_ids||'[]'); return r.brand_id===b.id&&(ids.length===0||ids.includes(s.id)||r.store_id===s.id); }catch(e2){ return r.brand_id===b.id; }
+        });
+        if(sReports.length){
+          line('  Reports ('+sReports.length+'):');
+          sReports.forEach(function(r,ri){
+            var fb=feedbacks.find(function(f){ return f.report_id===r.id&&f.store_id===s.id; });
+            line('    '+(ri+1)+'. '+(r.title||'-')+' ('+(r.date||'-')+')');
+            line('       Status: '+(fb?'Responded ('+(fb.date||'-')+')':'No response'));
+          });
+          line();
+        }
+      });
+      line();
+    });
+    line('========================================');
+    line('  Total brands : '+brands.length);
+    line('  Total stores : '+stores.length);
+    line('  Total reports: '+reports.length);
+    line('  END OF EXPORT');
+    line('========================================');
+    var txt=L.join(nl);
+    var blob=new Blob([txt],{type:'text/plain;charset=utf-8'});
+    var url=URL.createObjectURL(blob);
+    var a=document.createElement('a');
+    a.href=url; a.download='feedback-hub-stores-'+dd+'-'+mm+'-'+yyyy+'.txt';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast('Store data downloaded!');
   } catch(e) {
-    showToast('Export failed: ' + e.message);
-    return;
+    console.error('Store export error:',e);
+    showToast('Export failed: '+e.message);
   }
+}
 
   var now  = new Date(data.exported_at || Date.now());
   var dd   = String(now.getDate()).padStart(2,'0');
@@ -8078,23 +8131,32 @@ async function doExportData(adminPass){
   var dateStr = dd+'-'+mm+'-'+yyyy;
   var timeStr = hh+':'+min;
 
+  // Safety defaults
+  var admin    = data.admin    || {};
+  var brands   = data.brands   || [];
+  var stores   = data.stores   || [];
+  var reports  = data.reports  || [];
+  var feedbacks= data.feedbacks|| [];
+  var staff    = data.staff    || [];
+
+  try {
   var L = [];
-  var line = function(t){ L.push(t||''); };
+  var line = function(t){ L.push(t===undefined||t===null?'':String(t)); };
 
   line('========================================');
   line('  FEEDBACK HUB — Full Data Export');
   line('  Exported : ' + dateStr + ' ' + timeStr);
-  line('  Admin    : ' + data.admin.username);
+  line('  Admin    : ' + (admin.username||'-'));
   line('========================================');
   line();
 
   // ── ADMIN ACCOUNT ──────────────────────────────
   line('[ ADMIN ACCOUNT ]');
-  line('  Username          : ' + (data.admin.username || '-'));
-  line('  Password          : ' + (data.admin.password || '-'));
-  line('  Notification email: ' + (data.admin.notif_email || '-'));
-  line('  Notify on submit  : ' + (data.admin.notif_on_submit  ? 'Yes' : 'No'));
-  line('  Notify all done   : ' + (data.admin.notif_all_done   ? 'Yes' : 'No'));
+  line('  Username          : ' + (admin.username || '-'));
+  line('  Password          : ' + (admin.password || '-'));
+  line('  Notification email: ' + (admin.notif_email || '-'));
+  line('  Notify on submit  : ' + (admin.notif_on_submit  ? 'Yes' : 'No'));
+  line('  Notify all done   : ' + (admin.notif_all_done   ? 'Yes' : 'No'));
   line();
 
   // ── BRANDS & STORES ────────────────────────────
@@ -8103,14 +8165,14 @@ async function doExportData(adminPass){
   line('========================================');
   line();
 
-  data.brands.forEach(function(b, bi){
+  brands.forEach(function(b, bi){
     line('BRAND ' + (bi+1) + ': ' + (b.name || '').toUpperCase());
     line('  ID    : ' + b.id);
     line('  Color : ' + (b.color || '-'));
     line('  Created: ' + (b.created_at || '-'));
     line();
 
-    var brandStores = data.stores.filter(function(s){ return s.brand_id === b.id; });
+    var brandStores = stores.filter(function(s){ return s.brand_id === b.id; });
     if(!brandStores.length){
       line('  (no stores)');
       line();
@@ -8127,11 +8189,9 @@ async function doExportData(adminPass){
       line('  Notifications on  : ' + (s.notif_enabled  ? 'Yes' : 'No'));
       line('  Phone             : ' + (s.phone          || '-'));
       line('  Location          : ' + (s.location       || '-'));
-      line('  Color             : ' + (s.color          || '-'));
       line('  Created           : ' + (s.created_at     || '-'));
 
-      // Reports for this store
-      var storeReports = data.reports.filter(function(r){
+      var storeReports = reports.filter(function(r){
         return r.brand_id === b.id && (!r.store_id || r.store_id === s.id);
       });
       if(storeReports.length){
@@ -8139,8 +8199,7 @@ async function doExportData(adminPass){
         line('  Reports assigned (' + storeReports.length + '):');
         storeReports.forEach(function(r, ri){
           line('    ' + (ri+1) + '. ' + (r.title || '-') + ' (' + (r.date || r.created_at || '-') + ')');
-          // Check if store submitted feedback
-          var fb = data.feedbacks.find(function(f){ return f.report_id === r.id && f.store_id === s.id; });
+          var fb = feedbacks.find(function(f){ return f.report_id === r.id && f.store_id === s.id; });
           line('       Status: ' + (fb ? 'Responded on ' + (fb.date || fb.created_at || '-') : 'No response yet'));
         });
       }
@@ -8148,31 +8207,32 @@ async function doExportData(adminPass){
     });
   });
 
-  // ── SUMMARY ────────────────────────────────────
-  line('========================================');
-  // Staff section
-  if(data.staff&&data.staff.length){
+  // ── STAFF ──────────────────────────────────────
+  if(staff.length){
     line();
     line('========================================');
-    line('  STAFF ACCOUNTS ('+data.staff.length+')');
-    line('----------------------------------------');
-    data.staff.forEach((s,i)=>{
+    line('  STAFF ACCOUNTS ('+staff.length+')');
+    line('========================================');
+    staff.forEach(function(s,i){
       line();
       line('  Staff #'+(i+1)+': '+s.name);
-      line('  Position : '+s.position);
-      line('  Username : '+s.username);
-      line('  Password : '+s.password);
-      line('  Email    : '+s.notif_email);
+      line('  Position  : '+s.position);
+      line('  Username  : '+s.username);
+      line('  Password  : '+s.password);
+      line('  Email     : '+s.notif_email);
       line('  Permission: '+s.permission);
     });
   }
 
+  // ── SUMMARY ────────────────────────────────────
+  line();
+  line('========================================');
   line('  SUMMARY');
   line('========================================');
-  line('  Total brands  : ' + data.brands.length);
-  line('  Total stores  : ' + data.stores.length);
-  line('  Total reports : ' + data.reports.length);
-  line('  Total feedbacks: '+ data.feedbacks.length);
+  line('  Total brands  : ' + brands.length);
+  line('  Total stores  : ' + stores.length);
+  line('  Total reports : ' + reports.length);
+  line('  Total feedbacks: '+ feedbacks.length);
   line();
   line('========================================');
   line('  END OF EXPORT');
@@ -8188,7 +8248,11 @@ async function doExportData(adminPass){
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
-  showToast('Downloaded!');
+  showToast('✓ Downloaded!');
+  } catch(e) {
+    console.error('Export build error:', e);
+    showToast('Export failed: ' + e.message);
+  }
 }
 
 
