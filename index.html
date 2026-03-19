@@ -5937,11 +5937,10 @@ function adminUpdatePreview(){
     ?`<img src="${avatar}" style="width:54px;height:54px;border-radius:50%;object-fit:cover;border:3px solid #fff;"/>`
     :`<div style="width:54px;height:54px;border-radius:50%;background:${coverColor};border:3px solid #fff;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#fff;">${initials}</div>`;
   preview.innerHTML=`
-    <div style="border-radius:14px;overflow:visible;box-shadow:0 2px 10px rgba(0,0,0,.08);">
-      <div style="${coverStyle}height:70px;position:relative;overflow:hidden;border-radius:14px 14px 0 0;">${coverInner}
-        <div style="position:absolute;bottom:-26px;left:${photoPos==='center'?'50%':photoPos==='right'?'calc(100% - 44px)':'16px'};transform:${photoPos==='center'?'translateX(-50%)':'none'};width:54px;height:54px;border-radius:50%;overflow:hidden;border:3px solid var(--bg);background:var(--accent);display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.18);z-index:2;">
-          ${avatarHtml}
-        </div>
+    <div style="border-radius:14px;box-shadow:0 2px 10px rgba(0,0,0,.08);position:relative;">
+      <div style="${coverStyle}height:70px;position:relative;overflow:hidden;border-radius:14px 14px 0 0;">${coverInner}</div>
+      <div style="position:absolute;top:44px;left:${photoPos==='center'?'50%':photoPos==='right'?'calc(100% - 44px)':'16px'};transform:${photoPos==='center'?'translateX(-50%)':'none'};width:54px;height:54px;border-radius:50%;overflow:hidden;border:3px solid var(--bg);background:var(--accent);display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.18);z-index:10;">
+        ${avatarHtml}
       </div>
       <div style="background:var(--bg2);border:1px solid var(--border);border-top:none;padding:34px 16px 14px;border-radius:0 0 14px 14px;">
         <div style="font-size:17px;font-weight:800;line-height:1.2;${photoPos==='center'?'text-align:center;':photoPos==='right'?'text-align:right;':''}">${name||'Admin'}</div>
@@ -6467,12 +6466,16 @@ function buildStaffCardHTML({name,position,company,phone,location,avatar,initial
        ${coverOverlay!==false?'<div style="position:absolute;inset:0;background:rgba(0,0,0,.28);"></div>':''}`
     : '';
   const coverStyle = coverPhoto ? 'background:#000;' : `background:${coverBg};`;
-  return `<div style="border-radius:14px;overflow:visible;box-shadow:0 2px 10px rgba(0,0,0,.08);">
+  const avatarTransform = avatarLeft==='50%' ? 'translateX(-50%)' : 'none';
+  const avatarHtml = avatar
+    ? `<img src="${avatar}" style="width:100%;height:100%;object-fit:cover;"/>`
+    : `<span style="font-size:18px;font-weight:800;color:#fff;">${initials}</span>`;
+  return `<div style="border-radius:14px;box-shadow:0 2px 10px rgba(0,0,0,.08);position:relative;">
     <div style="${coverStyle}height:70px;position:relative;overflow:hidden;border-radius:14px 14px 0 0;">
       ${coverContent}
-      <div style="position:absolute;bottom:-26px;left:${avatarLeft};transform:${avatarLeft==='50%'?'translateX(-50%)':'none'};width:54px;height:54px;border-radius:50%;overflow:hidden;border:3px solid var(--bg);background:var(--accent);display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.18);z-index:2;">
-        ${avatar?`<img src="${avatar}" style="width:100%;height:100%;object-fit:cover;"/>`:`<span style="font-size:18px;font-weight:800;color:#fff;">${initials}</span>`}
-      </div>
+    </div>
+    <div style="position:absolute;top:44px;left:${avatarLeft};transform:${avatarTransform};width:54px;height:54px;border-radius:50%;overflow:hidden;border:3px solid var(--bg);background:var(--accent);display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.18);z-index:10;">
+      ${avatarHtml}
     </div>
     <div style="background:var(--bg2);border:1px solid var(--border);border-top:none;padding:34px 16px 14px;border-radius:0 0 14px 14px;">
       <div style="font-size:17px;font-weight:800;line-height:1.2;">${name}</div>
