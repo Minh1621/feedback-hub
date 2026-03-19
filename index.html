@@ -2226,40 +2226,43 @@ window.addEventListener('load', async ()=>{
 // Helper: get report completion status based on item responses
 // Status: 'pending' = no response, 'checking' = has rejected items, 'partial' = some responded (no rejects), 'complete' = all done OR manually verified
 function getReportStatus(r, stores){
-  // Manually verified by checker — always complete regardless
+  // Verified by checker → Complete
   if(r.verified) return 'complete';
-  const targetStores=r.storeId?stores.filter(s=>s.id===r.storeId):stores;
-  const totalItems=r.refs&&r.refs.length?r.refs.length:0;
-  if(!r.feedbacks.length) return 'pending';
-  const fbMap={};
-  r.feedbacks.forEach(f=>{ if(!fbMap[f.storeId]||f.date>=fbMap[f.storeId].date) fbMap[f.storeId]=f; });
-  let allDone=true, anyDone=false, anyRejected=false;
+
+  const targetStores = r.storeId ? stores.filter(s=>s.id===r.storeId) : stores;
+  if(!targetStores.length) return 'pending';
+
+  const totalItems = r.refs && r.refs.length ? r.refs.length : 0;
+
+  // Build latest feedback per store
+  const fbMap = {};
+  (r.feedbacks||[]).forEach(f=>{ if(!fbMap[f.storeId]||f.date>=fbMap[f.storeId].date) fbMap[f.storeId]=f; });
+
+  let storesResponded = 0;
+
   for(const s of targetStores){
-    const fb=fbMap[s.id];
-    if(!fb){ allDone=false; continue; }
-    let responded=0;
-    if(totalItems>0){
-      const refMap={};
+    const fb = fbMap[s.id];
+    if(!fb) continue; // no feedback from this store
+
+    let responded = 0;
+    if(totalItems > 0){
+      const refMap = {};
       (fb.itemFeedbacks||[]).forEach(it=>{ if(it.refId) refMap[it.refId]=it; });
       r.refs.forEach(ref=>{
-        const it=refMap[ref.id];
-        const hasContent=it&&(it.note||(it.photos&&it.photos.length));
-        const hasRemark=!!(fb.adminRemarks?.[ref.id+'_list']?.length||fb.adminRemarks?.[ref.id]);
-        if(hasRemark){ anyRejected=true; }
-        else if(hasContent){ responded++; }
+        const it = refMap[ref.id];
+        const hasContent = it && (it.note || (it.photos && it.photos.length));
+        if(hasContent) responded++;
       });
-      // No count-based fallback when refs exist — new refs always show as unresponded
     } else {
-      responded=(fb.itemFeedbacks||[]).filter(it=>it.note||(it.photos&&it.photos.length)).length + (fb.text?1:0);
+      responded = (fb.itemFeedbacks||[]).filter(it=>it.note||(it.photos&&it.photos.length)).length + (fb.text?1:0);
     }
-    if(responded===0&&!anyRejected){ allDone=false; }
-    else if(totalItems>0&&responded<totalItems){ allDone=false; anyDone=true; }
-    else if(responded>0){ anyDone=true; }
+    if(responded > 0) storesResponded++;
   }
-  if(anyRejected) return 'checking';
-  if(allDone) return 'checking';   // all responded, no rejections → checking (awaiting admin verify)
-  if(anyDone) return 'partial';    // some responded, no rejections → partial
-  return 'pending';
+
+  const total = targetStores.length;
+  if(storesResponded === 0)     return 'pending';   // no store responded
+  if(storesResponded < total)   return 'partial';   // some stores responded
+  return 'checking';                                 // all responded → wait for checker
 }
 
 // ── Verify report as complete ─────────────────────────────────────────────────
@@ -2625,33 +2628,31 @@ function renderBrandReports(){
   if(!b){ if(listEl) listEl.innerHTML='<div class="empty">No brand selected</div>'; return; }
   let list=[...b.reports];
 
-  // 0=pending, 1=partial, 2=checking, 3=complete
+  // 0=checking, 1=pending, 2=partial, 3=complete  (sort: checking first)
   function rStatusNum(r){
     const s=getReportStatus(r,b.stores);
-    // Sort priority: checking first, then pending, partial, complete
     return s==='checking'?0:s==='pending'?1:s==='partial'?2:3;
   }
 
   // Sort: checking → pending → partial → complete
   list.sort((a,bb)=> rStatusNum(a)-rStatusNum(bb));
 
-  if(DB.brandFilter==='pending')  list=list.filter(r=>rStatusNum(r)===0);
-  if(DB.brandFilter==='partial')  list=list.filter(r=>rStatusNum(r)===1);
-  if(DB.brandFilter==='checking') list=list.filter(r=>rStatusNum(r)===2);
-  if(DB.brandFilter==='done')     list=list.filter(r=>rStatusNum(r)===3);
+  if(DB.brandFilter==='pending')  list=list.filter(r=>getReportStatus(r,b.stores)==='pending');
+  if(DB.brandFilter==='partial')  list=list.filter(r=>getReportStatus(r,b.stores)==='partial');
+  if(DB.brandFilter==='checking') list=list.filter(r=>getReportStatus(r,b.stores)==='checking');
+  if(DB.brandFilter==='done')     list=list.filter(r=>getReportStatus(r,b.stores)==='complete');
 
   const el=document.getElementById('brand-report-list');
   if(!list.length){ el.innerHTML='<div class="empty">No reports</div>'; return; }
   el.innerHTML=list.map(r=>{
-    const _rStatus=rStatusNum(r);
+    const _st = getReportStatus(r, b.stores);
     const _archived=isReportArchived(r);
-    let bc, bt;
-    if(_archived)        { bc='badge-none';    bt='Archived'; }
-    else if(_rStatus===0){ bc='badge-none';    bt='Pending'; }
-    else if(_rStatus===1){ bc='badge-partial'; bt='Partial'; }
-    else if(_rStatus===2){ bc='badge-pending'; bt='Checking'; }
-    else                 { bc='badge-done';    bt='Complete'; }
-    const borderStyle=_rStatus===3?'border:2px solid var(--success);':_rStatus===2?'border:2px solid var(--warn);':_rStatus===1?'border:2px solid var(--accent);':'';
+    let bc, bt, borderStyle='';
+    if(_archived)           { bc='badge-none';    bt='Archived'; }
+    else if(_st==='pending'){ bc='badge-none';    bt='Pending';  }
+    else if(_st==='partial'){ bc='badge-partial'; bt='Partial';  borderStyle='border:2px solid var(--accent);'; }
+    else if(_st==='checking'){ bc='badge-pending'; bt='Checking'; borderStyle='border:2px solid var(--warn);'; }
+    else                    { bc='badge-done';    bt='Complete'; borderStyle='border:2px solid var(--success);'; }
     const targetStore=r.storeId?b.stores.find(s=>s.id===r.storeId):null;
     const _targetStoresCard=r.storeId?b.stores.filter(s=>s.id===r.storeId):b.stores;
     const _totalItemsCard=r.refs&&r.refs.length?r.refs.length:1;
