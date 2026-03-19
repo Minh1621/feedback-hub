@@ -2387,6 +2387,8 @@ function renderHome(_brandsOverride){
       adminCard=document.createElement('div');
       adminCard.id='admin-home-card';
       adminCard.style.marginBottom='16px';
+      adminCard.style.overflow='visible';
+      adminCard.style.paddingBottom='0';
       const statsEl=document.getElementById('global-stats');
       if(statsEl) statsEl.parentNode.insertBefore(adminCard, statsEl);
     }
@@ -6522,6 +6524,7 @@ function renderStaffHome(){
     staffCard=document.createElement('div');
     staffCard.id='staff-info-card';
     staffCard.style.marginBottom='16px';
+    staffCard.style.overflow='visible';
     const statsEl=document.getElementById('global-stats');
     if(statsEl) statsEl.parentNode.insertBefore(staffCard, statsEl);
   }
