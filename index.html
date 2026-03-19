@@ -6988,7 +6988,7 @@ async function deleteRemark(fbId, refId, storeId, rid, remarkIdx){
   const list=fb.adminRemarks[listKey]||[];
   list.splice(remarkIdx,1);
   fb.adminRemarks[listKey]=list;
-  // If no remarks left, clear legacy fields too
+  // If no remarks left, clear only the adminRemarks fields — NEVER touch itemFeedbacks or store response
   if(!list.length){
     fb.adminRemarks[refId]='';
     if(fb.adminRemarks._authors) delete fb.adminRemarks._authors[refId];
@@ -6999,8 +6999,12 @@ async function deleteRemark(fbId, refId, storeId, rid, remarkIdx){
     if(!fb.adminRemarks._authors) fb.adminRemarks._authors={};
     fb.adminRemarks._authors[refId]=`${last.author} · ${last.date}`;
   }
+  // Only update adminRemarks — preserve itemFeedbacks/text/photos completely
   await api('PUT',`/api/feedbacks/${fbId}`,{
-    text:fb.text, itemFeedbacks:fb.itemFeedbacks, photos:fb.photos||[], adminRemarks:fb.adminRemarks
+    text:fb.text,
+    itemFeedbacks:fb.itemFeedbacks,
+    photos:fb.photos||[],
+    adminRemarks:fb.adminRemarks
   });
   showToast('Remark deleted');
   renderBrandReports(); renderHome(); viewFeedback(rid);
