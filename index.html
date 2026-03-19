@@ -2007,6 +2007,8 @@ function doLogout(){
   DB.role=null;
   DB.brands=[];
   DB.currentBrandId=null;
+  const adminHomeCard=document.getElementById('admin-home-card');
+  if(adminHomeCard) adminHomeCard.remove();
   try{ localStorage.removeItem('fh_session'); }catch(e){}
 
   // ── Reset all screens to default state ───────────────────────────────────
@@ -2320,6 +2322,35 @@ function homeTab(tab){
 
 function renderHome(_brandsOverride){
   const _brands = _brandsOverride || DB.brands;
+
+  // ── Admin profile card (only for admin role) ──────────────────────────────
+  if(DB.role==='admin'){
+    loadAdminProfile();
+    let adminCard=document.getElementById('admin-home-card');
+    if(!adminCard){
+      adminCard=document.createElement('div');
+      adminCard.id='admin-home-card';
+      adminCard.style.marginBottom='16px';
+      const statsEl=document.getElementById('global-stats');
+      if(statsEl) statsEl.parentNode.insertBefore(adminCard, statsEl);
+    }
+    const _ap=ADMIN_PROFILE||{};
+    const _uname=ADMIN_CREDS?.username||'Admin';
+    const _aName=_ap.displayName||_uname;
+    const _aInitials=_aName.split(' ').map(w=>w[0]).filter(Boolean).slice(0,2).join('').toUpperCase();
+    const _coverColor=_ap.coverColor||'#7c6fff';
+    const _coverBg=(_ap.coverGradient!==false)?`linear-gradient(135deg,${_coverColor} 0%,#a78bfa 100%)`:_coverColor;
+    const _compColor=_ap.companyColor||'#7c6fff';
+    const _avatarPos=_ap.photoPos||'left';
+    const _avatarLeft=_avatarPos==='center'?'50%':_avatarPos==='right'?'calc(100% - 44px)':'16px';
+    adminCard.innerHTML=buildStaffCardHTML({
+      name:_aName, position:_ap.position||'Administrator', company:_ap.company||'',
+      phone:'', location:'',
+      avatar:_ap.avatar||null, initials:_aInitials,
+      coverBg:_coverBg, companyColor:_compColor, avatarLeft:_avatarLeft
+    });
+  }
+
   const tb=_brands.length;
   const tr=_brands.reduce((a,b)=>a+b.reports.length,0);
   const ts=_brands.reduce((a,b)=>a+b.stores.length,0);
