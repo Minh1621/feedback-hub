@@ -2576,7 +2576,7 @@ function renderBrandStores(){
     // count reports visible to this store
     const visibleReports=b.reports.filter(r=>reportVisibleToStore(r,s.id));
     const fbCount=visibleReports.filter(r=>r.feedbacks.find(f=>f.storeId===s.id)).length;
-    return `<div class="store-row card-click" style="cursor:pointer;" onclick="openStoreDetail('${s.id}','s-home')">
+    return `<div class="store-row card-click" style="cursor:pointer;" onclick="openStoreDetail('${s.id}','s-brand')">
       <div class="dot" style="background:${s.color};width:10px;height:10px;"></div>
       <div style="flex:1;min-width:0;">
         <div style="font-size:14px;font-weight:500;">${s.name}</div>
@@ -2593,9 +2593,10 @@ function sdBack(){
     goHome();
     setTimeout(()=>{ homeTab('stores'); }, 50);
   } else {
-    // Came from brand page — go back to brand stores tab
+    // Came from brand page — ensure brand renders then show stores tab
+    renderBrandHero();
     goTo('s-brand');
-    setTimeout(()=>{ brandTab('stores'); }, 50);
+    setTimeout(()=>{ brandTab('stores'); }, 30);
   }
 }
 function openStoreDetail(sid, fromScreen){
