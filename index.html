@@ -7472,48 +7472,64 @@ function openStaffExportVerify(){
 async function doStaffExportVerify(){
   const pass=document.getElementById('staff-export-pass').value;
   const msg=document.getElementById('staff-export-msg');
-  if(pass!==ADMIN_CREDS.password){ msg.innerHTML='<div class="alert alert-danger">Incorrect password.</div>'; return; }
-  document.getElementById('staff-export-overlay').style.display='none';
-  await doExportStaffData();
+  if(!pass){ msg.innerHTML='<div class="alert alert-danger">Enter admin password.</div>'; return; }
+  const btn=document.querySelector('#staff-export-overlay .btn-primary');
+  if(btn){ btn.textContent='Downloading...'; btn.disabled=true; }
+  try{
+    const res=await fetch(WORKER_URL+'/api/export-data',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({admin_password:pass})
+    });
+    const data=await res.json();
+    if(!res.ok||data.error){ msg.innerHTML='<div class="alert alert-danger">Incorrect password.</div>'; if(btn){btn.textContent='Download';btn.disabled=false;} return; }
+    document.getElementById('staff-export-overlay').style.display='none';
+    if(btn){btn.textContent='Download';btn.disabled=false;}
+    await doExportStaffData(data);
+  }catch(e){
+    msg.innerHTML='<div class="alert alert-danger">Export failed: '+e.message+'</div>';
+    if(btn){btn.textContent='Download';btn.disabled=false;}
+  }
 }
 
-async function doExportStaffData(){
-  showToast('Fetching staff data...');
-  try {
-    const data=await api('GET','/api/export-data');
-    if(!data||data.error) throw new Error(data?.error||'Failed');
-    const nl=String.fromCharCode(10);
-    const L=[];
-    const line=t=>L.push(t||'');
+async function doExportStaffData(data){
+  try{
+    if(!data||data.error) throw new Error(data?.error||'No data');
+    const nl='\n'; const L=[]; const line=t=>L.push(t===undefined||t===null?'':String(t));
     const now=new Date();
     const dd=String(now.getDate()).padStart(2,'0'),mm=String(now.getMonth()+1).padStart(2,'0'),yyyy=now.getFullYear();
     const hh=String(now.getHours()).padStart(2,'0'),min=String(now.getMinutes()).padStart(2,'0');
+    const admin=data.admin||{};
+    const staff=data.staff||[];
     line('========================================');
-    line('  FEEDBACK HUB — Staff Data Export');
+    line('  FEEDBACK HUB — Staff Accounts Export');
     line('  Exported : '+dd+'-'+mm+'-'+yyyy+' '+hh+':'+min);
-    line('  Admin    : '+(data.admin?.username||'-'));
     line('========================================');
     line();
-    line('  STAFF ACCOUNTS ('+((data.staff||[]).length)+')');
+    line('[ ADMIN ACCOUNT ]');
+    line('  Username          : '+(admin.username||'-'));
+    line('  Password          : '+(admin.password||'-'));
+    line('  Notification email: '+(admin.notif_email||'-'));
+    line();
+    line('[ STAFF ACCOUNTS ] ('+staff.length+')');
     line('----------------------------------------');
-    (data.staff||[]).forEach((s,i)=>{
-      line();
-      line('  Staff #'+(i+1)+': '+s.name);
-      line('  Position : '+s.position);
-      line('  Company  : '+s.company);
-      line('  Phone    : '+s.phone);
-      line('  Location : '+s.location);
-      line('  Username : '+s.username);
-      line('  Password : '+s.password);
-      line('  Email    : '+s.notif_email);
-      line('  Permission: '+s.permission);
-      const bids=JSON.parse(s.brand_ids||'[]');
-      line('  Brands   : '+(bids.length===0?'All brands':bids.join(', ')));
-      line('  Created  : '+s.created_at);
-    });
-    line();
-    line('========================================');
-    line('  END OF STAFF EXPORT');
+    if(!staff.length){ line('  No staff accounts found.'); }
+    else { staff.forEach((s,i)=>{
+      line(); line('  Staff #'+(i+1));
+      line('  Name      : '+(s.name||'-'));
+      line('  Position  : '+(s.position||'-'));
+      line('  Company   : '+(s.company||'-'));
+      line('  Phone     : '+(s.phone||'-'));
+      line('  Location  : '+(s.location||'-'));
+      line('  Username  : '+(s.username||'-'));
+      line('  Password  : '+(s.password||'-'));
+      line('  Email     : '+(s.notif_email||'-'));
+      line('  Permission: '+(s.permission||'-'));
+      line('  Created   : '+(s.created_at||'-'));
+    }); }
+    line(); line('========================================');
+    line('  Total staff: '+staff.length);
+    line('  END OF EXPORT');
     line('========================================');
     const txt=L.join(nl);
     const blob=new Blob([txt],{type:'text/plain;charset=utf-8'});
@@ -7522,8 +7538,8 @@ async function doExportStaffData(){
     a.href=url; a.download='feedback-hub-staff-'+dd+'-'+mm+'-'+yyyy+'.txt';
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    showToast('Staff data downloaded!');
-  } catch(e){ showToast('Export failed: '+e.message); }
+    showToast('✓ Staff data downloaded!');
+  }catch(e){ showToast('Export failed: '+e.message); }
 }
 
 
@@ -7919,146 +7935,92 @@ function closeExportVerify(){
 function doExportVerify(){
   const pass=document.getElementById('export-admin-pass').value;
   const msg=document.getElementById('export-verify-msg');
-  if(pass!==ADMIN_CREDS.password){
-    msg.innerHTML='<div class="alert alert-danger">Incorrect password. Please try again.</div>';
-    return;
-  }
+  if(!pass){ msg.innerHTML='<div class="alert alert-danger">Enter admin password.</div>'; return; }
+  const btn=document.querySelector('#export-verify-overlay .btn-primary');
+  if(btn){ btn.textContent='Downloading...'; btn.disabled=true; }
   closeExportVerify();
-  doExportData();
+  doExportData(pass).finally(()=>{ if(btn){btn.textContent='Verify & Download';btn.disabled=false;} });
 }
-async function doExportData(){
+async function doExportData(adminPass){
   showToast('Fetching data...');
-  var nl = String.fromCharCode(10);
-  var data;
-  try {
-    data = await api('GET', '/api/export-data');
-    if(data.error) throw new Error(data.error);
-  } catch(e) {
-    showToast('Export failed: ' + e.message);
-    return;
-  }
-
-  var now  = new Date(data.exported_at || Date.now());
-  var dd   = String(now.getDate()).padStart(2,'0');
-  var mm   = String(now.getMonth()+1).padStart(2,'0');
-  var yyyy = now.getFullYear();
-  var hh   = String(now.getHours()).padStart(2,'0');
-  var min  = String(now.getMinutes()).padStart(2,'0');
-  var dateStr = dd+'-'+mm+'-'+yyyy;
-  var timeStr = hh+':'+min;
-
-  var L = [];
-  var line = function(t){ L.push(t||''); };
-
-  line('========================================');
-  line('  FEEDBACK HUB — Full Data Export');
-  line('  Exported : ' + dateStr + ' ' + timeStr);
-  line('  Admin    : ' + data.admin.username);
-  line('========================================');
-  line();
-
-  // ── ADMIN ACCOUNT ──────────────────────────────
-  line('[ ADMIN ACCOUNT ]');
-  line('  Username          : ' + (data.admin.username || '-'));
-  line('  Password          : ' + (data.admin.password || '-'));
-  line('  Notification email: ' + (data.admin.notif_email || '-'));
-  line('  Notify on submit  : ' + (data.admin.notif_on_submit  ? 'Yes' : 'No'));
-  line('  Notify all done   : ' + (data.admin.notif_all_done   ? 'Yes' : 'No'));
-  line();
-
-  // ── BRANDS & STORES ────────────────────────────
-  line('========================================');
-  line('  BRANDS & STORES');
-  line('========================================');
-  line();
-
-  data.brands.forEach(function(b, bi){
-    line('BRAND ' + (bi+1) + ': ' + (b.name || '').toUpperCase());
-    line('  ID    : ' + b.id);
-    line('  Color : ' + (b.color || '-'));
-    line('  Created: ' + (b.created_at || '-'));
-    line();
-
-    var brandStores = data.stores.filter(function(s){ return s.brand_id === b.id; });
-    if(!brandStores.length){
-      line('  (no stores)');
-      line();
-      return;
-    }
-
-    brandStores.forEach(function(s, si){
-      line('  -- Store ' + (si+1) + ': ' + s.name + ' --');
-      line('  Store ID          : ' + (s.id            || '-'));
-      line('  Username          : ' + (s.username       || '-'));
-      line('  Password          : ' + (s.password       || '-'));
-      line('  Login email       : ' + (s.email          || '-'));
-      line('  Notification email: ' + (s.notif_email    || '-'));
-      line('  Notifications on  : ' + (s.notif_enabled  ? 'Yes' : 'No'));
-      line('  Phone             : ' + (s.phone          || '-'));
-      line('  Location          : ' + (s.location       || '-'));
-      line('  Color             : ' + (s.color          || '-'));
-      line('  Created           : ' + (s.created_at     || '-'));
-
-      // Reports for this store
-      var storeReports = data.reports.filter(function(r){
-        return r.brand_id === b.id && (!r.store_id || r.store_id === s.id);
-      });
-      if(storeReports.length){
-        line();
-        line('  Reports assigned (' + storeReports.length + '):');
-        storeReports.forEach(function(r, ri){
-          line('    ' + (ri+1) + '. ' + (r.title || '-') + ' (' + (r.date || r.created_at || '-') + ')');
-          // Check if store submitted feedback
-          var fb = data.feedbacks.find(function(f){ return f.report_id === r.id && f.store_id === s.id; });
-          line('       Status: ' + (fb ? 'Responded on ' + (fb.date || fb.created_at || '-') : 'No response yet'));
-        });
-      }
-      line();
+  var nl='\n'; var data;
+  try{
+    const res=await fetch(WORKER_URL+'/api/export-data',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({admin_password:adminPass||ADMIN_CREDS.password})
     });
-  });
-
-  // ── SUMMARY ────────────────────────────────────
-  line('========================================');
-  // Staff section
-  if(data.staff&&data.staff.length){
-    line();
+    data=await res.json();
+    if(!res.ok||data.error) throw new Error(data?.error||'Incorrect password');
+  }catch(e){ showToast('Export failed: '+e.message); return; }
+  try{
+    var now=new Date();
+    var dd=String(now.getDate()).padStart(2,'0');
+    var mm=String(now.getMonth()+1).padStart(2,'0');
+    var yyyy=now.getFullYear();
+    var hh=String(now.getHours()).padStart(2,'0');
+    var min=String(now.getMinutes()).padStart(2,'0');
+    var admin=data.admin||{};
+    var brands=data.brands||[];
+    var stores=data.stores||[];
+    var reports=data.reports||[];
+    var feedbacks=data.feedbacks||[];
+    var L=[]; var line=function(t){ L.push(t===undefined||t===null?'':String(t)); };
     line('========================================');
-    line('  STAFF ACCOUNTS ('+data.staff.length+')');
-    line('----------------------------------------');
-    data.staff.forEach((s,i)=>{
+    line('  FEEDBACK HUB - Store / Reviewer Export');
+    line('  Exported : '+dd+'-'+mm+'-'+yyyy+' '+hh+':'+min);
+    line('  Brands: '+brands.length+' | Stores: '+stores.length);
+    line('========================================');
+    line();
+    brands.forEach(function(b,bi){
+      line('----------------------------------------');
+      line('  BRAND '+(bi+1)+': '+(b.name||'').toUpperCase());
+      line('----------------------------------------');
       line();
-      line('  Staff #'+(i+1)+': '+s.name);
-      line('  Position : '+s.position);
-      line('  Username : '+s.username);
-      line('  Password : '+s.password);
-      line('  Email    : '+s.notif_email);
-      line('  Permission: '+s.permission);
+      var bStores=stores.filter(function(s){ return s.brand_id===b.id; });
+      if(!bStores.length){ line('  (no stores)'); line(); return; }
+      bStores.forEach(function(s,si){
+        line('  Store '+(si+1)+': '+s.name);
+        line('  ----------------------');
+        line('  Username          : '+(s.username||'-'));
+        line('  Password          : '+(s.password||'-'));
+        line('  Login email       : '+(s.email||'-'));
+        line('  Notification email: '+(s.notif_email||'-'));
+        line('  Phone             : '+(s.phone||'-'));
+        line('  Location          : '+(s.location||'-'));
+        line();
+        var sReports=reports.filter(function(r){
+          try{ var ids=JSON.parse(r.store_ids||'[]'); return r.brand_id===b.id&&(ids.length===0||ids.includes(s.id)||r.store_id===s.id); }catch(e2){ return r.brand_id===b.id; }
+        });
+        if(sReports.length){
+          line('  Reports ('+sReports.length+'):');
+          sReports.forEach(function(r,ri){
+            var fb=feedbacks.find(function(f){ return f.report_id===r.id&&f.store_id===s.id; });
+            line('    '+(ri+1)+'. '+(r.title||'-')+' ('+(r.date||'-')+')');
+            line('       Status: '+(fb?'Responded ('+(fb.date||'-')+')':'No response'));
+          });
+          line();
+        }
+      });
+      line();
     });
-  }
-
-  line('  SUMMARY');
-  line('========================================');
-  line('  Total brands  : ' + data.brands.length);
-  line('  Total stores  : ' + data.stores.length);
-  line('  Total reports : ' + data.reports.length);
-  line('  Total feedbacks: '+ data.feedbacks.length);
-  line();
-  line('========================================');
-  line('  END OF EXPORT');
-  line('========================================');
-
-  var txt  = L.join(nl);
-  var blob = new Blob([txt], {type:'text/plain;charset=utf-8'});
-  var url  = URL.createObjectURL(blob);
-  var a    = document.createElement('a');
-  a.href   = url;
-  a.download = 'feedback-hub-export-' + dateStr + '.txt';
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-  showToast('Downloaded!');
+    line('========================================');
+    line('  Total brands : '+brands.length);
+    line('  Total stores : '+stores.length);
+    line('  Total reports: '+reports.length);
+    line('  END OF EXPORT');
+    line('========================================');
+    var txt=L.join(nl);
+    var blob=new Blob([txt],{type:'text/plain;charset=utf-8'});
+    var url=URL.createObjectURL(blob);
+    var a=document.createElement('a');
+    a.href=url; a.download='feedback-hub-stores-'+dd+'-'+mm+'-'+yyyy+'.txt';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast('✓ Store data downloaded!');
+  }catch(e){ console.error('Export error:',e); showToast('Export failed: '+e.message); }
 }
+
 
 
 function openLightbox(src){ document.getElementById('lightbox-img').src=src; document.getElementById('lightbox').classList.add('open'); }
