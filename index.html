@@ -3198,15 +3198,14 @@ function viewFeedback(rid){
       ];
       // Build all entries chronologically
       // Use first_submitted entry from timeline if available (has time)
-      const _timelineFirstSub = timeline.find(t=>t.type==='first_submitted');
+      const _timelineFirstSub = deduplicatedTimeline.find(t=>t.type==='first_submitted');
       const _firstSubDate = _timelineFirstSub?.date || firstSub;
+      // Normalize: date-only ("2026-03-19") → "2026-03-19 00:00" so it sorts before timed entries
+      function _normD(d){ return (!d||d.length>10)?d||'':d+' 00:00'; }
       const allEntries=[
         ...(_firstSubDate?[{type:'first_submitted',date:_firstSubDate}]:[]),
         ...deduplicatedTimeline.filter(t=>t.type!=='first_submitted')
-      ].sort((a,b)=>{
-        const da=a.date||'', db=b.date||'';
-        return db.localeCompare(da); // newest first
-      });
+      ].sort((a,b)=> _normD(a.date).localeCompare(_normD(b.date))); // oldest first
       allEntries.forEach(entry=>{
         if(entry.type==='first_submitted') rows+=pill(
           `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#15803d" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>`,
