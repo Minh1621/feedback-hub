@@ -3082,7 +3082,7 @@ async function doUpload(){
     id:'r'+Date.now(),title,desc,
     file:fileName,
     fileURL,
-    date:new Date().toISOString().slice(0,10),
+    date:new Date().toISOString().slice(0,10)+' '+new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}),
     storeId:storeIds.length===1?storeIds[0]:'',
     storeIds,refs,inspection,feedbacks:[]
   };
@@ -3163,7 +3163,7 @@ function viewFeedback(rid){
     const subHistoryRows=targetStoresForInsp.map(store=>{
       const fb=latestFbMap[store.id];
       // Show history even if store hasn't responded yet (show report_edited, resubmit_requested entries)
-      const firstSub=fb?(fb.firstSubmitted||fb.date||''):'';
+      const firstSub=r.date||''; // Report upload date = when checker uploaded
       const timeline=fb&&Array.isArray(fb.timeline)?fb.timeline:[];
       // Get last verified entry
       const verifiedEntry=timeline.filter(t=>t.type==='verified').slice(-1)[0]||null;
@@ -4466,7 +4466,7 @@ async function saveReviewerDraft(){
     text:DB.itemFeedbacks.map((it,i)=>it.note?`Item ${i+1}: ${it.note}`:'').filter(Boolean).join(' | '),
     itemFeedbacks:DB.itemFeedbacks.map(it=>({...it,photos:[...it.photos]})),
     photos:[],
-    date:new Date().toISOString().slice(0,10),
+    date:new Date().toISOString().slice(0,10)+' '+new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}),
     draft:true
   };
   msg.innerHTML='<div class="alert alert-success">⏳ Saving...</div>';
@@ -4565,7 +4565,6 @@ async function submitReviewerFeedback(){
     const _subTime=new Date().toISOString().slice(0,10)+' '+new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
     const feedbackObj={storeId:s.id, text:newText, itemFeedbacks:newItems, photos:[], date:newDate,
       timeline:[
-        {type:'first_submitted',date:_subTime,by:DB.reviewerStoreName||''},
         {type:'store_submitted',date:_subTime,by:DB.reviewerStoreName||''}
       ]};
     const result=await api('POST','/api/feedbacks',{...feedbackObj, report_id:r.id});
