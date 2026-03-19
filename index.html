@@ -431,25 +431,352 @@ label{
     <!-- Refresh bar -->
     <div style="height:80px;"></div>
   </div>
-  <!-- Floating refresh button -->
+</div>
+
+<!-- ======= BRAND DETAIL ======= -->
+<div class="screen" id="s-brand">
+  <div class="topbar">
+    <button class="back-btn" onclick="goHome()">&#8592; Back</button>
+    <div class="topbar-title" id="brand-topbar-title">Brand</div>
+    <button id="brand-edit-btn" class="btn btn-sm" onclick="editBrand()" style="display:none;">Edit</button>
+    <button class="btn btn-ghost btn-sm" onclick="goHome()" title="Home" style="padding:6px 8px;flex-shrink:0;">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+    </button>
+    <button class="btn btn-ghost btn-sm" onclick="doAdminRefresh()" title="Refresh" style="padding:6px 8px;flex-shrink:0;">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+    </button>
   </div>
-      </a>
+  <div class="content">
+    <div id="brand-hero" style="margin-bottom:14px;"></div>
+    <div style="display:flex;gap:6px;margin-bottom:14px;">
+      <button id="brand-add-store-btn" class="btn btn-sm" onclick="goAddStore()" style="display:none;">+ Store</button>
+      <button class="btn btn-primary btn-sm" id="brand-upload-btn" onclick="goUpload()">+ Upload report</button>
     </div>
+    <div style="display:flex;gap:6px;margin-bottom:14px;border-bottom:1px solid var(--border);padding-bottom:10px;">
+      <button id="btab-reports" class="btn btn-sm active" onclick="brandTab('reports')">Reports</button>
+      <button id="btab-stores" class="btn btn-sm" onclick="brandTab('stores')">Stores</button>
+    </div>
+    <div id="bpane-reports">
+      <div style="display:flex;gap:6px;margin-bottom:12px;overflow-x:auto;padding-bottom:2px;">
+        <button id="bf-all" class="btn btn-sm active" onclick="setBF('all')">All</button>
+        <button id="bf-pending" class="btn btn-sm" onclick="setBF('pending')">Pending</button>
+        <button id="bf-checking" class="btn btn-sm" onclick="setBF('checking')">Checking</button>
+        <button id="bf-partial" class="btn btn-sm" onclick="setBF('partial')">Partial</button>
+        <button id="bf-done" class="btn btn-sm" onclick="setBF('done')">Done</button>
+      </div>
+      <div id="brand-report-list"></div>
+    </div>
+    <div id="bpane-stores" style="display:none;">
+      <div id="brand-store-list"></div>
+    </div>
+    <div style="height:40px;"></div>
   </div>
 </div>
 
-<!-- ======= UPLOAD CONFIRM OVERLAY ======= -->
-<div id="upload-confirm-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:50;align-items:flex-end;justify-content:center;">
-  <div style="background:var(--bg2);border-radius:20px 20px 0 0;padding:24px 20px 36px;width:100%;max-width:440px;border-top:1px solid var(--border);">
-    <div style="width:36px;height:4px;border-radius:2px;background:var(--border2);margin:0 auto 20px;"></div>
-    <div style="font-size:17px;font-weight:700;margin-bottom:16px;">Confirm upload</div>
-    <div id="upload-confirm-body" style="background:var(--bg3);border-radius:var(--rl);padding:14px 16px;margin-bottom:20px;font-size:13px;line-height:2;"></div>
-    <div style="display:flex;gap:10px;">
-      <button class="btn btn-full" style="flex:1;" onclick="closeConfirm()">Cancel</button>
-      <button class="btn btn-primary btn-full" style="flex:1;" onclick="doUpload()">Confirm & upload</button>
+<!-- ======= STORE DETAIL ======= -->
+<div class="screen" id="s-store-detail">
+  <div class="topbar">
+    <button class="back-btn" onclick="goTo('s-brand')">&#8592; Back</button>
+    <div class="topbar-title" id="sd-store-name">Store</div>
+    <button class="btn btn-ghost btn-sm" onclick="goHome()" title="Home" style="padding:6px 8px;flex-shrink:0;">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+    </button>
+    <button class="btn btn-ghost btn-sm" onclick="doAdminRefresh()" title="Refresh" style="padding:6px 8px;flex-shrink:0;">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+    </button>
+    <button id="sd-edit-btn" class="btn btn-sm" onclick="goEditStore()" style="display:none;">Edit</button>
+  </div>
+  <div class="content">
+    <div id="sd-store-card" style="margin-bottom:14px;"></div>
+    <button id="store-upload-btn" class="btn btn-primary btn-sm" style="width:100%;margin-bottom:18px;" onclick="goUploadForStore(DB.currentStoreId)">+ Upload report for this store</button>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+      <div class="sec-label" style="margin-bottom:0;">Reports sent to this store</div>
     </div>
+    <div style="display:flex;gap:6px;margin-bottom:14px;overflow-x:auto;padding-bottom:2px;">
+      <button id="sdf-all" class="btn btn-sm" style="border-radius:20px;flex-shrink:0;background:var(--accent);color:#fff;border-color:var(--accent);" onclick="setStoreDetailFilter('all')">All</button>
+      <button id="sdf-pending" class="btn btn-sm" style="border-radius:20px;flex-shrink:0;" onclick="setStoreDetailFilter('pending')">Pending</button>
+      <button id="sdf-partial" class="btn btn-sm" style="border-radius:20px;flex-shrink:0;" onclick="setStoreDetailFilter('partial')">Partial</button>
+      <button id="sdf-checking" class="btn btn-sm" style="border-radius:20px;flex-shrink:0;" onclick="setStoreDetailFilter('checking')">Checking</button>
+      <button id="sdf-complete" class="btn btn-sm" style="border-radius:20px;flex-shrink:0;" onclick="setStoreDetailFilter('complete')">Complete</button>
+    </div>
+    <div id="sd-report-list"></div>
+    <div style="height:20px;"></div>
+    <button class="btn btn-danger btn-full" id="remove-store-btn" onclick="confirmRemoveStore()" style="display:none;">Remove this store</button>
+    <div style="height:40px;"></div>
   </div>
 </div>
+
+<!-- ======= EDIT STORE ======= -->
+<div class="screen" id="s-edit-store">
+  <div class="topbar">
+    <button class="back-btn" onclick="goTo('s-store-detail')">&#8592; Back</button>
+    <div class="topbar-title">Edit store</div>
+    <button class="btn btn-ghost btn-sm" onclick="goHome()" title="Home" style="padding:6px 8px;flex-shrink:0;">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+    </button>
+  </div>
+  <div class="content">
+    <div class="field"><label>Store name</label><input id="es-name" type="text" placeholder="Store name"/></div>
+    <div class="field"><label>Phone</label><input id="es-phone" type="tel" placeholder="+855..."/></div>
+    <div class="field"><label>Location</label><input id="es-location" type="text" placeholder="Address or location"/></div>
+    <div class="field"><label>Username</label><input id="es-user" type="text" placeholder="Login username"/></div>
+    <div class="field"><label>New password <span style="font-size:11px;color:var(--text3);">(leave blank to keep)</span></label><input id="es-pass" type="text" placeholder="New password"/></div>
+    <div class="field"><label>Notification email</label><div style="display:flex;gap:8px;"><input id="es-notif-email" type="email" placeholder="email@example.com" style="flex:1;"/><button class="btn btn-sm" onclick="testStoreNotifEmail()">Test</button></div></div>
+    <div id="edit-store-msg" style="margin:8px 0;"></div>
+    <button class="btn btn-primary btn-full" onclick="doEditStore()">Save changes</button>
+    <div style="height:24px;"></div>
+  </div>
+</div>
+
+<!-- ======= ADD STORE ======= -->
+<div class="screen" id="s-add-store">
+  <div class="topbar">
+    <button class="back-btn" onclick="goTo('s-brand')">&#8592; Back</button>
+    <div class="topbar-title">Add store</div>
+    <button class="btn btn-ghost btn-sm" onclick="goHome()" title="Home" style="padding:6px 8px;flex-shrink:0;">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+    </button>
+  </div>
+  <div class="content">
+    <div class="field"><label>Brand</label><div id="add-store-brand-name" style="font-weight:600;padding:10px 0;"></div></div>
+    <div class="field"><label>Store name</label><input id="ns-name" type="text" placeholder="Store name"/></div>
+    <div class="field"><label>Phone</label><input id="ns-phone" type="tel" placeholder="+855..."/></div>
+    <div class="field"><label>Location</label><input id="ns-location" type="text" placeholder="Address"/></div>
+    <div class="field"><label>Username</label><input id="ns-user" type="text" placeholder="Login username" autocomplete="off"/></div>
+    <div class="field"><label>Password</label><input id="ns-pass" type="text" placeholder="Password" autocomplete="new-password"/></div>
+    <div style="margin-bottom:12px;">
+      <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:6px;">Logo (optional)</label>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div id="ns-logo-preview" style="width:44px;height:44px;border-radius:10px;background:var(--bg3);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;overflow:hidden;cursor:pointer;" onclick="document.getElementById('ns-logo-input').click()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+        </div>
+        <button class="btn btn-sm" onclick="document.getElementById('ns-logo-input').click()">Upload logo</button>
+        <input type="file" id="ns-logo-input" accept="image/*" style="display:none;" onchange="onNsLogoPick(this)"/>
+      </div>
+    </div>
+    <div id="add-store-msg"></div>
+    <button class="btn btn-primary btn-full" onclick="doAddStore()">Add store</button>
+    <div style="height:40px;"></div>
+  </div>
+</div>
+
+<!-- ======= ADD / EDIT BRAND ======= -->
+<div class="screen" id="s-add-brand">
+  <div class="topbar">
+    <button class="back-btn" id="add-brand-back">&#8592; Back</button>
+    <div class="topbar-title" id="add-brand-title">New brand</div>
+    <button class="btn btn-ghost btn-sm" onclick="goHome()" title="Home" style="padding:6px 8px;flex-shrink:0;">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+    </button>
+  </div>
+  <div class="content">
+    <div class="field"><label>Brand name</label><input id="nb-name" type="text" placeholder="Brand name"/></div>
+    <div style="margin-bottom:16px;">
+      <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:8px;">Brand color</label>
+      <div id="color-swatches" style="display:flex;gap:8px;flex-wrap:wrap;"></div>
+    </div>
+    <div style="margin-bottom:16px;">
+      <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:6px;">Logo (optional)</label>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div id="logo-preview-box" style="width:50px;height:50px;border-radius:11px;background:var(--bg3);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;overflow:hidden;cursor:pointer;" onclick="document.getElementById('brand-logo-input').click()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+        </div>
+        <div>
+          <button class="btn btn-sm" onclick="document.getElementById('brand-logo-input').click()">Upload logo</button>
+          <input type="file" id="brand-logo-input" accept="image/*" style="display:none;" onchange="onLogoPick(this)"/>
+        </div>
+      </div>
+    </div>
+    <div class="field"><label>Logo text <span style="font-size:11px;color:var(--text3);">(shown when no logo)</span></label><input id="nb-logo-text" type="text" placeholder="e.g. GG" maxlength="4"/></div>
+    <div id="brand-form-msg"></div>
+    <button class="btn btn-primary btn-full" id="brand-form-btn" onclick="doSaveBrand()">Create brand</button>
+    <div style="height:20px;"></div>
+    <button id="brand-delete-btn" class="btn btn-danger btn-full" style="display:none;" onclick="confirmDeleteBrand()">Delete brand</button>
+    <div style="height:40px;"></div>
+  </div>
+</div>
+
+<!-- ======= UPLOAD REPORT ======= -->
+<div class="screen" id="s-upload">
+  <div class="topbar">
+    <button class="back-btn" onclick="goTo('s-brand')">&#8592; Back</button>
+    <div class="topbar-title">Upload report</div>
+    <button class="btn btn-ghost btn-sm" onclick="goHome()" title="Home" style="padding:6px 8px;flex-shrink:0;">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+    </button>
+  </div>
+  <div class="content">
+    <div class="field"><label>Report title *</label><input id="r-title" type="text" placeholder="e.g. QC Report March 2026"/></div>
+    <div class="field"><label>Description</label><textarea id="r-desc" placeholder="Optional notes for the store..." style="min-height:60px;"></textarea></div>
+    <div style="margin-bottom:16px;">
+      <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:6px;">PDF file *</label>
+      <div id="pdf-drop-zone" style="border:2px dashed var(--border2);border-radius:var(--rl);padding:20px;text-align:center;cursor:pointer;" onclick="document.getElementById('pdf-input').click()">
+        <div style="font-size:13px;color:var(--text2);" id="pdf-lbl">Tap to select PDF</div>
+      </div>
+      <input type="file" id="pdf-input" accept=".pdf" style="display:none;" onchange="onPdfPick(this)"/>
+    </div>
+    <div style="margin-bottom:16px;">
+      <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:6px;">Send to stores</label>
+      <div id="r-store-checks" style="background:var(--bg2);border:1px solid var(--border2);border-radius:var(--r);padding:10px 12px;display:flex;flex-direction:column;gap:8px;"></div>
+    </div>
+    <div class="field"><label>Inspection — Store name</label><input id="r-store-name" type="text" placeholder="Store name in report"/></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+      <div class="field" style="margin-bottom:0;"><label>Date</label><input id="r-inspect-date" type="date"/></div>
+      <div class="field" style="margin-bottom:0;"><label>Score (%)</label><input id="r-score" type="number" min="0" max="100" step="0.01" placeholder="98.55"/></div>
+    </div>
+    <div class="field"><label>Checked by</label><input id="r-checked-by" type="text" placeholder="Inspector name"/></div>
+    <div style="border-top:1px solid var(--border);margin:20px 0 16px;"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+      <div>
+        <div style="font-size:14px;font-weight:600;">Reference items</div>
+        <div style="font-size:12px;color:var(--text2);margin-top:2px;">Add notes + photos stores will see when reviewing</div>
+      </div>
+    </div>
+    <div id="ref-items-list"></div>
+    <button class="btn btn-primary btn-full" style="margin-top:4px;margin-bottom:12px;" onclick="addRefItem()">+ Add reference item</button>
+    <button id="upload-report-btn" class="btn btn-primary btn-full" style="margin-bottom:24px;display:none;" onclick="confirmUpload()">Upload report</button>
+    <div id="upload-msg"></div>
+    <div style="height:40px;"></div>
+  </div>
+</div>
+
+<!-- ======= VIEW FEEDBACK ======= -->
+<div class="screen" id="s-feedback">
+  <div class="topbar">
+    <button class="back-btn" onclick="goTo('s-brand')">&#8592; Back</button>
+    <div class="topbar-title" id="fb-screen-title">Feedback</div>
+    <button class="btn btn-ghost btn-sm" onclick="goHome()" title="Home" style="padding:6px 8px;flex-shrink:0;">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+    </button>
+    <button class="btn btn-ghost btn-sm" onclick="doAdminRefresh()" title="Refresh" style="padding:6px 8px;flex-shrink:0;">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+    </button>
+    <button id="report-edit-btn" class="btn btn-sm" onclick="goEditReport(DB.currentReportId)" style="display:none;">Edit</button>
+  </div>
+  <div class="content">
+    <div id="fb-pdf-box" style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);height:120px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:7px;margin-bottom:16px;cursor:pointer;transition:border-color .15s;" onclick="openReportPDF()">
+      <div style="color:var(--text3);"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></div>
+      <div style="font-size:13px;color:var(--text2);" id="fb-filename"></div>
+      <div style="font-size:11px;color:var(--accent);">Tap to open PDF ↗</div>
+    </div>
+    <div id="fb-inspection" style="margin-bottom:16px;"></div>
+    <div id="fb-summary" style="margin-bottom:18px;"></div>
+    <div id="fb-refs-wrap" style="margin-bottom:18px;"></div>
+    <div id="fb-missing" style="margin-top:4px;"></div>
+    <div style="height:40px;"></div>
+  </div>
+</div>
+
+<!-- ======= REVIEWER: HOME ======= -->
+<div class="screen" id="s-reviewer-home">
+  <div class="topbar">
+    <div id="rv-app-logo-top" style="width:32px;height:32px;border-radius:8px;overflow:hidden;background:var(--accent);display:flex;align-items:center;justify-content:center;flex-shrink:0;"></div>
+    <div style="font-size:15px;font-weight:800;color:var(--text);letter-spacing:-.01em;flex:1;">FEEDBACK HUB</div>
+    <div id="rv-store-name" style="display:none;"></div>
+    <div id="rv-brand-logo-top" style="display:none;"></div>
+    <button class="btn btn-ghost btn-sm" onclick="openRvSettings()" style="padding:6px 8px;">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    </button>
+    <button class="btn btn-ghost btn-sm" onclick="doLogout()">Sign out</button>
+  </div>
+  <div class="content">
+    <div id="rv-store-card" style="margin-bottom:16px;"></div>
+    <div id="rv-stats-row" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:18px;"></div>
+    <div class="sec-label" style="margin-bottom:10px;">Reports</div>
+    <div id="rv-report-list"></div>
+    <div id="rv-archived-wrap" style="margin-top:10px;"></div>
+    <div class="screen-fixed" style="position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:20;pointer-events:none;width:100%;max-width:440px;display:flex;justify-content:center;">
+      <button id="rv-refresh-btn" onclick="doRvRefresh()" style="pointer-events:all;display:flex;align-items:center;gap:8px;background:var(--bg2);border:1.5px solid var(--border);border-radius:30px;padding:10px 22px;font-size:13px;font-weight:600;color:var(--text2);cursor:pointer;box-shadow:0 4px 20px rgba(0,0,0,.12);transition:all .2s;">
+        <svg id="rv-refresh-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+        Refresh
+      </button>
+    </div>
+    <div style="height:80px;"></div>
+  </div>
+</div>
+
+<!-- ======= REVIEWER: REPORT ======= -->
+<div class="screen" id="s-reviewer-report">
+  <div class="topbar">
+    <button class="back-btn" onclick="renderReviewerHome();goTo('s-reviewer-home')">&#8592; Back</button>
+    <div class="topbar-title" id="rv-report-title">Report</div>
+    <button class="btn btn-ghost btn-sm" onclick="goHome()" title="Home" style="padding:6px 8px;flex-shrink:0;">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+    </button>
+    <button class="btn btn-ghost btn-sm" onclick="doRvRefresh()" title="Refresh" style="padding:6px 8px;flex-shrink:0;">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+    </button>
+  </div>
+  <div class="content">
+    <div id="rv-inspection-card" style="margin-bottom:14px;"></div>
+    <div id="rv-pdf-box" style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:18px;text-align:center;margin-bottom:16px;cursor:pointer;" onclick="openReportPDF()">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      <div style="font-size:13px;color:var(--text2);margin-top:6px;" id="rv-pdf-name"></div>
+      <div style="font-size:11px;color:var(--accent);margin-top:3px;">Tap to open PDF ↗</div>
+    </div>
+    <div id="rv-submitted-view" style="display:none;"></div>
+    <div id="rv-feedback-form" style="display:none;">
+      <div id="rv-items-form"></div>
+      <div id="rv-fb-msg"></div>
+      <div style="display:flex;gap:10px;margin-top:14px;">
+        <button class="btn btn-full" style="flex:1;" onclick="saveReviewerDraft()">Save</button>
+        <button id="rv-submit-btn" class="btn btn-primary btn-full" style="flex:1;" onclick="submitReviewerFeedback()">Submit</button>
+      </div>
+      <div id="rv-submit-hint" style="font-size:12px;color:var(--text3);text-align:center;margin-top:8px;">Fill all items to unlock Submit</div>
+    </div>
+    <div style="height:40px;"></div>
+  </div>
+</div>
+
+<!-- ======= SETTINGS ======= -->
+<div class="screen" id="s-settings">
+  <div class="topbar">
+    <button class="back-btn" onclick="goTo('s-home')">&#8592; Back</button>
+    <div class="topbar-title">Settings</div>
+    <button class="btn btn-ghost btn-sm" onclick="goHome()" title="Home" style="padding:6px 8px;flex-shrink:0;">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+    </button>
+    <button class="btn btn-ghost btn-sm" onclick="doAdminRefresh()" title="Refresh" style="padding:6px 8px;flex-shrink:0;">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+    </button>
+  </div>
+  <div class="content">
+    <div id="settings-content"></div>
+    <div style="margin-bottom:16px;">
+      <div class="sec-label">Display</div>
+      <div class="card" style="padding:14px 16px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <div>
+            <div style="font-size:14px;font-weight:600;">Dark mode</div>
+            <div style="font-size:12px;color:var(--text2);margin-top:2px;">Switch between light and dark</div>
+          </div>
+          <button id="theme-toggle-btn" class="btn btn-sm" onclick="toggleTheme()">Toggle</button>
+        </div>
+      </div>
+    </div>
+    <div style="margin-bottom:16px;">
+      <div class="sec-label">Staff accounts</div>
+      <div class="card" style="padding:14px 16px;cursor:pointer;" onclick="goTo('s-staff-list')">
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <div>
+            <div style="font-size:14px;font-weight:600;">Manage staff</div>
+            <div style="font-size:12px;color:var(--text2);margin-top:2px;" id="staff-count-label">Manage users with custom permissions</div>
+          </div>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+        </div>
+      </div>
+    </div>
+    <div style="margin-bottom:16px;">
+      <div class="sec-label">Admin</div>
+      <div class="card" style="padding:14px 16px;">
+        <div style="font-size:14px;font-weight:600;margin-bottom:10px;">Export data</div>
+        <button class="btn btn-sm" onclick="exportData()">Export all data</button>
+      </div>
+    </div>
+    <div style="height:40px;"></div>
+  </div>
+</div>
+
 
 <!-- ======= REVIEWER SETTINGS ======= -->
 <div class="screen" id="s-rv-settings">
@@ -1268,6 +1595,20 @@ label{
     </div>
   </div>
 </div>
+
+<!-- ======= UPLOAD CONFIRM OVERLAY ======= -->
+<div id="upload-confirm-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:50;align-items:flex-end;justify-content:center;">
+  <div style="background:var(--bg2);border-radius:20px 20px 0 0;padding:24px 20px 36px;width:100%;max-width:440px;border-top:1px solid var(--border);">
+    <div style="width:36px;height:4px;border-radius:2px;background:var(--border2);margin:0 auto 20px;"></div>
+    <div style="font-size:17px;font-weight:700;margin-bottom:16px;">Confirm upload</div>
+    <div id="upload-confirm-body" style="background:var(--bg3);border-radius:var(--rl);padding:14px 16px;margin-bottom:20px;font-size:13px;line-height:2;"></div>
+    <div style="display:flex;gap:10px;">
+      <button class="btn btn-full" style="flex:1;" onclick="closeConfirm()">Cancel</button>
+      <button class="btn btn-primary btn-full" style="flex:1;" onclick="doUpload()">Confirm & upload</button>
+    </div>
+  </div>
+</div>
+
 </div><!-- /wrap -->
 <script>
 /* ===== SCORE HELPER ===== */
