@@ -667,7 +667,7 @@ label{
     <button id="report-edit-btn" class="btn btn-sm" onclick="goEditReport(DB.currentReportId)" style="display:none;">Edit</button>
   </div>
   <div class="content">
-    <div id="fb-pdf-box" style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);height:120px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:7px;margin-bottom:16px;cursor:pointer;transition:border-color .15s;" onclick="openReportPDF()">
+    <div id="fb-pdf-box" style="display:none;" onclick="openReportPDF()">
       <div style="color:var(--text3);"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></div>
       <div style="font-size:13px;color:var(--text2);" id="fb-filename"></div>
       <div style="font-size:11px;color:var(--accent);">Tap to open PDF ↗</div>
@@ -3280,27 +3280,55 @@ function viewFeedback(rid){
     }).filter(Boolean).join('');
 
     if(hasInsp){
+      const _pdfName=r.file||'';
+      const _pdfURL=r.fileURL||'';
       inspWrap.innerHTML=`
         <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);padding:14px 16px;margin-bottom:16px;">
           <div style="font-size:12px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;">Inspection details</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:${subHistoryRows?'12px':'0'};">
-            ${insp.storeName?`<div><div style="font-size:11px;color:var(--text3);margin-bottom:2px;">Store</div><div style="font-size:14px;font-weight:500;">${insp.storeName}</div></div>`:''}
-            ${insp.date?`<div><div style="font-size:11px;color:var(--text3);margin-bottom:2px;">Date</div><div style="font-size:14px;font-weight:500;">${insp.date}</div></div>`:''}
-            ${insp.checkedBy?`<div><div style="font-size:11px;color:var(--text3);margin-bottom:2px;">Checked by</div><div style="font-size:14px;font-weight:500;">${insp.checkedBy}</div></div>`:''}
-            ${insp.score?`<div><div style="font-size:11px;color:var(--text3);margin-bottom:2px;">Score</div><div style="font-size:22px;font-weight:700;">${scoreHTML(insp.score,22)}</div></div>`:''}
+          <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:${subHistoryRows?'0':'4px'};">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;flex:1;">
+              ${insp.storeName?`<div><div style="font-size:11px;color:var(--text3);margin-bottom:2px;">Store</div><div style="font-size:14px;font-weight:500;">${insp.storeName}</div></div>`:''}
+              ${insp.date?`<div><div style="font-size:11px;color:var(--text3);margin-bottom:2px;">Date</div><div style="font-size:14px;font-weight:500;">${insp.date}</div></div>`:''}
+              ${insp.checkedBy?`<div><div style="font-size:11px;color:var(--text3);margin-bottom:2px;">Checked by</div><div style="font-size:14px;font-weight:500;">${insp.checkedBy}</div></div>`:''}
+              ${insp.score?`<div><div style="font-size:11px;color:var(--text3);margin-bottom:2px;">Score</div><div style="font-size:22px;font-weight:700;">${scoreHTML(insp.score,22)}</div></div>`:''}
+            </div>
+            ${_pdfName?`<div onclick="openReportPDF()" style="width:90px;flex-shrink:0;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px 8px;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;text-align:center;transition:border-color .15s;" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              <div style="font-size:11px;color:var(--text2);word-break:break-word;line-height:1.3;">${_pdfName}</div>
+              <div style="font-size:11px;color:var(--accent);font-weight:600;display:flex;align-items:center;gap:2px;">Tap to open <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></div>
+            </div>`:''}
           </div>
           ${subHistoryRows?`
-          <div style="border-top:1px solid var(--border);padding-top:10px;">
-            <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;">Response history</div>
-            ${subHistoryRows}
+          <div style="border-top:1px solid var(--border);margin-top:12px;padding-top:10px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;" onclick="(function(el){el.classList.toggle('open');const body=el.nextElementSibling;body.style.display=el.classList.contains('open')?'':'none';el.querySelector('.hist-chevron').style.transform=el.classList.contains('open')?'rotate(180deg)':'';el.querySelector('.hist-lbl').textContent=el.classList.contains('open')?'Hide':'Show';})(this)">
+              <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;">Response history</div>
+              <div style="display:flex;align-items:center;gap:4px;background:var(--bg3);border:0.5px solid var(--border);border-radius:20px;padding:4px 12px;font-size:12px;font-weight:500;color:var(--text2);">
+                <span class="hist-lbl">Show</span>
+                <svg class="hist-chevron" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="transition:transform .2s;"><polyline points="6 9 12 15 18 9"/></svg>
+              </div>
+            </div>
+            <div style="display:none;margin-top:8px;">${subHistoryRows}</div>
           </div>`:''}
         </div>`;
     } else if(subHistoryRows){
-      // No inspection details but has history — show history card standalone
+      const _pdfName2=r.file||'';
       inspWrap.innerHTML=`
         <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);padding:14px 16px;margin-bottom:16px;">
-          <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;">Response history</div>
-          ${subHistoryRows}
+          ${_pdfName2?`<div style="display:flex;justify-content:flex-end;margin-bottom:10px;">
+            <div onclick="openReportPDF()" style="width:76px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px 6px;text-align:center;cursor:pointer;">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom:5px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              <div style="font-size:9px;color:var(--text3);word-break:break-all;line-height:1.3;margin-bottom:4px;">${_pdfName2.length>16?_pdfName2.slice(0,14)+'…':_pdfName2}</div>
+              <div style="font-size:9px;color:var(--accent);font-weight:600;">Tap to open ↗</div>
+            </div>
+          </div>`:''}
+          <div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;" onclick="(function(el){el.classList.toggle('open');const body=el.nextElementSibling;body.style.display=el.classList.contains('open')?'':'none';el.querySelector('.hist-chevron').style.transform=el.classList.contains('open')?'rotate(180deg)':'';el.querySelector('.hist-lbl').textContent=el.classList.contains('open')?'Hide':'Show';})(this)">
+            <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;">Response history</div>
+            <div style="display:flex;align-items:center;gap:4px;background:var(--bg3);border:0.5px solid var(--border);border-radius:20px;padding:3px 10px;font-size:11px;color:var(--text2);">
+              <span class="hist-lbl">Show</span>
+              <svg class="hist-chevron" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="transition:transform .2s;"><polyline points="6 9 12 15 18 9"/></svg>
+            </div>
+          </div>
+          <div style="display:none;margin-top:10px;">${subHistoryRows}</div>
         </div>`;
     } else {
       inspWrap.innerHTML='';
