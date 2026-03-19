@@ -408,30 +408,21 @@ label{
 
 <!-- ======= HOME ======= -->
 <div class="screen" id="s-home">
-  <div class="topbar" style="padding:8px 12px;gap:4px;">
-    <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;overflow:hidden;">
-      <div id="home-app-logo" style="width:30px;height:30px;border-radius:7px;overflow:hidden;background:var(--accent);display:flex;align-items:center;justify-content:center;flex-shrink:0;"></div>
-      <div style="font-size:14px;font-weight:800;color:var(--text);letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">FEEDBACK HUB</div>
+  <div class="topbar" style="padding:8px 14px;">
+    <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;">
+      <div id="home-app-logo" style="width:32px;height:32px;border-radius:8px;overflow:hidden;background:var(--accent);display:flex;align-items:center;justify-content:center;flex-shrink:0;"></div>
+      <div style="font-size:15px;font-weight:800;color:var(--text);letter-spacing:-.01em;white-space:nowrap;">FEEDBACK HUB</div>
     </div>
-    <!-- Settings icon -->
-    <button class="btn btn-ghost btn-sm" onclick="applySettingsToUI();goTo('s-settings')" title="Settings" style="padding:6px 7px;flex-shrink:0;">
+    <button class="btn btn-ghost btn-sm" onclick="applySettingsToUI();goTo('s-settings')" style="padding:6px 8px;">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <circle cx="12" cy="12" r="3"/>
         <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
       </svg>
     </button>
-    <!-- Refresh icon -->
-    <button class="btn btn-ghost btn-sm" id="home-refresh-btn" onclick="doAdminRefresh()" title="Refresh" style="padding:6px 7px;flex-shrink:0;">
-      <svg id="home-refresh-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+    <button class="btn btn-ghost btn-sm" onclick="doAdminRefresh()" title="Refresh" style="padding:6px 8px;">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
     </button>
-    <!-- Sign out icon -->
-    <button class="btn btn-ghost btn-sm" onclick="doLogout()" title="Sign out" style="padding:6px 7px;flex-shrink:0;">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-        <polyline points="16 17 21 12 16 7"/>
-        <line x1="21" y1="12" x2="9" y2="12"/>
-      </svg>
-    </button>
+    <button class="btn btn-ghost btn-sm" onclick="doLogout()">Sign out</button>
   </div>
   <div class="content">
     <div id="global-stats" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px;"></div>
@@ -461,7 +452,7 @@ label{
   <div class="content">
     <div id="brand-hero" style="margin-bottom:14px;"></div>
     <button id="brand-add-store-btn" class="btn btn-sm" onclick="goAddStore()" style="display:none;width:100%;margin-bottom:6px;">+ Add store</button>
-    <button class="btn btn-primary btn-sm" id="brand-upload-btn" onclick="goUpload()" style="width:100%;margin-bottom:14px;">+ Upload report</button>
+    <button class="btn btn-primary btn-full" id="brand-upload-btn" onclick="goUpload()" style="margin-bottom:14px;">+ Upload report</button>
     <div style="display:flex;gap:6px;margin-bottom:14px;border-bottom:1px solid var(--border);padding-bottom:10px;">
       <button id="btab-reports" class="btn btn-sm active" onclick="brandTab('reports')">Reports</button>
       <button id="btab-stores" class="btn btn-sm" onclick="brandTab('stores')">Stores</button>
@@ -615,9 +606,9 @@ label{
     </div>
     <div class="field"><label>Logo text <span style="font-size:11px;color:var(--text3);">(shown when no logo)</span></label><input id="nb-logo-text" type="text" placeholder="e.g. GG" maxlength="4"/></div>
     <div id="brand-form-msg"></div>
-    <button class="btn btn-primary btn-full" id="brand-form-btn" onclick="saveBrand()">Create brand</button>
+    <button class="btn btn-primary btn-full" id="brand-form-btn" onclick="doSaveBrand()">Create brand</button>
     <div style="height:20px;"></div>
-    <button id="brand-delete-btn" class="btn btn-danger btn-full" style="display:none;" onclick="deleteBrand()">Delete brand</button>
+    <button id="brand-delete-btn" class="btn btn-danger btn-full" style="display:none;" onclick="confirmDeleteBrand()">Delete brand</button>
     <div style="height:40px;"></div>
   </div>
 </div>
@@ -638,14 +629,8 @@ label{
     <div class="field"><label>Description</label><textarea id="r-desc" placeholder="Optional notes for the store..." style="min-height:60px;"></textarea></div>
     <div style="margin-bottom:16px;">
       <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:6px;">PDF file *</label>
-      <div style="display:flex;align-items:center;gap:10px;">
-        <div id="pdf-drop-zone" style="width:54px;height:54px;border-radius:12px;background:var(--bg3);border:1.5px dashed var(--border2);display:flex;align-items:center;justify-content:center;overflow:hidden;cursor:pointer;flex-shrink:0;" onclick="document.getElementById('pdf-input').click()">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
-        </div>
-        <div style="flex:1;min-width:0;">
-          <button class="btn btn-sm" onclick="document.getElementById('pdf-input').click()" style="margin-bottom:4px;">Select PDF</button>
-          <div id="pdf-lbl" style="font-size:12px;color:var(--text3);margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">No file selected</div>
-        </div>
+      <div id="pdf-drop-zone" style="border:2px dashed var(--border2);border-radius:var(--rl);padding:20px;text-align:center;cursor:pointer;" onclick="document.getElementById('pdf-input').click()">
+        <div style="font-size:13px;color:var(--text2);" id="pdf-lbl">Tap to select PDF</div>
       </div>
       <input type="file" id="pdf-input" accept=".pdf" style="display:none;" onchange="onPDFPick(this)"/>
     </div>
@@ -703,27 +688,15 @@ label{
 
 <!-- ======= REVIEWER: HOME ======= -->
 <div class="screen" id="s-reviewer-home">
-  <div class="topbar" style="padding:8px 12px;gap:4px;">
-    <div id="rv-app-logo-top" style="width:30px;height:30px;border-radius:7px;overflow:hidden;background:var(--accent);display:flex;align-items:center;justify-content:center;flex-shrink:0;"></div>
-    <div style="font-size:14px;font-weight:800;color:var(--text);letter-spacing:-.01em;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">FEEDBACK HUB</div>
+  <div class="topbar">
+    <div id="rv-app-logo-top" style="width:32px;height:32px;border-radius:8px;overflow:hidden;background:var(--accent);display:flex;align-items:center;justify-content:center;flex-shrink:0;"></div>
+    <div style="font-size:15px;font-weight:800;color:var(--text);letter-spacing:-.01em;flex:1;">FEEDBACK HUB</div>
     <div id="rv-store-name" style="display:none;"></div>
     <div id="rv-brand-logo-top" style="display:none;"></div>
-    <!-- Refresh icon -->
-    <button class="btn btn-ghost btn-sm" onclick="doReviewerRefresh()" title="Refresh" style="padding:6px 7px;flex-shrink:0;">
-      <svg id="rv-refresh-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+    <button class="btn btn-ghost btn-sm" onclick="openRvSettings()" style="padding:6px 8px;">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
     </button>
-    <!-- Settings icon -->
-    <button class="btn btn-ghost btn-sm" onclick="openRvSettings()" title="Settings" style="padding:6px 7px;flex-shrink:0;">
-      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-    </button>
-    <!-- Sign out icon -->
-    <button class="btn btn-ghost btn-sm" onclick="doLogout()" title="Sign out" style="padding:6px 7px;flex-shrink:0;">
-      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-        <polyline points="16 17 21 12 16 7"/>
-        <line x1="21" y1="12" x2="9" y2="12"/>
-      </svg>
-    </button>
+    <button class="btn btn-ghost btn-sm" onclick="doLogout()">Sign out</button>
   </div>
   <div class="content">
     <div id="rv-store-card" style="margin-bottom:16px;"></div>
@@ -1858,16 +1831,11 @@ async function loadAllData(reviewerStoreId=null){
         const idx = DB.brands.findIndex(b => b.id === data.brand.id);
         if(idx !== -1) DB.brands[idx] = data.brand;
         else DB.brands = [data.brand];
-      } else if(data && data.error){
-        console.error('Reviewer data error:', data.error);
       }
     } else {
       const data = await api('GET', '/api/brands');
-      if(Array.isArray(data)){
-        DB.brands = data;
-      } else if(data && data.error){
-        console.error('Load error:', data.error);
-      }
+      if(Array.isArray(data)) DB.brands = data;
+      else if(data && data.error) console.error('Load error:', data.error);
     }
   } catch(e) {
     console.error('Load error:', e);
@@ -1984,20 +1952,14 @@ async function doLogin(){
   if(!u||!p){ errEl.style.display='block'; errEl.textContent='Please enter username and password.'; return; }
   const btn=document.querySelector('#s-login .btn-primary');
   if(btn){ btn.textContent='Signing in...'; btn.disabled=true; }
-
   try {
     const result=await api('POST','/api/login',{username:u, password:p, device_id:getDeviceId()});
     if(btn){ btn.textContent='Sign in →'; btn.disabled=false; }
-
     if(!result || result.error){
-      errEl.style.display='block';
-      errEl.textContent=result?.error||'Incorrect username or password.';
-      return;
+      errEl.style.display='block'; errEl.textContent=result?.error||'Incorrect username or password.'; return;
     }
-
     await loadAllData(result.role==='reviewer' ? result.store_id : null);
     DB.role=result.role;
-
     if(result.role==='admin'){
       saveSession('admin', null, null);
       await loadAdminSettingsFromDB();
@@ -2008,39 +1970,29 @@ async function doLogin(){
       saveSession('staff', null, null, result);
       try{
         const prefs=JSON.parse(result.notif_prefs||'null');
-        if(prefs?.theme){
-          localStorage.setItem('fh_theme', prefs.theme);
-          document.documentElement.setAttribute('data-theme', prefs.theme);
-        }
+        if(prefs?.theme){ localStorage.setItem('fh_theme', prefs.theme); document.documentElement.setAttribute('data-theme', prefs.theme); }
       }catch(e){}
-      renderStaffHome();
-      goTo('s-home');
+      renderStaffHome(); goTo('s-home');
     } else if(result.role==='reviewer'){
-      DB.reviewerBrandId=result.brand_id;
-      DB.reviewerStoreId=result.store_id;
+      DB.reviewerBrandId=result.brand_id; DB.reviewerStoreId=result.store_id;
       saveSession('reviewer', result.brand_id, result.store_id);
       if(result.notif_email){
         const sid=result.store_id;
         try{
           const raw=localStorage.getItem('fh_rv_settings_'+sid);
           let local=raw?JSON.parse(raw):{};
-          local.notifEnabled=true;
-          local.notifEmail=result.notif_email;
+          local.notifEnabled=true; local.notifEmail=result.notif_email;
           localStorage.setItem('fh_rv_settings_'+sid, JSON.stringify(local));
         }catch(e){}
       }
       await loadRvSettingsFromDB(result.store_id);
       renderReviewerHome(); goTo('s-reviewer-home');
-    } else {
-      errEl.style.display='block';
-      errEl.textContent='Login failed — unknown role. Please try again.';
     }
   } catch(e) {
     if(btn){ btn.textContent='Sign in →'; btn.disabled=false; }
     showLoadingOverlay(false);
-    errEl.style.display='block';
-    errEl.textContent='Login error: ' + e.message;
-    console.error('Login error:', e);
+    errEl.style.display='block'; errEl.textContent='Error: '+e.message;
+    console.error('Login error:',e);
   }
 }
 function doLogout(){
@@ -2098,7 +2050,7 @@ function doLogout(){
         <button class="btn btn-ghost btn-sm" onclick="applySettingsToUI();goTo('s-settings')" style="padding:6px 8px;">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
         </button>
-        <button class="btn btn-ghost btn-sm" onclick="doLogout()" title="Sign out" style="padding:6px 7px;flex-shrink:0;"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></button>`;
+        <button class="btn btn-ghost btn-sm" onclick="doLogout()">Sign out</button>`;
     }
   }catch(e){}
 
@@ -2158,7 +2110,7 @@ async function restoreSession(){
         return false;
       }
     }
-    await loadAllData(session.role==='reviewer' ? session.storeId : null);
+    await loadAllData();
     if(session.role==='staff'){
       // Always re-fetch fresh staff data from server (avatar/profile may have changed)
       try{
@@ -2381,7 +2333,7 @@ function renderHome(_brandsOverride){
 
   // ── Admin profile card (only for admin role) ──────────────────────────────
   if(DB.role==='admin'){
-    loadAdminProfile(); // load from localStorage first for instant render
+    loadAdminProfile();
     let adminCard=document.getElementById('admin-home-card');
     if(!adminCard){
       adminCard=document.createElement('div');
@@ -2404,25 +2356,6 @@ function renderHome(_brandsOverride){
       phone:'', location:'',
       avatar:_ap.avatar||null, initials:_aInitials,
       coverBg:_coverBg, companyColor:_compColor, avatarLeft:_avatarLeft
-    });
-    // Also sync from DB in background — updates card on other devices
-    syncAdminProfileFromDB().then(()=>{
-      const _ap2=ADMIN_PROFILE||{};
-      const _uname2=ADMIN_CREDS?.username||'Admin';
-      const _aName2=_ap2.displayName||_uname2;
-      const _aInitials2=_aName2.split(' ').map(w=>w[0]).filter(Boolean).slice(0,2).join('').toUpperCase();
-      const _coverColor2=_ap2.coverColor||'#7c6fff';
-      const _coverBg2=(_ap2.coverGradient!==false)?`linear-gradient(135deg,${_coverColor2} 0%,#a78bfa 100%)`:_coverColor2;
-      const _compColor2=_ap2.companyColor||'#7c6fff';
-      const _avatarPos2=_ap2.photoPos||'left';
-      const _avatarLeft2=_avatarPos2==='center'?'50%':_avatarPos2==='right'?'calc(100% - 44px)':'16px';
-      const card=document.getElementById('admin-home-card');
-      if(card) card.innerHTML=buildStaffCardHTML({
-        name:_aName2, position:_ap2.position||'Administrator', company:_ap2.company||'',
-        phone:'', location:'',
-        avatar:_ap2.avatar||null, initials:_aInitials2,
-        coverBg:_coverBg2, companyColor:_compColor2, avatarLeft:_avatarLeft2
-      });
     });
   }
 
@@ -3134,9 +3067,6 @@ function onPDFPick(input){
   DB.pendingUploadURL=URL.createObjectURL(file);
   const lbl=document.getElementById('pdf-lbl');
   if(lbl){ lbl.textContent=file.name; lbl.style.color='var(--success)'; }
-  // Update drop zone to show success state
-  const dz=document.getElementById('pdf-drop-zone');
-  if(dz){ dz.style.borderColor='var(--success)'; dz.style.background='var(--success)18'; dz.innerHTML=`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`; }
   // Show upload button only if ref items also exist
   const uploadBtn=document.getElementById('upload-report-btn');
   if(uploadBtn) uploadBtn.style.display=DB.pendingRefs.length?'':'none';
@@ -3293,9 +3223,7 @@ async function doUpload(){
   DB.pendingUpload=null; DB.pendingUploadURL=null; DB.pendingRefs=[];
   ['r-title','r-desc','r-store-name','r-checked-by','r-score'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
   const lbl=document.getElementById('pdf-lbl');
-  if(lbl){ lbl.textContent='No file selected'; lbl.style.color=''; }
-  const dz=document.getElementById('pdf-drop-zone');
-  if(dz){ dz.style.borderColor=''; dz.style.background=''; dz.innerHTML=`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>`; }
+  if(lbl){ lbl.textContent='Tap to select PDF'; lbl.style.color=''; }
   const dateEl=document.getElementById('r-inspect-date');
   if(dateEl) dateEl.value=new Date().toISOString().slice(0,10);
   renderRefItems();
@@ -3982,19 +3910,17 @@ function editBrand(){
 }
 async function saveBrand(){
   const name=document.getElementById('nb-name').value.trim();
-  const logoTextInput=document.getElementById('nb-logo-text');
-  const logoText=logoTextInput?logoTextInput.value.trim()||'🏷️':'🏷️';
   const msg=document.getElementById('brand-form-msg');
   if(!name){ msg.innerHTML='<div class="alert alert-danger">Please enter a brand name.</div>'; return; }
   if(DB.editingBrandId){
     const b=DB.brands.find(b=>b.id===DB.editingBrandId);
-    b.name=name; b.color=DB.pickedColor; b.logoText=logoText;
+    b.name=name; b.color=DB.pickedColor;
     if(DB.pendingLogo) b.logo=DB.pendingLogo;
-    await api('PUT',`/api/brands/${b.id}`,{name:b.name,color:b.color,logo:b.logo||null,logoText:b.logoText});
+    await api('PUT',`/api/brands/${b.id}`,{name:b.name,color:b.color,logo:b.logo||null,logoText:b.logoText||'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>'});
     msg.innerHTML='<div class="alert alert-success">✓ Brand updated!</div>';
     setTimeout(()=>{ msg.innerHTML=''; DB.currentBrandId=DB.editingBrandId; renderBrandHero(); document.getElementById('brand-topbar-title').textContent=name; renderHome(); goTo('s-brand'); },1200);
   } else {
-    const newBrand={id:'b'+Date.now(),name,color:DB.pickedColor,logo:DB.pendingLogo||null,logoText,stores:[],reports:[]};
+    const newBrand={id:'b'+Date.now(),name,color:DB.pickedColor,logo:DB.pendingLogo||null,logoText:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>',stores:[],reports:[]};
     DB.brands.push(newBrand);
     await api('POST','/api/brands',newBrand);
     msg.innerHTML='<div class="alert alert-success">✓ Brand created!</div>';
@@ -5439,7 +5365,30 @@ function showToast(msg){
 
 /* ===== DB SETTINGS SYNC ===== */
 async function loadAdminSettingsFromDB(){
-  await syncAdminProfileFromDB();
+  try{
+    const data=await api('GET','/api/admin/settings');
+    if(data && !data.error){
+      // DB is source of truth — always overwrite local settings
+      SETTINGS.notifEnabled=!!(data.notif_email);
+      SETTINGS.notifEmail=data.notif_email||'';
+      SETTINGS.notifOnSubmit=data.notif_on_submit!==false;
+      SETTINGS.notifAllDone=data.notif_all_done!==false;
+      SETTINGS.notifBrandComplete=data.notif_brand_complete!==false;
+      SETTINGS.notifStoreComplete=data.notif_store_complete!==false;
+      saveSettingsToStorage();
+      // Load profile from DB — overrides localStorage so it syncs across devices
+      if(data.profile){
+        ADMIN_PROFILE={...ADMIN_PROFILE,...data.profile};
+        saveAdminProfileToStorage();
+      }
+      // Apply to UI immediately so it shows on any device
+      applySettingsToUI();
+    }
+  }catch(e){
+    // Fallback to localStorage if DB fails
+    loadSettingsFromStorage();
+    applySettingsToUI();
+  }
 }
 
 async function loadRvSettingsFromDB(storeId){
@@ -5614,6 +5563,19 @@ function applySettingsToUI(){
     <!-- DATA EXPORT -->
     <div style="margin-bottom:16px;">
       <div class="sec-label">Data export</div>
+      <div class="card" style="margin-bottom:10px;">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <div>
+            <div style="font-size:14px;font-weight:600;">Download staff accounts</div>
+            <div style="font-size:12px;color:var(--text2);margin-top:2px;">Export all staff usernames and passwords</div>
+          </div>
+        </div>
+        <button class="btn btn-primary btn-full" onclick="exportStaffCredentials()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right:6px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Download staff data
+        </button>
+      </div>
       <div class="card">
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
@@ -5720,36 +5682,6 @@ function loadAdminProfile(){
     const raw=localStorage.getItem('fh_admin_profile');
     if(raw) ADMIN_PROFILE={...ADMIN_PROFILE,...JSON.parse(raw)};
   }catch(e){}
-}
-
-// Load profile from DB and sync to localStorage — called after login/restore
-async function syncAdminProfileFromDB(){
-  try{
-    const data=await api('GET','/api/admin/settings');
-    if(data && !data.error){
-      // Update ADMIN_CREDS from DB
-      if(data.username) ADMIN_CREDS.username=data.username;
-      // Update profile from DB — DB always wins over localStorage
-      if(data.profile){
-        ADMIN_PROFILE={...ADMIN_PROFILE,...data.profile};
-        saveAdminProfileToStorage();
-      }
-      // Update notif settings
-      SETTINGS.notifEnabled=!!(data.notif_email);
-      SETTINGS.notifEmail=data.notif_email||'';
-      SETTINGS.notifOnSubmit=data.notif_on_submit!==false;
-      SETTINGS.notifAllDone=data.notif_all_done!==false;
-      SETTINGS.notifBrandComplete=data.notif_brand_complete!==false;
-      SETTINGS.notifStoreComplete=data.notif_store_complete!==false;
-      saveSettingsToStorage();
-      applySettingsToUI();
-    }
-  }catch(e){
-    // Fallback to localStorage
-    loadAdminProfile();
-    loadSettingsFromStorage();
-    applySettingsToUI();
-  }
 }
 
 function saveAdminProfileToStorage(){
@@ -6272,29 +6204,26 @@ function renderHomeAppLogo(){
 
 /* ===== REFRESH ===== */
 async function doAdminRefresh(){
-  const btn=document.getElementById('home-refresh-btn');
-  const icon=document.getElementById('home-refresh-icon');
+  const btn=document.getElementById('admin-refresh-btn');
+  const icon=document.getElementById('admin-refresh-icon');
   if(btn) btn.disabled=true;
   if(icon) icon.style.animation='spin .7s linear infinite';
   try{
     await loadAllData();
     if(DB.role==='staff'){
-      renderStaffHome();
+      renderStaffHome(); // always use filtered view for staff
     } else {
       renderHome();
       renderHomeAppLogo();
     }
-    showToast('✓ Updated!');
+    showToast('Updated!');
   }catch(e){ showToast('Refresh failed'); }
   if(icon) icon.style.animation='';
   if(btn) btn.disabled=false;
 }
 
-// Alias for reviewer refresh button
-async function doReviewerRefresh(){ await doRvRefresh(); }
-
 async function doRvRefresh(){
-  const btn=document.querySelector('#s-reviewer-home .topbar button[onclick="doReviewerRefresh()"]');
+  const btn=document.getElementById('rv-refresh-btn');
   const icon=document.getElementById('rv-refresh-icon');
   if(btn) btn.disabled=true;
   if(icon) icon.style.animation='spin .7s linear infinite';
@@ -6427,7 +6356,7 @@ function renderStaffHome(){
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
       </button>
       <button class="btn btn-ghost btn-sm" onclick="doAdminRefresh()" title="Refresh" style="padding:6px 8px;"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg></button>
-      <button class="btn btn-ghost btn-sm" onclick="doLogout()" title="Sign out" style="padding:6px 7px;flex-shrink:0;"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></button>`;
+      <button class="btn btn-ghost btn-sm" onclick="doLogout()">Sign out</button>`;
     renderHomeAppLogo();
   }
 
@@ -7543,112 +7472,58 @@ function openStaffExportVerify(){
 async function doStaffExportVerify(){
   const pass=document.getElementById('staff-export-pass').value;
   const msg=document.getElementById('staff-export-msg');
-  if(!pass){ msg.innerHTML='<div class="alert alert-danger">Please enter password.</div>'; return; }
-  const btn=document.querySelector('#staff-export-overlay .btn-primary');
-  if(btn){ btn.textContent='Verifying...'; btn.disabled=true; }
-  try{
-    const check=await fetch(WORKER_URL+'/api/export-data',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({admin_password:pass})
-    });
-    const data=await check.json();
-    if(!check.ok||data.error){
-      msg.innerHTML='<div class="alert alert-danger">Incorrect password.</div>';
-      if(btn){ btn.textContent='Download'; btn.disabled=false; }
-      return;
-    }
-    document.getElementById('staff-export-overlay').style.display='none';
-    if(btn){ btn.textContent='Download'; btn.disabled=false; }
-    await doExportAllData(data);
-  }catch(e){
-    msg.innerHTML='<div class="alert alert-danger">Export failed: '+e.message+'</div>';
-    if(btn){ btn.textContent='Download'; btn.disabled=false; }
-  }
+  if(pass!==ADMIN_CREDS.password){ msg.innerHTML='<div class="alert alert-danger">Incorrect password.</div>'; return; }
+  document.getElementById('staff-export-overlay').style.display='none';
+  await doExportStaffData();
 }
 
-// ── STAFF EXPORT — Admin info + Staff accounts only ──────────────────────
-async function doExportAllData(data){
+async function doExportStaffData(){
+  showToast('Fetching staff data...');
   try {
-    if(!data){
-      const res=await fetch(WORKER_URL+'/api/export-data',{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({admin_password:ADMIN_CREDS.password})
-      });
-      data=await res.json();
-    }
+    const data=await api('GET','/api/export-data');
     if(!data||data.error) throw new Error(data?.error||'Failed');
-
-    const nl='\n';
+    const nl=String.fromCharCode(10);
     const L=[];
-    const line=t=>L.push(t===undefined||t===null?'':String(t));
+    const line=t=>L.push(t||'');
     const now=new Date();
-    const dd=String(now.getDate()).padStart(2,'0');
-    const mm=String(now.getMonth()+1).padStart(2,'0');
-    const yyyy=now.getFullYear();
-    const hh=String(now.getHours()).padStart(2,'0');
-    const min=String(now.getMinutes()).padStart(2,'0');
-    const admin=data.admin||{};
-    const staff=data.staff||[];
-
+    const dd=String(now.getDate()).padStart(2,'0'),mm=String(now.getMonth()+1).padStart(2,'0'),yyyy=now.getFullYear();
+    const hh=String(now.getHours()).padStart(2,'0'),min=String(now.getMinutes()).padStart(2,'0');
     line('========================================');
-    line('  FEEDBACK HUB — Staff Accounts Export');
+    line('  FEEDBACK HUB — Staff Data Export');
     line('  Exported : '+dd+'-'+mm+'-'+yyyy+' '+hh+':'+min);
+    line('  Admin    : '+(data.admin?.username||'-'));
     line('========================================');
     line();
-
-    // Admin account
-    line('[ ADMIN ACCOUNT ]');
-    line('  Username          : '+(admin.username||'-'));
-    line('  Password          : '+(admin.password||'-'));
-    line('  Notification email: '+(admin.notif_email||'-'));
-    line('  Notify on submit  : '+(admin.notif_on_submit?'Yes':'No'));
-    line('  Notify all done   : '+(admin.notif_all_done?'Yes':'No'));
-    line('  Notify brand done : '+(admin.notif_brand_complete?'Yes':'No'));
-    line('  Notify store done : '+(admin.notif_store_complete?'Yes':'No'));
-    line();
-
-    // Staff accounts
-    line('[ STAFF ACCOUNTS ] ('+staff.length+')');
+    line('  STAFF ACCOUNTS ('+((data.staff||[]).length)+')');
     line('----------------------------------------');
-    if(!staff.length){
-      line('  No staff accounts found.');
-    } else {
-      staff.forEach((s,i)=>{
-        line();
-        line('  Staff #'+(i+1));
-        line('  Name      : '+(s.name||'-'));
-        line('  Position  : '+(s.position||'-'));
-        line('  Company   : '+(s.company||'-'));
-        line('  Phone     : '+(s.phone||'-'));
-        line('  Location  : '+(s.location||'-'));
-        line('  Username  : '+(s.username||'-'));
-        line('  Password  : '+(s.password||'-'));
-        line('  Email     : '+(s.notif_email||'-'));
-        line('  Permission: '+(s.permission||'-'));
-        line('  Created   : '+(s.created_at||'-'));
-      });
-    }
+    (data.staff||[]).forEach((s,i)=>{
+      line();
+      line('  Staff #'+(i+1)+': '+s.name);
+      line('  Position : '+s.position);
+      line('  Company  : '+s.company);
+      line('  Phone    : '+s.phone);
+      line('  Location : '+s.location);
+      line('  Username : '+s.username);
+      line('  Password : '+s.password);
+      line('  Email    : '+s.notif_email);
+      line('  Permission: '+s.permission);
+      const bids=JSON.parse(s.brand_ids||'[]');
+      line('  Brands   : '+(bids.length===0?'All brands':bids.join(', ')));
+      line('  Created  : '+s.created_at);
+    });
     line();
     line('========================================');
-    line('  Total staff: '+staff.length);
-    line('  END OF EXPORT');
+    line('  END OF STAFF EXPORT');
     line('========================================');
-
     const txt=L.join(nl);
     const blob=new Blob([txt],{type:'text/plain;charset=utf-8'});
     const url=URL.createObjectURL(blob);
     const a=document.createElement('a');
-    a.href=url;
-    a.download='feedback-hub-staff-'+dd+'-'+mm+'-'+yyyy+'.txt';
+    a.href=url; a.download='feedback-hub-staff-'+dd+'-'+mm+'-'+yyyy+'.txt';
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    showToast('✓ Staff data downloaded!');
-  }catch(e){
-    console.error('Staff export error:',e);
-    showToast('Export failed: '+e.message);
-  }
+    showToast('Staff data downloaded!');
+  } catch(e){ showToast('Export failed: '+e.message); }
 }
 
 
@@ -8044,95 +7919,24 @@ function closeExportVerify(){
 function doExportVerify(){
   const pass=document.getElementById('export-admin-pass').value;
   const msg=document.getElementById('export-verify-msg');
-  if(!pass){ msg.innerHTML='<div class="alert alert-danger">Please enter password.</div>'; return; }
-  const btn=document.querySelector('#export-verify-overlay .btn-primary');
-  if(btn){ btn.textContent='Verifying...'; btn.disabled=true; }
+  if(pass!==ADMIN_CREDS.password){
+    msg.innerHTML='<div class="alert alert-danger">Incorrect password. Please try again.</div>';
+    return;
+  }
   closeExportVerify();
-  doExportData(pass).finally(()=>{ if(btn){ btn.textContent='Verify & Download'; btn.disabled=false; } });
+  doExportData();
 }
-async function doExportData(adminPass){
+async function doExportData(){
   showToast('Fetching data...');
-  var nl = '\n';
+  var nl = String.fromCharCode(10);
   var data;
   try {
-    const res = await fetch(WORKER_URL+'/api/export-data', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ admin_password: adminPass||ADMIN_CREDS.password })
-    });
-    data = await res.json();
-    if(!res.ok || data.error) throw new Error(data?.error||'Incorrect password');
-  } catch(e) { showToast('Export failed: ' + e.message); return; }
-  try {
-    var now=new Date();
-    var dd=String(now.getDate()).padStart(2,'0');
-    var mm=String(now.getMonth()+1).padStart(2,'0');
-    var yyyy=now.getFullYear();
-    var hh=String(now.getHours()).padStart(2,'0');
-    var min=String(now.getMinutes()).padStart(2,'0');
-    var brands=data.brands||[];
-    var stores=data.stores||[];
-    var reports=data.reports||[];
-    var feedbacks=data.feedbacks||[];
-    var L=[];
-    var line=function(t){ L.push(t===undefined||t===null?'':String(t)); };
-    line('========================================');
-    line('  FEEDBACK HUB - Store / Reviewer Export');
-    line('  Exported : '+dd+'-'+mm+'-'+yyyy+' '+hh+':'+min);
-    line('  Brands: '+brands.length+' | Stores: '+stores.length);
-    line('========================================');
-    line();
-    brands.forEach(function(b,bi){
-      line('----------------------------------------');
-      line('  BRAND '+(bi+1)+': '+(b.name||'').toUpperCase());
-      line('----------------------------------------');
-      line();
-      var bStores=stores.filter(function(s){ return s.brand_id===b.id; });
-      if(!bStores.length){ line('  (no stores)'); line(); return; }
-      bStores.forEach(function(s,si){
-        line('  Store '+(si+1)+': '+s.name);
-        line('  ----------------------');
-        line('  Username          : '+(s.username||'-'));
-        line('  Password          : '+(s.password||'-'));
-        line('  Login email       : '+(s.email||'-'));
-        line('  Notification email: '+(s.notif_email||'-'));
-        line('  Phone             : '+(s.phone||'-'));
-        line('  Location          : '+(s.location||'-'));
-        line();
-        var sReports=reports.filter(function(r){
-          try{ var ids=JSON.parse(r.store_ids||'[]'); return r.brand_id===b.id&&(ids.length===0||ids.includes(s.id)||r.store_id===s.id); }catch(e2){ return r.brand_id===b.id; }
-        });
-        if(sReports.length){
-          line('  Reports ('+sReports.length+'):');
-          sReports.forEach(function(r,ri){
-            var fb=feedbacks.find(function(f){ return f.report_id===r.id&&f.store_id===s.id; });
-            line('    '+(ri+1)+'. '+(r.title||'-')+' ('+(r.date||'-')+')');
-            line('       Status: '+(fb?'Responded ('+(fb.date||'-')+')':'No response'));
-          });
-          line();
-        }
-      });
-      line();
-    });
-    line('========================================');
-    line('  Total brands : '+brands.length);
-    line('  Total stores : '+stores.length);
-    line('  Total reports: '+reports.length);
-    line('  END OF EXPORT');
-    line('========================================');
-    var txt=L.join(nl);
-    var blob=new Blob([txt],{type:'text/plain;charset=utf-8'});
-    var url=URL.createObjectURL(blob);
-    var a=document.createElement('a');
-    a.href=url; a.download='feedback-hub-stores-'+dd+'-'+mm+'-'+yyyy+'.txt';
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    showToast('Store data downloaded!');
+    data = await api('GET', '/api/export-data');
+    if(data.error) throw new Error(data.error);
   } catch(e) {
-    console.error('Store export error:',e);
-    showToast('Export failed: '+e.message);
+    showToast('Export failed: ' + e.message);
+    return;
   }
-}
 
   var now  = new Date(data.exported_at || Date.now());
   var dd   = String(now.getDate()).padStart(2,'0');
@@ -8143,32 +7947,23 @@ async function doExportData(adminPass){
   var dateStr = dd+'-'+mm+'-'+yyyy;
   var timeStr = hh+':'+min;
 
-  // Safety defaults
-  var admin    = data.admin    || {};
-  var brands   = data.brands   || [];
-  var stores   = data.stores   || [];
-  var reports  = data.reports  || [];
-  var feedbacks= data.feedbacks|| [];
-  var staff    = data.staff    || [];
-
-  try {
   var L = [];
-  var line = function(t){ L.push(t===undefined||t===null?'':String(t)); };
+  var line = function(t){ L.push(t||''); };
 
   line('========================================');
   line('  FEEDBACK HUB — Full Data Export');
   line('  Exported : ' + dateStr + ' ' + timeStr);
-  line('  Admin    : ' + (admin.username||'-'));
+  line('  Admin    : ' + data.admin.username);
   line('========================================');
   line();
 
   // ── ADMIN ACCOUNT ──────────────────────────────
   line('[ ADMIN ACCOUNT ]');
-  line('  Username          : ' + (admin.username || '-'));
-  line('  Password          : ' + (admin.password || '-'));
-  line('  Notification email: ' + (admin.notif_email || '-'));
-  line('  Notify on submit  : ' + (admin.notif_on_submit  ? 'Yes' : 'No'));
-  line('  Notify all done   : ' + (admin.notif_all_done   ? 'Yes' : 'No'));
+  line('  Username          : ' + (data.admin.username || '-'));
+  line('  Password          : ' + (data.admin.password || '-'));
+  line('  Notification email: ' + (data.admin.notif_email || '-'));
+  line('  Notify on submit  : ' + (data.admin.notif_on_submit  ? 'Yes' : 'No'));
+  line('  Notify all done   : ' + (data.admin.notif_all_done   ? 'Yes' : 'No'));
   line();
 
   // ── BRANDS & STORES ────────────────────────────
@@ -8177,14 +7972,14 @@ async function doExportData(adminPass){
   line('========================================');
   line();
 
-  brands.forEach(function(b, bi){
+  data.brands.forEach(function(b, bi){
     line('BRAND ' + (bi+1) + ': ' + (b.name || '').toUpperCase());
     line('  ID    : ' + b.id);
     line('  Color : ' + (b.color || '-'));
     line('  Created: ' + (b.created_at || '-'));
     line();
 
-    var brandStores = stores.filter(function(s){ return s.brand_id === b.id; });
+    var brandStores = data.stores.filter(function(s){ return s.brand_id === b.id; });
     if(!brandStores.length){
       line('  (no stores)');
       line();
@@ -8201,9 +7996,11 @@ async function doExportData(adminPass){
       line('  Notifications on  : ' + (s.notif_enabled  ? 'Yes' : 'No'));
       line('  Phone             : ' + (s.phone          || '-'));
       line('  Location          : ' + (s.location       || '-'));
+      line('  Color             : ' + (s.color          || '-'));
       line('  Created           : ' + (s.created_at     || '-'));
 
-      var storeReports = reports.filter(function(r){
+      // Reports for this store
+      var storeReports = data.reports.filter(function(r){
         return r.brand_id === b.id && (!r.store_id || r.store_id === s.id);
       });
       if(storeReports.length){
@@ -8211,7 +8008,8 @@ async function doExportData(adminPass){
         line('  Reports assigned (' + storeReports.length + '):');
         storeReports.forEach(function(r, ri){
           line('    ' + (ri+1) + '. ' + (r.title || '-') + ' (' + (r.date || r.created_at || '-') + ')');
-          var fb = feedbacks.find(function(f){ return f.report_id === r.id && f.store_id === s.id; });
+          // Check if store submitted feedback
+          var fb = data.feedbacks.find(function(f){ return f.report_id === r.id && f.store_id === s.id; });
           line('       Status: ' + (fb ? 'Responded on ' + (fb.date || fb.created_at || '-') : 'No response yet'));
         });
       }
@@ -8219,32 +8017,31 @@ async function doExportData(adminPass){
     });
   });
 
-  // ── STAFF ──────────────────────────────────────
-  if(staff.length){
+  // ── SUMMARY ────────────────────────────────────
+  line('========================================');
+  // Staff section
+  if(data.staff&&data.staff.length){
     line();
     line('========================================');
-    line('  STAFF ACCOUNTS ('+staff.length+')');
-    line('========================================');
-    staff.forEach(function(s,i){
+    line('  STAFF ACCOUNTS ('+data.staff.length+')');
+    line('----------------------------------------');
+    data.staff.forEach((s,i)=>{
       line();
       line('  Staff #'+(i+1)+': '+s.name);
-      line('  Position  : '+s.position);
-      line('  Username  : '+s.username);
-      line('  Password  : '+s.password);
-      line('  Email     : '+s.notif_email);
+      line('  Position : '+s.position);
+      line('  Username : '+s.username);
+      line('  Password : '+s.password);
+      line('  Email    : '+s.notif_email);
       line('  Permission: '+s.permission);
     });
   }
 
-  // ── SUMMARY ────────────────────────────────────
-  line();
-  line('========================================');
   line('  SUMMARY');
   line('========================================');
-  line('  Total brands  : ' + brands.length);
-  line('  Total stores  : ' + stores.length);
-  line('  Total reports : ' + reports.length);
-  line('  Total feedbacks: '+ feedbacks.length);
+  line('  Total brands  : ' + data.brands.length);
+  line('  Total stores  : ' + data.stores.length);
+  line('  Total reports : ' + data.reports.length);
+  line('  Total feedbacks: '+ data.feedbacks.length);
   line();
   line('========================================');
   line('  END OF EXPORT');
@@ -8260,11 +8057,7 @@ async function doExportData(adminPass){
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
-  showToast('✓ Downloaded!');
-  } catch(e) {
-    console.error('Export build error:', e);
-    showToast('Export failed: ' + e.message);
-  }
+  showToast('Downloaded!');
 }
 
 
