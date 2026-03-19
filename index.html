@@ -7549,7 +7549,9 @@ async function doStaffExportVerify(){
   if(btn){ btn.textContent='Verifying...'; btn.disabled=true; }
   try{
     const check=await fetch(WORKER_URL+'/api/export-data',{
-      headers:{'X-Admin-Password':pass}
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({admin_password:pass})
     });
     const data=await check.json();
     if(!check.ok||data.error){
@@ -7569,8 +7571,11 @@ async function doStaffExportVerify(){
 async function doExportAllData(data){
   try {
     if(!data) {
-      // fallback fetch
-      const res=await fetch(WORKER_URL+'/api/export-data',{headers:{'X-Admin-Password':ADMIN_CREDS.password}});
+      const res=await fetch(WORKER_URL+'/api/export-data',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({admin_password:ADMIN_CREDS.password})
+      });
       data=await res.json();
     }
     if(!data||data.error) throw new Error(data?.error||'Failed');
@@ -8043,20 +8048,22 @@ function doExportVerify(){
   const pass=document.getElementById('export-admin-pass').value;
   const msg=document.getElementById('export-verify-msg');
   if(!pass){ msg.innerHTML='<div class="alert alert-danger">Please enter password.</div>'; return; }
+  const btn=document.querySelector('#export-verify-overlay .btn-primary');
+  if(btn){ btn.textContent='Verifying...'; btn.disabled=true; }
   closeExportVerify();
-  doExportData(pass);
+  doExportData(pass).finally(()=>{ if(btn){ btn.textContent='Verify & Download'; btn.disabled=false; } });
 }
 async function doExportData(adminPass){
   showToast('Fetching data...');
-  var nl = String.fromCharCode(10);
   var data;
   try {
-    // Must send X-Admin-Password header — worker requires it
     const res = await fetch(WORKER_URL+'/api/export-data', {
-      headers: { 'X-Admin-Password': adminPass||ADMIN_CREDS.password }
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ admin_password: adminPass||ADMIN_CREDS.password })
     });
     data = await res.json();
-    if(!res.ok || data.error) throw new Error(data?.error||'Unauthorized — wrong password');
+    if(!res.ok || data.error) throw new Error(data?.error||'Incorrect password');
   } catch(e) {
     showToast('Export failed: ' + e.message);
     return;
