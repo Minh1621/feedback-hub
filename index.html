@@ -6959,24 +6959,21 @@ let _deleteResponseCtx={};
 function deleteStoreResponse(fbId, storeId, refId, rid){
   const b=brand(), r=b.reports.find(r=>r.id===rid), store=b.stores.find(s=>s.id===storeId);
   showGenericConfirm(
-    `Reset ${store?.name||'store'}'s response for this item?\n\nAdmin remarks and annotated photos will be kept. Store will be notified to resubmit.`,
+    `Reset ${store?.name||'store'}'s response for this item?\n\nAdmin remarks kept. No email sent — use Submit to notify store.`,
     async()=>{
       const fb=r.feedbacks.find(f=>f.id===fbId);
       if(!fb) return;
-      // Keep annotated photos and admin remarks — only clear the store's text note
       if(fb.itemFeedbacks){
         const it=fb.itemFeedbacks.find(it=>it.refId===refId);
-        if(it){ it.note=''; /* annotated photos & admin remarks preserved */ }
+        if(it){ it.note=''; }
       }
       fb.text=(fb.itemFeedbacks||[]).map((it,i)=>it.note?`Item ${i+1}: ${it.note}`:'').filter(Boolean).join(' | ');
-      // Always PUT (never DELETE) — preserves admin remarks and annotated photos in DB
       await api('PUT',`/api/feedbacks/${fbId}`,{
         text:fb.text, itemFeedbacks:fb.itemFeedbacks,
         photos:fb.photos||[], adminRemarks:fb.adminRemarks||{}
       });
-      const _alerter=getAlerterInfo();
-      await api('POST','/api/feedbacks/delete-notify',{feedback_id:fbId, store_id:storeId, report_id:rid, ref_id:refId, alerter_id:_alerter.id, alerter_role:_alerter.role});
-      showToast('Response reset — store notified to resubmit');
+      // No email here — checker submits all remarks at once via Submit button
+      showToast('Response reset');
       viewFeedback(rid);
     }
   );
@@ -7009,19 +7006,45 @@ async function deleteRemark(fbId, refId, storeId, rid, remarkIdx){
   renderBrandReports(); renderHome(); viewFeedback(rid);
 }
 
-// ── Submit to store — notify store to resubmit for this item ──────────────────
+// ── Submit to store — send ONE email with full rejection + pending counts ─────
 async function submitToStore(fbId, refId, storeId, rid, storeName){
   try {
+    const b=brand(), r=b.reports.find(r=>r.id===rid);
+    const fb=r?.feedbacks.find(f=>f.id===fbId);
+    if(!fb) return;
     const _alerter=getAlerterInfo();
-    await api('POST','/api/feedbacks/delete-notify',{
-      feedback_id:fbId, store_id:storeId, report_id:rid,
-      ref_id:refId, alerter_id:_alerter.id, alerter_role:_alerter.role
+    const todayStr=new Date().toISOString().slice(0,10)+' '+new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+
+    // Count ALL rejections and pending for this store
+    let rejCount=0, pendingCount=0;
+    const refMap={};
+    (fb.itemFeedbacks||[]).forEach(it=>{ if(it.refId) refMap[it.refId]=it; });
+    (r.refs||[]).forEach(ref=>{
+      const it=refMap[ref.id];
+      const hasContent=it&&(it.note||(it.photos&&it.photos.length));
+      const hasRemark=!!(fb.adminRemarks?.[ref.id+'_list']?.length||fb.adminRemarks?.[ref.id]);
+      if(hasRemark) rejCount++;
+      else if(!hasContent) pendingCount++;
     });
-    showToast(`✓ ${storeName} notified to resubmit`);
+
+    // Save timeline
+    if(!Array.isArray(fb.timeline)) fb.timeline=[];
+    const already=fb.timeline.find(t=>t.type==='resubmit_requested'&&t.date.slice(0,10)===todayStr.slice(0,10));
+    if(!already) fb.timeline.push({type:'resubmit_requested', date:todayStr, by:_alerter.name||'Staff'});
+    await api('PUT',`/api/feedbacks/${fbId}`,{adminRemarks:fb.adminRemarks, timeline:fb.timeline});
+
+    // Send ONE email with total counts
+    await api('POST','/api/notify-resubmit',{
+      store_id:storeId, report_id:rid,
+      rejection_count:rejCount,
+      pending_count:pendingCount,
+      alerter:_alerter
+    });
+    showToast(`Notified ${storeName}`);
   } catch(e){ showToast('Failed to notify store'); }
 }
 
-// ── Submit to ALL remarked stores in one tap ───────────────────────────────────
+// ── Submit to ALL remarked stores in one tap — ONE email per store with full counts ──
 async function submitAllRemarkedStores(rid){
   const b=brand(), r=b.reports.find(r=>r.id===rid);
   if(!r) return;
@@ -7032,38 +7055,49 @@ async function submitAllRemarkedStores(rid){
   r.feedbacks.forEach(f=>{ if(!fbMap[f.storeId]||f.date>=fbMap[f.storeId].date) fbMap[f.storeId]=f; });
   const targetStores=r.storeId?b.stores.filter(s=>s.id===r.storeId):b.stores;
   const _alerter=getAlerterInfo();
-  const todayStr=new Date().toISOString().slice(0,10);
+  const todayStr=new Date().toISOString().slice(0,10)+' '+new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
   let sent=0;
 
   for(const s of targetStores){
     const fb=fbMap[s.id];
-    if(!fb||!fb.adminRemarks) continue;
-    // Find all refs with remarks for this store
-    for(const ref of (r.refs||[])){
-      const hasRemark=(fb.adminRemarks[ref.id+'_list']?.length>0)||!!fb.adminRemarks[ref.id];
-      if(hasRemark){
-        try{
-          // Record resubmit_at and timeline
-          fb.resubmitAt = todayStr;
-          if(!Array.isArray(fb.timeline)) fb.timeline=[];
-          // Only add if not duplicate for today
-          const already=fb.timeline.find(t=>t.type==='resubmit_requested'&&t.date===todayStr);
-          if(!already) fb.timeline.push({type:'resubmit_requested', date:todayStr, by:_alerter.name||'Staff'});
-          await api('PUT',`/api/feedbacks/${fb.id}`,{
-            adminRemarks:fb.adminRemarks,
-            resubmit_at:fb.resubmitAt, timeline:fb.timeline
-          });
-          await api('POST','/api/feedbacks/delete-notify',{
-            feedback_id:fb.id, store_id:s.id, report_id:rid,
-            ref_id:ref.id, alerter_id:_alerter.id, alerter_role:_alerter.role
-          });
-          sent++;
-        }catch(e){}
-        break; // one notification per store is enough
-      }
-    }
+    if(!fb) continue;
+
+    // Count rejections and non-responses for this store
+    let rejCount=0, pendingCount=0;
+    const refMap={};
+    (fb.itemFeedbacks||[]).forEach(it=>{ if(it.refId) refMap[it.refId]=it; });
+    (r.refs||[]).forEach(ref=>{
+      const it=refMap[ref.id];
+      const hasContent=it&&(it.note||(it.photos&&it.photos.length));
+      const hasRemark=!!(fb.adminRemarks?.[ref.id+'_list']?.length||fb.adminRemarks?.[ref.id]);
+      if(hasRemark) rejCount++;
+      else if(!hasContent) pendingCount++;
+    });
+
+    // Only notify if has rejections OR pending items
+    if(rejCount===0 && pendingCount===0) continue;
+
+    // Save timeline — record resubmit requested
+    fb.resubmitAt=todayStr;
+    if(!Array.isArray(fb.timeline)) fb.timeline=[];
+    const already=fb.timeline.find(t=>t.type==='resubmit_requested'&&t.date.slice(0,10)===todayStr.slice(0,10));
+    if(!already) fb.timeline.push({type:'resubmit_requested', date:todayStr, by:_alerter.name||'Staff'});
+    await api('PUT',`/api/feedbacks/${fb.id}`,{
+      adminRemarks:fb.adminRemarks, resubmit_at:fb.resubmitAt, timeline:fb.timeline
+    });
+
+    // Send ONE email per store with total counts
+    await api('POST','/api/notify-resubmit',{
+      store_id:s.id, report_id:rid,
+      rejection_count:rejCount,
+      pending_count:pendingCount,
+      alerter:_alerter
+    });
+    sent++;
   }
-  showToast(`✓ ${sent} store${sent!==1?'s':''} notified to resubmit`);
+
+  if(btn){ btn.disabled=false; btn.textContent='Submit to stores'; }
+  showToast(`Notified ${sent} store${sent!==1?'s':''}`);
   renderBrandReports(); renderHome(); viewFeedback(rid);
 }
 function openResponseNote(fbId, refId, storeId, rid){
