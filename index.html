@@ -758,6 +758,70 @@ label{
   </div>
   <div class="content">
     <div id="settings-content"></div>
+    <!-- Admin notification settings -->
+    <div style="margin-bottom:16px;">
+      <div class="sec-label">Notifications</div>
+      <div class="card" style="padding:14px 16px;margin-bottom:10px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+          <div>
+            <div style="font-size:14px;font-weight:600;">Enable notifications</div>
+            <div style="font-size:12px;color:var(--text2);margin-top:2px;">Get email alerts when stores respond</div>
+          </div>
+          <div id="notif-toggle" onclick="toggleNotif()" style="width:36px;height:20px;border-radius:10px;background:var(--bg3);border:1px solid var(--border2);cursor:pointer;position:relative;flex-shrink:0;transition:background .2s;">
+            <div id="notif-knob" style="position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:var(--text3);transition:all .2s;"></div>
+          </div>
+        </div>
+        <div id="notif-email-section" style="display:none;">
+          <div class="field" style="margin-bottom:10px;">
+            <label>Notification email</label>
+            <input type="email" id="notif-email" placeholder="e.g. admin@company.com"/>
+            <div style="font-size:11px;color:var(--text3);margin-top:5px;">Alerts sent to this email on all devices</div>
+          </div>
+          <div style="font-size:13px;font-weight:500;margin-bottom:10px;">Notify me when:</div>
+          <label style="display:flex;align-items:center;gap:10px;text-transform:none;font-size:13px;color:var(--text);margin-bottom:10px;cursor:pointer;">
+            <input type="checkbox" id="notif-on-submit" checked onchange="saveNotifSettings()"/> Store submits a response
+          </label>
+          <label style="display:flex;align-items:center;gap:10px;text-transform:none;font-size:13px;color:var(--text);margin-bottom:10px;cursor:pointer;">
+            <input type="checkbox" id="notif-all-done" checked onchange="saveNotifSettings()"/> All stores have responded
+          </label>
+          <label style="display:flex;align-items:center;gap:10px;text-transform:none;font-size:13px;color:var(--text);margin-bottom:10px;cursor:pointer;">
+            <input type="checkbox" id="notif-brand-complete" checked onchange="saveNotifSettings()"/> Brand report is complete
+          </label>
+          <label style="display:flex;align-items:center;gap:10px;text-transform:none;font-size:13px;color:var(--text);margin-bottom:14px;cursor:pointer;">
+            <input type="checkbox" id="notif-store-complete" checked onchange="saveNotifSettings()"/> Store report verified
+          </label>
+          <button class="btn btn-primary btn-full" onclick="saveNotifSettings()">Save notification settings</button>
+          <div id="notif-msg" style="margin-top:8px;"></div>
+        </div>
+      </div>
+    </div>
+    <!-- Admin account settings -->
+    <div style="margin-bottom:16px;">
+      <div class="sec-label">Account</div>
+      <div class="card" style="padding:14px 16px;">
+        <div style="font-size:14px;font-weight:600;margin-bottom:6px;" id="admin-username-display">Admin</div>
+        <div style="display:flex;gap:8px;margin-bottom:14px;">
+          <button class="btn btn-sm" onclick="openChangeUsername()">Change username</button>
+          <button class="btn btn-sm" onclick="openChangeAdminPassword()">Change password</button>
+        </div>
+        <div id="change-username-section" style="display:none;">
+          <div class="field" style="margin-bottom:10px;">
+            <label>New username</label>
+            <input type="text" id="new-admin-username" placeholder="New username"/>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="doChangeUsername()">Save username</button>
+          <div id="username-msg" style="margin-top:8px;"></div>
+        </div>
+        <div id="change-admin-pass-section" style="display:none;">
+          <div class="field" style="margin-bottom:10px;">
+            <label>New password</label>
+            <input type="password" id="new-admin-pass" placeholder="New password"/>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="doChangeAdminPass()">Save password</button>
+          <div id="admin-pass-msg" style="margin-top:8px;"></div>
+        </div>
+      </div>
+    </div>
     <div style="margin-bottom:16px;">
       <div class="sec-label">Display</div>
       <div class="card" style="padding:14px 16px;">
@@ -3285,19 +3349,16 @@ function viewFeedback(rid){
       inspWrap.innerHTML=`
         <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);padding:14px 16px;margin-bottom:16px;">
           <div style="font-size:12px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;">Inspection details</div>
-          <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:${subHistoryRows?'0':'4px'};">
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;flex:1;">
-              ${insp.storeName?`<div><div style="font-size:11px;color:var(--text3);margin-bottom:2px;">Store</div><div style="font-size:14px;font-weight:500;">${insp.storeName}</div></div>`:''}
-              ${insp.date?`<div><div style="font-size:11px;color:var(--text3);margin-bottom:2px;">Date</div><div style="font-size:14px;font-weight:500;">${insp.date}</div></div>`:''}
-              ${insp.checkedBy?`<div><div style="font-size:11px;color:var(--text3);margin-bottom:2px;">Checked by</div><div style="font-size:14px;font-weight:500;">${insp.checkedBy}</div></div>`:''}
-              ${insp.score?`<div><div style="font-size:11px;color:var(--text3);margin-bottom:2px;">Score</div><div style="font-size:22px;font-weight:700;">${scoreHTML(insp.score,22)}</div></div>`:''}
-            </div>
-            ${_pdfName?`<div onclick="openReportPDF()" style="width:90px;flex-shrink:0;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px 8px;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;text-align:center;transition:border-color .15s;" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-              <div style="font-size:11px;color:var(--text2);word-break:break-word;line-height:1.3;">${_pdfName}</div>
-              <div style="font-size:11px;color:var(--accent);font-weight:600;display:flex;align-items:center;gap:2px;">Tap to open <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></div>
-            </div>`:''}
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:${(_pdfName||subHistoryRows)?'12px':'4px'};">
+            ${insp.storeName?`<div><div style="font-size:11px;color:var(--text3);margin-bottom:2px;">Store</div><div style="font-size:14px;font-weight:500;">${insp.storeName}</div></div>`:''}
+            ${insp.date?`<div><div style="font-size:11px;color:var(--text3);margin-bottom:2px;">Date</div><div style="font-size:14px;font-weight:500;">${insp.date}</div></div>`:''}
+            ${insp.checkedBy?`<div><div style="font-size:11px;color:var(--text3);margin-bottom:2px;">Checked by</div><div style="font-size:14px;font-weight:500;">${insp.checkedBy}</div></div>`:''}
+            ${insp.score?`<div><div style="font-size:11px;color:var(--text3);margin-bottom:2px;">Score</div><div style="font-size:22px;font-weight:700;">${scoreHTML(insp.score,22)}</div></div>`:''}
           </div>
+          ${_pdfName?`<div onclick="openReportPDF()" style="width:52px;height:52px;flex-shrink:0;background:var(--bg3);border:1px solid var(--border);border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;transition:border-color .15s;" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              <span style="font-size:9px;font-weight:700;color:var(--accent);letter-spacing:.04em;">PDF</span>
+            </div>`:''}
           ${subHistoryRows?`
           <div style="border-top:1px solid var(--border);margin-top:12px;padding-top:10px;">
             <div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;" onclick="(function(el){el.classList.toggle('open');const body=el.nextElementSibling;body.style.display=el.classList.contains('open')?'':'none';el.querySelector('.hist-chevron').style.transform=el.classList.contains('open')?'rotate(180deg)':'';el.querySelector('.hist-lbl').textContent=el.classList.contains('open')?'Hide':'Show';})(this)">
@@ -3315,10 +3376,9 @@ function viewFeedback(rid){
       inspWrap.innerHTML=`
         <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);padding:14px 16px;margin-bottom:16px;">
           ${_pdfName2?`<div style="display:flex;justify-content:flex-end;margin-bottom:10px;">
-            <div onclick="openReportPDF()" style="width:76px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px 6px;text-align:center;cursor:pointer;">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom:5px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-              <div style="font-size:9px;color:var(--text3);word-break:break-all;line-height:1.3;margin-bottom:4px;">${_pdfName2.length>16?_pdfName2.slice(0,14)+'…':_pdfName2}</div>
-              <div style="font-size:9px;color:var(--accent);font-weight:600;">Tap to open ↗</div>
+            <div onclick="openReportPDF()" style="width:52px;height:52px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;transition:border-color .15s;" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              <span style="font-size:9px;font-weight:700;color:var(--accent);letter-spacing:.04em;">PDF</span>
             </div>
           </div>`:''}
           <div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;" onclick="(function(el){el.classList.toggle('open');const body=el.nextElementSibling;body.style.display=el.classList.contains('open')?'':'none';el.querySelector('.hist-chevron').style.transform=el.classList.contains('open')?'rotate(180deg)':'';el.querySelector('.hist-lbl').textContent=el.classList.contains('open')?'Hide':'Show';})(this)">
@@ -5348,6 +5408,9 @@ function loadSettingsFromStorage(){
 }
 
 function applySettingsToUI(){
+  // Admin username display
+  const adminDisp=document.getElementById('admin-username-display');
+  if(adminDisp && ADMIN_CREDS) adminDisp.textContent=ADMIN_CREDS.username||'Admin';
   // Notif toggle
   const track=document.getElementById('notif-toggle');
   const knob=document.getElementById('notif-knob');
@@ -5380,6 +5443,34 @@ function applySettingsToUI(){
   });
 }
 
+function openChangeUsername(){
+  const s=document.getElementById('change-username-section');
+  if(s){ s.style.display=s.style.display==='none'?'':'none'; }
+}
+function openChangeAdminPassword(){
+  const s=document.getElementById('change-admin-pass-section');
+  if(s){ s.style.display=s.style.display==='none'?'':'none'; }
+}
+async function doChangeUsername(){
+  const newUser=document.getElementById('new-admin-username').value.trim();
+  const msg=document.getElementById('username-msg');
+  if(!newUser){ msg.innerHTML='<div class="alert alert-danger">Enter a username.</div>'; return; }
+  ADMIN_CREDS.username=newUser;
+  await api('PUT','/api/admin/password',{username:newUser,password:ADMIN_CREDS.password});
+  msg.innerHTML='<div class="alert alert-success">✓ Username updated</div>';
+  const disp=document.getElementById('admin-username-display');
+  if(disp) disp.textContent=newUser;
+  setTimeout(()=>{ msg.innerHTML=''; document.getElementById('change-username-section').style.display='none'; },1500);
+}
+async function doChangeAdminPass(){
+  const np=document.getElementById('new-admin-pass').value.trim();
+  const msg=document.getElementById('admin-pass-msg');
+  if(!np||np.length<4){ msg.innerHTML='<div class="alert alert-danger">Password must be at least 4 characters.</div>'; return; }
+  ADMIN_CREDS.password=np;
+  await api('PUT','/api/admin/password',{username:ADMIN_CREDS.username,password:np});
+  msg.innerHTML='<div class="alert alert-success">✓ Password updated</div>';
+  setTimeout(()=>{ msg.innerHTML=''; document.getElementById('change-admin-pass-section').style.display='none'; },1500);
+}
 function toggleNotif(){
   SETTINGS.notifEnabled=!SETTINGS.notifEnabled;
   applySettingsToUI();
