@@ -1274,13 +1274,18 @@ label{
       <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;">Preview</div>
       <div id="sf-card-preview" style="border-radius:12px;overflow:visible;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,.1);"></div>
 
-      <!-- Cover color -->
-      <div style="margin-bottom:14px;">
-        <div style="font-size:13px;font-weight:600;margin-bottom:8px;">Cover background</div>
-        <div style="display:flex;align-items:center;gap:10px;">
+      <!-- Cover mode toggle -->
+      <div style="font-size:13px;font-weight:600;margin-bottom:8px;">Cover background</div>
+      <div style="display:flex;gap:6px;margin-bottom:14px;">
+        <button id="sf-mode-color" class="btn btn-primary btn-sm" style="flex:1;" onclick="sfSetCoverMode('color')">Color</button>
+        <button id="sf-mode-photo" class="btn btn-sm" style="flex:1;" onclick="sfSetCoverMode('photo')">Photo</button>
+      </div>
+
+      <!-- Color section -->
+      <div id="sf-color-section">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
           <input type="color" id="sf-cover-color" value="#7c6fff" oninput="sfUpdatePreview()" style="width:44px;height:36px;border:1.5px solid var(--border);border-radius:8px;cursor:pointer;padding:2px;background:var(--bg2);"/>
           <input type="text" id="sf-cover-color-hex" value="#7c6fff" placeholder="#7c6fff" maxlength="7" style="width:90px;font-size:13px;font-family:'DM Mono',monospace;" oninput="sfSyncColorFromHex('cover')"/>
-          <!-- Preset colors -->
           <div style="display:flex;gap:6px;flex-wrap:wrap;">
             <div onclick="sfSetCoverColor('#7c6fff')" style="width:22px;height:22px;border-radius:50%;background:#7c6fff;cursor:pointer;border:2px solid transparent;" class="sf-color-dot"></div>
             <div onclick="sfSetCoverColor('#6366f1')" style="width:22px;height:22px;border-radius:50%;background:#6366f1;cursor:pointer;border:2px solid transparent;" class="sf-color-dot"></div>
@@ -1292,26 +1297,48 @@ label{
             <div onclick="sfSetCoverColor('#ef4444')" style="width:22px;height:22px;border-radius:50%;background:#ef4444;cursor:pointer;border:2px solid transparent;" class="sf-color-dot"></div>
           </div>
         </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+          <div>
+            <div style="font-size:13px;font-weight:600;">Gradient effect</div>
+            <div style="font-size:11px;color:var(--text3);">Blend color to light purple</div>
+          </div>
+          <input type="checkbox" id="sf-cover-gradient" checked onchange="sfUpdatePreview()" style="width:16px;height:16px;accent-color:var(--accent);cursor:pointer;"/>
+        </div>
       </div>
 
-      <!-- Cover gradient toggle -->
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
-        <div>
-          <div style="font-size:13px;font-weight:600;">Gradient effect</div>
-          <div style="font-size:11px;color:var(--text3);">Blend color to light purple</div>
+      <!-- Photo section -->
+      <div id="sf-photo-section" style="display:none;">
+        <div style="font-size:12px;color:var(--text2);margin-bottom:8px;">Best size: <strong>800 × 160px</strong> (wide banner)</div>
+        <div id="sf-cover-photo-preview-wrap" style="display:none;margin-bottom:8px;border-radius:8px;overflow:hidden;height:70px;position:relative;">
+          <img id="sf-cover-photo-preview" src="" style="width:100%;height:100%;object-fit:cover;"/>
+          <button onclick="sfClearCoverPhoto()" style="position:absolute;top:6px;right:6px;background:rgba(0,0,0,.6);border:none;color:#fff;border-radius:50%;width:22px;height:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
         </div>
-        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
-          <input type="checkbox" id="sf-cover-gradient" checked onchange="sfUpdatePreview()" style="width:16px;height:16px;"/>
+        <label style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1.5px dashed var(--border2);border-radius:10px;cursor:pointer;margin-bottom:10px;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          <div>
+            <div style="font-size:13px;font-weight:600;color:var(--text);">Upload cover photo</div>
+            <div style="font-size:11px;color:var(--text3);">JPG or PNG — wide banner image</div>
+          </div>
+          <input type="file" id="sf-cover-photo-input" accept="image/*" style="display:none;" onchange="onSfCoverPhotoPick(this)"/>
         </label>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+          <div>
+            <div style="font-size:13px;font-weight:600;">Dark overlay</div>
+            <div style="font-size:12px;color:var(--text2);">Darken photo so text is readable</div>
+          </div>
+          <input type="checkbox" id="sf-cover-overlay" checked onchange="sfUpdatePreview()" style="width:16px;height:16px;accent-color:var(--accent);cursor:pointer;"/>
+        </div>
       </div>
 
       <!-- Company text color -->
-      <div style="margin-bottom:14px;">
+      <div style="margin-top:14px;margin-bottom:14px;">
         <div style="font-size:13px;font-weight:600;margin-bottom:8px;">Company name color</div>
         <div style="display:flex;align-items:center;gap:10px;">
           <input type="color" id="sf-company-color" value="#7c6fff" oninput="sfUpdatePreview()" style="width:44px;height:36px;border:1.5px solid var(--border);border-radius:8px;cursor:pointer;padding:2px;background:var(--bg2);"/>
           <input type="text" id="sf-company-color-hex" value="#7c6fff" placeholder="#7c6fff" maxlength="7" style="width:90px;font-size:13px;font-family:'DM Mono',monospace;" oninput="sfSyncColorFromHex('company')"/>
-<div style="display:flex;gap:6px;flex-wrap:wrap;">
+          <div style="display:flex;gap:6px;flex-wrap:wrap;">
             <div onclick="sfSetCompanyColor('#7c6fff')" style="width:22px;height:22px;border-radius:50%;background:#7c6fff;cursor:pointer;border:2px solid transparent;" class="sf-color-dot"></div>
             <div onclick="sfSetCompanyColor('#6366f1')" style="width:22px;height:22px;border-radius:50%;background:#6366f1;cursor:pointer;border:2px solid transparent;" class="sf-color-dot"></div>
             <div onclick="sfSetCompanyColor('#ec4899')" style="width:22px;height:22px;border-radius:50%;background:#ec4899;cursor:pointer;border:2px solid transparent;" class="sf-color-dot"></div>
@@ -6352,8 +6379,8 @@ function renderHomeAppLogo(){
 
 /* ===== REFRESH ===== */
 async function doAdminRefresh(){
-  const btn=document.getElementById('admin-refresh-btn');
-  const icon=document.getElementById('admin-refresh-icon');
+  const btn=document.getElementById('home-refresh-btn');
+  const icon=document.getElementById('home-refresh-icon');
   if(btn) btn.disabled=true;
   if(icon) icon.style.animation='spin .7s linear infinite';
   try{
@@ -6398,6 +6425,51 @@ async function doRvRefresh(){
 
 /* ===== STAFF CARD CUSTOMIZATION ===== */
 let _sfAvatarPos='left', _sfCoverColor='#7c6fff', _sfCompanyColor='#7c6fff', _sfCoverGradient=true;
+let _sfCoverMode='color', _sfCoverPhoto=null, _sfCoverOverlay=true;
+
+function sfSetCoverMode(mode){
+  _sfCoverMode=mode;
+  document.getElementById('sf-mode-color').className=mode==='color'?'btn btn-primary btn-sm':'btn btn-sm';
+  document.getElementById('sf-mode-photo').className=mode==='photo'?'btn btn-primary btn-sm':'btn btn-sm';
+  document.getElementById('sf-color-section').style.display=mode==='color'?'':'none';
+  document.getElementById('sf-photo-section').style.display=mode==='photo'?'':'none';
+  sfUpdatePreview();
+}
+
+function onSfCoverPhotoPick(input){
+  if(!input.files[0]) return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const img=new Image();
+    img.onload=()=>{
+      const canvas=document.createElement('canvas');
+      canvas.width=800; canvas.height=160;
+      const ctx=canvas.getContext('2d');
+      const srcRatio=img.width/img.height;
+      const tgtRatio=800/160;
+      let sw,sh,sx,sy;
+      if(srcRatio>tgtRatio){ sh=img.height; sw=sh*tgtRatio; sx=(img.width-sw)/2; sy=0; }
+      else { sw=img.width; sh=sw/tgtRatio; sx=0; sy=(img.height-sh)/2; }
+      ctx.drawImage(img,sx,sy,sw,sh,0,0,800,160);
+      _sfCoverPhoto=canvas.toDataURL('image/jpeg',0.85);
+      const wrap=document.getElementById('sf-cover-photo-preview-wrap');
+      const prev=document.getElementById('sf-cover-photo-preview');
+      if(wrap){ wrap.style.display=''; prev.src=_sfCoverPhoto; }
+      sfUpdatePreview();
+    };
+    img.src=e.target.result;
+  };
+  reader.readAsDataURL(input.files[0]);
+}
+
+function sfClearCoverPhoto(){
+  _sfCoverPhoto=null;
+  const wrap=document.getElementById('sf-cover-photo-preview-wrap');
+  if(wrap) wrap.style.display='none';
+  const inp=document.getElementById('sf-cover-photo-input');
+  if(inp) inp.value='';
+  sfUpdatePreview();
+}
 
 function sfSetCoverColor(c){
   _sfCoverColor=c;
@@ -6439,15 +6511,13 @@ function sfUpdatePreview(){
   _sfCoverColor=document.getElementById('sf-cover-color')?.value||'#7c6fff';
   _sfCompanyColor=document.getElementById('sf-company-color')?.value||'#7c6fff';
   _sfCoverGradient=document.getElementById('sf-cover-gradient')?.checked!==false;
+  _sfCoverOverlay=document.getElementById('sf-cover-overlay')?.checked!==false;
   const name=document.getElementById('sf-name')?.value||'Staff Name';
   const position=document.getElementById('sf-position')?.value||'Position';
   const company=document.getElementById('sf-company')?.value||'';
   const phone=document.getElementById('sf-phone')?.value||'';
   const location=document.getElementById('sf-location')?.value||'';
   const initials=name.split(' ').map(w=>w[0]).filter(Boolean).slice(0,2).join('').toUpperCase()||'S';
-  const avatarHtml=_sfAvatarData
-    ? `<img src="${_sfAvatarData}" style="width:100%;height:100%;object-fit:cover;"/>`
-    : `<span style="font-size:20px;font-weight:800;color:#fff;">${initials}</span>`;
   const bg=_sfCoverGradient
     ? `linear-gradient(135deg,${_sfCoverColor} 0%,#a78bfa 100%)`
     : _sfCoverColor;
@@ -6456,7 +6526,9 @@ function sfUpdatePreview(){
     name, position, company, phone, location,
     avatar: _sfAvatarData, initials,
     coverBg: bg, companyColor: _sfCompanyColor,
-    avatarLeft: avatarAlign
+    avatarLeft: avatarAlign,
+    coverPhoto: _sfCoverMode==='photo'?_sfCoverPhoto:null,
+    coverOverlay: _sfCoverOverlay
   });
 }
 
@@ -6542,7 +6614,9 @@ function renderStaffHome(){
   staffCard.innerHTML=buildStaffCardHTML({
     name:staff.name||'Staff', position:staff.position||'', company:staff.company||'',
     phone:staff.phone||'', location:staff.location||'',
-    avatar:staff.avatar, initials, coverBg, companyColor, avatarLeft
+    avatar:staff.avatar, initials, coverBg, companyColor, avatarLeft,
+    coverPhoto: cardStyle.coverMode==='photo' ? (cardStyle.coverPhoto||null) : null,
+    coverOverlay: cardStyle.coverOverlay!==false
   });
 
   // ── Stats & brand list ─────────────────────────────────────────────────────
@@ -6774,12 +6848,17 @@ function openAddStaff(){
   document.getElementById('sf-brand-all').checked=true;
   // Reset card customization
   _sfCoverColor='#7c6fff'; _sfCompanyColor='#7c6fff'; _sfAvatarPos='left'; _sfCoverGradient=true;
+  _sfCoverMode='color'; _sfCoverPhoto=null; _sfCoverOverlay=true;
   setTimeout(()=>{
     const cc=document.getElementById('sf-cover-color'); if(cc) cc.value='#7c6fff';
     const ch=document.getElementById('sf-cover-color-hex'); if(ch) ch.value='#7c6fff';
     const sc=document.getElementById('sf-company-color'); if(sc) sc.value='#7c6fff';
     const sh=document.getElementById('sf-company-color-hex'); if(sh) sh.value='#7c6fff';
     const cg=document.getElementById('sf-cover-gradient'); if(cg) cg.checked=true;
+    const co=document.getElementById('sf-cover-overlay'); if(co) co.checked=true;
+    const wrap=document.getElementById('sf-cover-photo-preview-wrap'); if(wrap) wrap.style.display='none';
+    const inp=document.getElementById('sf-cover-photo-input'); if(inp) inp.value='';
+    sfSetCoverMode('color');
     sfSetAvatarPos('left');
     sfUpdatePreview();
   },50);
@@ -6828,12 +6907,22 @@ function openEditStaff(id){
   _sfCompanyColor=card.companyColor||'#7c6fff';
   _sfAvatarPos=card.avatarPos||'left';
   _sfCoverGradient=card.gradient!==false;
+  _sfCoverMode=card.coverMode||'color';
+  _sfCoverPhoto=card.coverPhoto||null;
+  _sfCoverOverlay=card.coverOverlay!==false;
   setTimeout(()=>{
     const cc=document.getElementById('sf-cover-color'); if(cc) cc.value=_sfCoverColor;
     const ch=document.getElementById('sf-cover-color-hex'); if(ch) ch.value=_sfCoverColor;
     const sc=document.getElementById('sf-company-color'); if(sc) sc.value=_sfCompanyColor;
     const sh=document.getElementById('sf-company-color-hex'); if(sh) sh.value=_sfCompanyColor;
     const cg=document.getElementById('sf-cover-gradient'); if(cg) cg.checked=_sfCoverGradient;
+    const co=document.getElementById('sf-cover-overlay'); if(co) co.checked=_sfCoverOverlay;
+    sfSetCoverMode(_sfCoverMode);
+    if(_sfCoverMode==='photo' && _sfCoverPhoto){
+      const wrap=document.getElementById('sf-cover-photo-preview-wrap');
+      const prev=document.getElementById('sf-cover-photo-preview');
+      if(wrap){ wrap.style.display=''; prev.src=_sfCoverPhoto; }
+    }
     sfSetAvatarPos(_sfAvatarPos);
     sfUpdatePreview();
   },50);
@@ -6916,7 +7005,12 @@ async function doSaveStaff(){
   const company=document.getElementById('sf-company').value.trim();
   const location=document.getElementById('sf-location').value.trim();
   const notifEmail=document.getElementById('sf-notif-email').value.trim();
-  const cardStyle=JSON.stringify({coverColor:_sfCoverColor, companyColor:_sfCompanyColor, avatarPos:_sfAvatarPos, gradient:_sfCoverGradient});
+  const cardStyle=JSON.stringify({
+    coverColor:_sfCoverColor, companyColor:_sfCompanyColor,
+    avatarPos:_sfAvatarPos, gradient:_sfCoverGradient,
+    coverMode:_sfCoverMode, coverPhoto:_sfCoverPhoto||null,
+    coverOverlay:_sfCoverOverlay
+  });
   const payload={name, position, company, phone, location, notif_email:notifEmail||null, avatar:_sfAvatarData||null, username, permission:perm, brand_ids:brandIds, card_style:cardStyle};
   if(password) payload.password=password;
 
