@@ -758,37 +758,6 @@ label{
   </div>
   <div class="content">
     <div id="settings-content"></div>
-    <div style="margin-bottom:16px;">
-      <div class="sec-label">Display</div>
-      <div class="card" style="padding:14px 16px;">
-        <div style="display:flex;align-items:center;justify-content:space-between;">
-          <div>
-            <div style="font-size:14px;font-weight:600;">Dark mode</div>
-            <div style="font-size:12px;color:var(--text2);margin-top:2px;">Switch between light and dark</div>
-          </div>
-          <button id="theme-toggle-btn" class="btn btn-sm" onclick="toggleTheme()">Toggle</button>
-        </div>
-      </div>
-    </div>
-    <div style="margin-bottom:16px;">
-      <div class="sec-label">Staff accounts</div>
-      <div class="card" style="padding:14px 16px;cursor:pointer;" onclick="goTo('s-staff-list')">
-        <div style="display:flex;align-items:center;justify-content:space-between;">
-          <div>
-            <div style="font-size:14px;font-weight:600;">Manage staff</div>
-            <div style="font-size:12px;color:var(--text2);margin-top:2px;" id="staff-count-label">Manage users with custom permissions</div>
-          </div>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
-        </div>
-      </div>
-    </div>
-    <div style="margin-bottom:16px;">
-      <div class="sec-label">Admin</div>
-      <div class="card" style="padding:14px 16px;">
-        <div style="font-size:14px;font-weight:600;margin-bottom:10px;">Export data</div>
-        <button class="btn btn-sm" onclick="exportData()">Export all data</button>
-      </div>
-    </div>
     <div style="height:40px;"></div>
   </div>
 </div>
@@ -5348,63 +5317,129 @@ function applySettingsToUI(){
   const sc=document.getElementById('settings-content');
   if(sc && !sc.querySelector('#notif-toggle')){
     sc.innerHTML=`
+    <!-- APPEARANCE -->
     <div style="margin-bottom:16px;">
-      <div class="sec-label">Notifications</div>
-      <div class="card" style="padding:14px 16px;">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+      <div class="sec-label">Appearance</div>
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;">
           <div>
-            <div style="font-size:14px;font-weight:600;">Enable notifications</div>
-            <div style="font-size:12px;color:var(--text2);margin-top:2px;">Get email alerts when stores respond</div>
+            <div style="font-size:14px;font-weight:600;">Dark mode</div>
+            <div style="font-size:12px;color:var(--text2);margin-top:2px;">Switch between dark and light</div>
           </div>
-          <div id="notif-toggle" onclick="toggleNotif()" style="width:36px;height:20px;border-radius:10px;background:var(--bg3);border:1px solid var(--border2);cursor:pointer;position:relative;flex-shrink:0;transition:background .2s;">
-            <div id="notif-knob" style="position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:var(--text3);transition:all .2s;"></div>
-          </div>
-        </div>
-        <div id="notif-email-section" style="display:none;">
-          <div class="field" style="margin-bottom:10px;">
-            <label>Notification email</label>
-            <input type="email" id="notif-email" placeholder="e.g. admin@company.com"/>
-            <div style="font-size:11px;color:var(--text3);margin-top:5px;">Alerts sent to this email on all devices</div>
-          </div>
-          <div style="font-size:13px;font-weight:500;margin-bottom:10px;">Notify me when:</div>
-          <label style="display:flex;align-items:center;gap:10px;text-transform:none;font-size:13px;color:var(--text);margin-bottom:10px;cursor:pointer;">
-            <input type="checkbox" id="notif-on-submit" checked onchange="saveNotifSettings()"/> Store submits a response
-          </label>
-          <label style="display:flex;align-items:center;gap:10px;text-transform:none;font-size:13px;color:var(--text);margin-bottom:10px;cursor:pointer;">
-            <input type="checkbox" id="notif-all-done" checked onchange="saveNotifSettings()"/> All stores have responded
-          </label>
-          <label style="display:flex;align-items:center;gap:10px;text-transform:none;font-size:13px;color:var(--text);margin-bottom:10px;cursor:pointer;">
-            <input type="checkbox" id="notif-brand-complete" checked onchange="saveNotifSettings()"/> Brand report is complete
-          </label>
-          <label style="display:flex;align-items:center;gap:10px;text-transform:none;font-size:13px;color:var(--text);margin-bottom:14px;cursor:pointer;">
-            <input type="checkbox" id="notif-store-complete" checked onchange="saveNotifSettings()"/> Store report verified
-          </label>
-          <button class="btn btn-primary btn-full" onclick="saveNotifSettings()">Save notification settings</button>
-          <div id="notif-msg" style="margin-top:8px;"></div>
+          <div class="theme-toggle" onclick="toggleTheme()"></div>
         </div>
       </div>
     </div>
+    <!-- EMAIL NOTIFICATIONS -->
     <div style="margin-bottom:16px;">
-      <div class="sec-label">Account</div>
-      <div class="card" style="padding:14px 16px;">
-        <div style="font-size:14px;font-weight:600;margin-bottom:6px;" id="admin-username-display">${ADMIN_CREDS?.username||'Admin'}</div>
-        <div style="display:flex;gap:8px;margin-bottom:0;">
-          <button class="btn btn-sm" onclick="openChangeUsername()">Change username</button>
-          <button class="btn btn-sm" onclick="openChangeAdminPassword()">Change password</button>
+      <div class="sec-label">Email notifications</div>
+      <div class="card" style="margin-bottom:10px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+          <div>
+            <div style="font-size:14px;font-weight:600;">Enable notifications</div>
+            <div style="font-size:12px;color:var(--text2);margin-top:2px;">Get notified when a store submits feedback</div>
+          </div>
+          <div id="notif-toggle" onclick="toggleNotif()" style="width:42px;height:24px;border-radius:12px;background:var(--bg3);border:1px solid var(--border2);cursor:pointer;position:relative;flex-shrink:0;transition:background .2s;">
+            <div id="notif-knob" style="position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:var(--text3);transition:all .2s;"></div>
+          </div>
         </div>
-        <div id="change-username-section" style="display:none;margin-top:12px;">
-          <div class="field" style="margin-bottom:10px;"><label>New username</label><input type="text" id="new-admin-username" placeholder="New username"/></div>
-          <button class="btn btn-primary btn-sm" onclick="doChangeUsername()">Save username</button>
-          <div id="username-msg" style="margin-top:8px;"></div>
-        </div>
-        <div id="change-admin-pass-section" style="display:none;margin-top:12px;">
-          <div class="field" style="margin-bottom:10px;"><label>New password</label><input type="password" id="new-admin-pass" placeholder="New password"/></div>
-          <button class="btn btn-primary btn-sm" onclick="doChangeAdminPass()">Save password</button>
-          <div id="admin-pass-msg" style="margin-top:8px;"></div>
+        <div id="notif-email-section" style="display:none;">
+          <div class="sec-label" style="margin-bottom:8px;">Notification email</div>
+          <input type="email" id="notif-email" placeholder="e.g. admin@company.com" style="margin-bottom:10px;"/>
+          <div style="display:flex;gap:8px;">
+            <button class="btn btn-primary" style="flex:1;" onclick="saveNotifSettings()">Save email</button>
+            <button class="btn btn-sm" onclick="testAdminEmail()">Send test</button>
+          </div>
+          <div id="notif-msg" style="margin-top:8px;"></div>
         </div>
       </div>
-    </div>`;
-  }
+      <div class="card">
+        <div style="font-size:13px;font-weight:500;margin-bottom:12px;">Notify me when:</div>
+        <label style="display:flex;align-items:center;gap:10px;text-transform:none;font-size:13px;color:var(--text);margin-bottom:12px;cursor:pointer;">
+          <input type="checkbox" id="notif-on-submit" checked onchange="saveNotifSettings()"/> Store submits feedback
+        </label>
+        <label style="display:flex;align-items:center;gap:10px;text-transform:none;font-size:13px;color:var(--text);margin-bottom:12px;cursor:pointer;">
+          <input type="checkbox" id="notif-all-done" checked onchange="saveNotifSettings()"/> All stores in a report have responded
+        </label>
+        <label style="display:flex;align-items:center;gap:10px;text-transform:none;font-size:13px;color:var(--text);margin-bottom:12px;cursor:pointer;">
+          <input type="checkbox" id="notif-brand-complete" checked onchange="saveNotifSettings()"/> All reports in a brand are complete
+        </label>
+        <label style="display:flex;align-items:center;gap:10px;text-transform:none;font-size:13px;color:var(--text);margin-bottom:4px;cursor:pointer;">
+          <input type="checkbox" id="notif-store-complete" checked onchange="saveNotifSettings()"/> A specific store completes all their reports
+        </label>
+      </div>
+    </div>
+    <!-- USER MANAGEMENT -->
+    <div style="margin-bottom:16px;">
+      <div class="sec-label">User management</div>
+      <div class="card" style="cursor:pointer;" onclick="goTo('s-staff-list')">
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <div>
+            <div style="font-size:14px;font-weight:600;">Staff accounts</div>
+            <div style="font-size:12px;color:var(--text2);margin-top:2px;" id="staff-count-label">Manage users with custom permissions</div>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();goTo('s-staff-list')">Manage</button>
+        </div>
+      </div>
+    </div>
+    <!-- DATA EXPORT -->
+    <div style="margin-bottom:16px;">
+      <div class="sec-label">Data export</div>
+      <div class="card" style="margin-bottom:10px;">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <div>
+            <div style="font-size:14px;font-weight:600;">Download staff accounts</div>
+            <div style="font-size:12px;color:var(--text2);margin-top:2px;">Export all staff usernames and passwords</div>
+          </div>
+        </div>
+        <button class="btn btn-primary btn-full" onclick="exportStaffCredentials()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right:6px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Download staff data
+        </button>
+      </div>
+      <div class="card">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <div>
+            <div style="font-size:14px;font-weight:600;">Download store credentials</div>
+            <div style="font-size:12px;color:var(--text2);margin-top:2px;">Export all store usernames, passwords, emails, phone and location as a text file. Admin password required.</div>
+          </div>
+        </div>
+        <button class="btn btn-primary btn-full" onclick="exportStoreCredentials()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right:6px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Download store data
+        </button>
+      </div>
+    </div>
+    <!-- ADMIN ACCOUNT -->
+    <div style="margin-bottom:16px;">
+      <div class="sec-label">Admin account</div>
+      <div class="card">
+        <div class="sec-label" style="margin-bottom:8px;">Change admin username</div>
+        <div style="display:flex;gap:8px;margin-bottom:16px;">
+          <input type="text" id="new-admin-username" placeholder="New username" style="flex:1;"/>
+          <button class="btn btn-sm" onclick="doChangeUsername()">Save</button>
+        </div>
+        <div style="border-top:1px solid var(--border);padding-top:14px;">
+          <div class="sec-label" style="margin-bottom:8px;">Change admin password</div>
+          <input type="password" id="new-admin-pass" placeholder="New password" style="margin-bottom:10px;"/>
+          <div class="sec-label" style="margin-bottom:8px;">Confirm password</div>
+          <input type="password" id="confirm-admin-pass" placeholder="Confirm new password" style="margin-bottom:12px;"/>
+          <button class="btn btn-primary btn-full" onclick="doChangeAdminPass()">Update password</button>
+          <div id="admin-pass-msg" style="margin-top:8px;"></div>
+          <div id="username-msg" style="margin-top:4px;"></div>
+        </div>
+      </div>
+    </div>
+    <!-- CONTACT SUPPORT -->
+    <div style="margin-bottom:16px;">
+      <a href="https://t.me/lmig25" target="_blank" style="display:flex;align-items:center;justify-content:center;gap:8px;padding:14px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);text-decoration:none;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="#2AABEE"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12L7.88 13.264l-2.962-.924c-.643-.204-.657-.643.136-.953l11.57-4.461c.537-.194 1.006.131.27.295z"/></svg>
+        <div style="font-size:13px;font-weight:600;color:var(--text);">Contact Support</div>
+      </a>
+    </div>
+  `;}
   // Admin username display
   const adminDisp=document.getElementById('admin-username-display');
   if(adminDisp && ADMIN_CREDS) adminDisp.textContent=ADMIN_CREDS.username||'Admin';
@@ -5449,24 +5484,40 @@ function openChangeAdminPassword(){
   if(s){ s.style.display=s.style.display==='none'?'':'none'; }
 }
 async function doChangeUsername(){
-  const newUser=document.getElementById('new-admin-username').value.trim();
+  const newUser=(document.getElementById('new-admin-username')?.value||'').trim();
   const msg=document.getElementById('username-msg');
-  if(!newUser){ msg.innerHTML='<div class="alert alert-danger">Enter a username.</div>'; return; }
+  if(!newUser){ if(msg) msg.innerHTML='<div class="alert alert-danger">Enter a username.</div>'; return; }
   ADMIN_CREDS.username=newUser;
   await api('PUT','/api/admin/password',{username:newUser,password:ADMIN_CREDS.password});
-  msg.innerHTML='<div class="alert alert-success">✓ Username updated</div>';
-  const disp=document.getElementById('admin-username-display');
-  if(disp) disp.textContent=newUser;
-  setTimeout(()=>{ msg.innerHTML=''; document.getElementById('change-username-section').style.display='none'; },1500);
+  if(msg) msg.innerHTML='<div class="alert alert-success">✓ Username updated</div>';
+  const inp=document.getElementById('new-admin-username'); if(inp) inp.value='';
+  setTimeout(()=>{ if(msg) msg.innerHTML=''; },2000);
 }
 async function doChangeAdminPass(){
-  const np=document.getElementById('new-admin-pass').value.trim();
+  const np=(document.getElementById('new-admin-pass')?.value||'').trim();
+  const cp=(document.getElementById('confirm-admin-pass')?.value||'').trim();
   const msg=document.getElementById('admin-pass-msg');
   if(!np||np.length<4){ msg.innerHTML='<div class="alert alert-danger">Password must be at least 4 characters.</div>'; return; }
+  if(np!==cp){ msg.innerHTML='<div class="alert alert-danger">Passwords do not match.</div>'; return; }
   ADMIN_CREDS.password=np;
   await api('PUT','/api/admin/password',{username:ADMIN_CREDS.username,password:np});
   msg.innerHTML='<div class="alert alert-success">✓ Password updated</div>';
-  setTimeout(()=>{ msg.innerHTML=''; document.getElementById('change-admin-pass-section').style.display='none'; },1500);
+  const npEl=document.getElementById('new-admin-pass'); if(npEl) npEl.value='';
+  const cpEl=document.getElementById('confirm-admin-pass'); if(cpEl) cpEl.value='';
+  setTimeout(()=>{ msg.innerHTML=''; },2000);
+}
+function exportStaffCredentials(){ openStaffExportVerify(); }
+function exportStoreCredentials(){ openExportVerify(); }
+
+async function testAdminEmail(){
+  const email=document.getElementById('notif-email')?.value?.trim();
+  const msg=document.getElementById('notif-msg');
+  if(!email||!email.includes('@')){ if(msg) msg.innerHTML='<div class="alert alert-danger">Enter an email first.</div>'; return; }
+  if(msg) msg.innerHTML='<div class="alert alert-success">⏳ Sending test...</div>';
+  const result=await api('POST','/api/test-email',{email});
+  if(result.ok){ if(msg) msg.innerHTML='<div class="alert alert-success">✓ Test email sent!</div>'; }
+  else { if(msg) msg.innerHTML='<div class="alert alert-danger">Failed: '+(result.error||'unknown error')+'</div>'; }
+  setTimeout(()=>{ if(msg) msg.innerHTML=''; },3000);
 }
 function toggleNotif(){
   SETTINGS.notifEnabled=!SETTINGS.notifEnabled;
