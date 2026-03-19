@@ -656,7 +656,7 @@ label{
 <!-- ======= VIEW FEEDBACK ======= -->
 <div class="screen" id="s-feedback">
   <div class="topbar">
-    <button class="back-btn" onclick="goTo('s-brand')">&#8592; Back</button>
+    <button class="back-btn" onclick="goTo(DB.fbPrevScreen||'s-brand')">&#8592; Back</button>
     <div class="topbar-title" id="fb-screen-title">Feedback</div>
     <button class="btn btn-ghost btn-sm" onclick="goHome()" title="Home" style="padding:6px 8px;flex-shrink:0;">
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
@@ -2534,7 +2534,7 @@ function renderBrandReports(){
     });
     const _itemPctCard=_totalPossCard?Math.round(_totalRespCard/_totalPossCard*100):0;
     const _hasReject=_totalRejCard>0;
-    return `<div class="card card-click" style="margin-bottom:10px;${borderStyle}" onclick="viewFeedback('${r.id}')">
+    return `<div class="card card-click" style="margin-bottom:10px;${borderStyle}" onclick="DB.fbPrevScreen='s-brand';viewFeedback('${r.id}')">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
         <div style="display:flex;align-items:center;gap:6px;flex:1;min-width:0;">
           <div style="font-size:14px;font-weight:600;flex:1;">${r.title}</div>
@@ -2588,8 +2588,15 @@ function renderBrandStores(){
   }).join('')}</div>`;
 }
 function sdBack(){
-  if(DB.prevScreen==='s-home'){ goHome(); }
-  else { goTo('s-brand'); }
+  if(DB.prevScreen==='s-home'){
+    // Came from home stores pane — go back to home and show stores tab
+    goHome();
+    setTimeout(()=>{ homeTab('stores'); }, 50);
+  } else {
+    // Came from brand page — go back to brand stores tab
+    goTo('s-brand');
+    setTimeout(()=>{ brandTab('stores'); }, 50);
+  }
 }
 function openStoreDetail(sid, fromScreen){
   DB.prevScreen = fromScreen || DB.prevScreen || 's-brand';
@@ -2714,7 +2721,7 @@ function renderStoreDetailReports(b,s){
     const scoreNum=parseFloat(insp.score)||0;
     const scoreColor=scoreNum>=99?'var(--success)':scoreNum>=88?'var(--success)':scoreNum>=85?'var(--warn)':scoreNum>0?'var(--danger)':'var(--text)';
     const scoreLabel=scoreNum>=99?'Excellent':scoreNum>=88?'Very good':scoreNum>=85?'Good':scoreNum>0?'Low':'';
-    return `<div class="card card-click" style="margin-bottom:10px;${borderStyle}" onclick="viewFeedback('${r.id}')">
+    return `<div class="card card-click" style="margin-bottom:10px;${borderStyle}" onclick="DB.fbPrevScreen='s-store-detail';viewFeedback('${r.id}')">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
         <div style="display:flex;align-items:center;gap:6px;flex:1;min-width:0;">
           <div style="font-size:14px;font-weight:600;flex:1;">${r.title}</div>
