@@ -449,10 +449,8 @@ label{
   </div>
   <div class="content">
     <div id="brand-hero" style="margin-bottom:14px;"></div>
-    <div style="display:flex;gap:6px;margin-bottom:14px;">
-      <button id="brand-add-store-btn" class="btn btn-sm" onclick="goAddStore()" style="display:none;">+ Store</button>
-      <button class="btn btn-primary btn-sm" id="brand-upload-btn" onclick="goUpload()">+ Upload report</button>
-    </div>
+    <button id="brand-add-store-btn" class="btn btn-sm" onclick="goAddStore()" style="display:none;width:100%;margin-bottom:6px;">+ Add store</button>
+    <button class="btn btn-primary btn-full" id="brand-upload-btn" onclick="goUpload()" style="margin-bottom:14px;">+ Upload report</button>
     <div style="display:flex;gap:6px;margin-bottom:14px;border-bottom:1px solid var(--border);padding-bottom:10px;">
       <button id="btab-reports" class="btn btn-sm active" onclick="brandTab('reports')">Reports</button>
       <button id="btab-stores" class="btn btn-sm" onclick="brandTab('stores')">Stores</button>
