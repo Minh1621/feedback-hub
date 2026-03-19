@@ -949,15 +949,13 @@ label{
 
     <!-- Reference items -->
     <div style="border-top:1px solid var(--border);margin:14px 0 16px;"></div>
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-      <div class="sec-label" style="margin-bottom:0;">Reference items</div>
-      <button class="btn btn-sm" onclick="erAddRef()">+ Add item</button>
-    </div>
-    <div id="er-refs-list" style="margin-bottom:10px;"></div>
+    <div class="sec-label" style="margin-bottom:10px;">Reference items</div>
+    <div id="er-refs-list" style="margin-bottom:6px;"></div>
     <div style="font-size:11px;color:var(--text3);margin-bottom:16px;">These are the specific items reviewers need to respond to</div>
 
     <div id="er-msg"></div>
     <button class="btn btn-primary btn-full" onclick="doEditReport()">Save changes</button>
+    <button class="btn btn-full" style="margin-top:8px;" onclick="erAddRef()">+ Add item</button>
     <div style="border-top:1px solid var(--border);margin:20px 0 14px;"></div>
     <div class="sec-label" style="color:var(--danger);">Danger zone</div>
     <button class="btn btn-danger btn-full" onclick="confirmRemoveReport(_editingReportId)">Remove this report</button>
@@ -3452,25 +3450,44 @@ function viewFeedback(rid){
     </div>`;
   }
 
-  // ── Priority 1: Report edited — show notify button (always when editedAfterResponse) ──
-  if(!r.verified && r.editedAfterResponse){
-    bottomHTML+=`<div style="margin-top:10px;padding:10px 14px;background:#fff8e1;border:1px solid #f5a62340;border-radius:12px;font-size:13px;color:#854F0B;">
-      ⚠ New items added — notify stores to review and resubmit
-    </div>`;
-    if(canEdit()||DB.role==='admin'){
-      bottomHTML+=`<button onclick="submitEditNoticeToStores('${rid}')" style="margin-top:8px;width:100%;padding:14px;border-radius:14px;background:var(--warn);border:none;color:#fff;font-size:15px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 4px 14px rgba(245,166,35,.3);">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-        Notify stores — new items added, submit again
-      </button>`;
+  // ── Priority 1+2: One smart notify button covering edited + rejection cases ─
+  if(!r.verified && (r.editedAfterResponse || remarkedStores.length) && (canEdit()||DB.role==='admin')){
+    const hasEdited = r.editedAfterResponse;
+    const hasRejected = remarkedStores.length > 0;
+    // Determine which stores need to be notified
+    // - edited: ALL target stores (they all need to see new items)
+    // - rejected: only remarked stores
+    // - both: union of all target stores
+    const targetStores = r.storeId ? b.stores.filter(s=>s.id===r.storeId) : b.stores;
+    const affectedStoreIds = new Set([
+      ...(hasEdited ? targetStores.map(s=>s.id) : []),
+      ...(hasRejected ? remarkedStores.map(s=>s.id) : [])
+    ]);
+    const affectedStores = b.stores.filter(s=>affectedStoreIds.has(s.id));
+    const storeNames = affectedStores.map(s=>s.name).join(', ');
+    // Build label
+    let notifyLabel = '';
+    let notifyColor = 'var(--accent)';
+    let notifyShadow = 'rgba(124,111,255,.3)';
+    let notifyWarning = '';
+    if(hasEdited && hasRejected){
+      notifyLabel = `Notify ${affectedStores.length} store${affectedStores.length>1?'s':''} — new items & rejection`;
+      notifyColor = 'var(--warn)'; notifyShadow = 'rgba(245,166,35,.3)';
+      notifyWarning = '⚠ New items added and has rejection remarks — notify stores to resubmit';
+    } else if(hasEdited){
+      notifyLabel = `Notify ${affectedStores.length} store${affectedStores.length>1?'s':''} — new items added, submit again`;
+      notifyColor = 'var(--warn)'; notifyShadow = 'rgba(245,166,35,.3)';
+      notifyWarning = '⚠ New items added — stores need to review and resubmit';
+    } else {
+      notifyLabel = `Submit rejection to ${affectedStores.length} store${affectedStores.length>1?'s':''} — notify to resubmit`;
     }
-  }
-  // ── Priority 2: Some stores still have rejection remarks ─────────────────
-  if(!r.verified && !r.editedAfterResponse && remarkedStores.length && (canEdit()||DB.role==='admin')){
-    const storeNames=remarkedStores.map(s=>s.name).join(', ');
-    bottomHTML+=`<div style="margin-top:10px;">
-      <button onclick="submitAllRemarkedStores('${rid}')" style="width:100%;padding:14px;border-radius:14px;background:var(--accent);border:none;color:#fff;font-size:15px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 4px 14px rgba(124,111,255,.3);">
+    if(notifyWarning){
+      bottomHTML+=`<div style="margin-top:10px;padding:10px 14px;background:#fff8e1;border:1px solid #f5a62340;border-radius:12px;font-size:13px;color:#854F0B;">${notifyWarning}</div>`;
+    }
+    bottomHTML+=`<div style="margin-top:8px;">
+      <button onclick="submitCombinedNotice('${rid}')" style="width:100%;padding:14px;border-radius:14px;background:${notifyColor};border:none;color:#fff;font-size:15px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 4px 14px ${notifyShadow};">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-        Submit rejection to ${remarkedStores.length} store${remarkedStores.length>1?'s':''} — notify to resubmit
+        ${notifyLabel}
       </button>
       <div style="font-size:11px;color:var(--text3);text-align:center;margin-top:6px;">${storeNames}</div>
     </div>`;
@@ -3523,6 +3540,68 @@ function viewFeedback(rid){
 }
 
 /* ===== BRAND FORM ===== */
+async function submitCombinedNotice(rid){
+  // Handles: edited-only, rejection-only, or both
+  const b=brand(), r=b.reports.find(r=>r.id===rid);
+  if(!r) return;
+  const authorName=DB.staffData?.name||(DB.role==='admin'?'Admin':'Staff');
+  const dateStr=new Date().toISOString().slice(0,10)+' '+new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+  const targetStores=r.storeId?b.stores.filter(s=>s.id===r.storeId):b.stores;
+
+  // Find remarked stores
+  const latestFbMap={};
+  r.feedbacks.forEach(f=>{if(!latestFbMap[f.storeId]||f.date>=latestFbMap[f.storeId].date) latestFbMap[f.storeId]=f;});
+  const remarkedSids=new Set(
+    targetStores.filter(s=>{
+      const fb=latestFbMap[s.id];
+      return fb && r.refs.some(ref=>!!(fb.adminRemarks?.[ref.id+'_list']?.length||fb.adminRemarks?.[ref.id]));
+    }).map(s=>s.id)
+  );
+
+  // Affected stores: edited → all, rejection → remarked only, both → all
+  const affectedSids = r.editedAfterResponse
+    ? new Set(targetStores.map(s=>s.id))
+    : remarkedSids;
+
+  for(const store of targetStores){
+    if(!affectedSids.has(store.id)) continue;
+    const fb=r.feedbacks.find(f=>f.storeId===store.id);
+    if(!fb) continue;
+    if(!Array.isArray(fb.timeline)) fb.timeline=[];
+    const hasRej = remarkedSids.has(store.id);
+    const note = r.editedAfterResponse && hasRej ? 'New items & rejection' : r.editedAfterResponse ? 'New items added' : 'Rejection remark';
+    fb.timeline.push({type:'resubmit_requested', date:dateStr, by:authorName, note});
+    await api('PUT',`/api/feedbacks/${fb.id}`,{adminRemarks:fb.adminRemarks, timeline:fb.timeline});
+  }
+  // Clear editedAfterResponse flag
+  if(r.editedAfterResponse){
+    r.editedAfterResponse=false;
+    await api('PUT',`/api/reports/${rid}`,{
+      title:r.title, desc:r.desc, storeId:r.storeId||'',
+      file:r.file, fileURL:r.fileURL||null,
+      inspection:r.inspection, refs:r.refs,
+      storeIds:r.storeIds||[], date:r.date,
+      verified:r.verified||false, verifiedBy:r.verifiedBy||'', verifiedAt:r.verifiedAt||'',
+      editedAfterResponse:false
+    });
+  }
+  // Send email notifications
+  try{
+    const _alerter=getAlerterInfo();
+    for(const store of targetStores){
+      if(!affectedSids.has(store.id)) continue;
+      const hasRej=remarkedSids.has(store.id);
+      await api('POST','/api/notify-resubmit',{
+        store_id:store.id, report_id:rid,
+        reason: r.editedAfterResponse&&hasRej?'both': r.editedAfterResponse?'edited':'rejection',
+        alerter:_alerter
+      });
+    }
+  }catch(e){ console.log('Notify email failed:',e.message); }
+  showToast('✓ Stores notified');
+  viewFeedback(rid);
+}
+
 async function submitEditNoticeToStores(rid){
   const b=brand(), r=b.reports.find(r=>r.id===rid);
   if(!r) return;
