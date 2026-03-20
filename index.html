@@ -2787,8 +2787,8 @@ function renderBrandReports(){
       (fb.itemFeedbacks||[]).forEach(it=>{
         const hasContent=!!(it.note||(it.photos&&it.photos.length));
         const hasRemark=!!(fb.adminRemarks?.[it.refId+'_list']?.length||fb.adminRemarks?.[it.refId]);
-        if(hasRemark) _totalRejCard++;
-        else if(hasContent) _totalRespCard++;
+        if(hasContent) _totalRespCard++;          // responded (even if rejected) = counts
+        else if(hasRemark) _totalRejCard++;       // rejected but no response = pending
       });
     });
     const _itemPctCard=_totalPossCard?Math.round(_totalRespCard/_totalPossCard*100):0;
@@ -3649,12 +3649,11 @@ function viewFeedback(rid){
       if(!_validRefIds.has(it.refId)) return; // skip responses for deleted/old refs
       const hasContent=!!(it.note||(it.photos&&it.photos.length));
       const hasRemark=!!(fb.adminRemarks?.[it.refId+'_list']?.length || fb.adminRemarks?.[it.refId]);
-      if(hasRemark) rejected++;
-      else if(hasContent) responded++;
+      if(hasContent) responded++;               // responded (even if rejected) = counts
+      else if(hasRemark) rejected++;            // rejected, no response yet = pending
     });
     totalResponded+=responded;
-    const effective=responded; // rejected counts as not responded for percentage
-    return {store:s,responded:effective,rejected,total:totalItems,pct:totalItems?Math.round(effective/totalItems*100):0};
+    return {store:s,responded,rejected,total:totalItems,pct:totalItems?Math.round(responded/totalItems*100):0};
   });
   const overallPct=totalPossible?Math.round(totalResponded/totalPossible*100):0;
   const totalRejected=storeItemStatus.reduce((a,s)=>a+s.rejected,0);
@@ -3724,7 +3723,7 @@ function viewFeedback(rid){
             ${ref.desc?`<div style="font-size:12px;color:var(--text2);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${ref.desc}</div>`:''}
           </div>
           <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
-            ${respCount?`<span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;background:var(--badge-done-bg);color:var(--success);">${respCount} response${respCount>1?'s':''}</span>`:''}
+            ${(respCount+rejRespCount)>0?`<span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;background:var(--badge-done-bg);color:var(--success);">${respCount+rejRespCount} response${(respCount+rejRespCount)>1?'s':''}</span>`:''}
             ${rejRespCount?`<span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;background:var(--alert-danger-bg);color:var(--danger);">${rejRespCount} needs review</span>`:''}
             ${rejectCount?`<span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;background:#fff3e0;color:var(--warn);">×${rejectCount} rejected</span>`:''}
             ${!respCount&&!rejectCount&&!rejRespCount?`<span style="font-size:11px;color:var(--text3);">No responses</span>`:''}
