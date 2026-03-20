@@ -3147,6 +3147,8 @@ async function doAddStore(){
   _nsCoverGradient = document.getElementById('ns-gradient')?.checked !== false;
   _nsCoverOverlay = document.getElementById('ns-overlay')?.checked !== false;
   const b=brand();
+  const newStore={
+    id:'s'+Date.now(), name, username:user, password:pass, phone, location,
     logo:_nsLogoData||null, color:_nsColor,
     notif_email:notifEmail||null, notif_enabled:notifEmail?1:0,
     cover_mode:_nsCoverMode,
@@ -8219,8 +8221,6 @@ async function evVerifyAndChange(){
       setTimeout(()=>{ document.getElementById('email-verify-overlay').style.display='none'; },1500);
     } else { msg.innerHTML='<div class="alert alert-danger">Failed to change password.</div>'; }
   }
-}
-
 }
 
 /* ===== NOTIF EMAIL VERIFY (for add store, edit store, add/edit staff) ===== */
