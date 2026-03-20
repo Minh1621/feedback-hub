@@ -3418,8 +3418,8 @@ function renderRefItems(){
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
             </button>
           </div>
-          <input type="file" id="refphotos_${ref.id}" accept="image/*" multiple style="display:none;" onchange="addRefPhotos('${ref.id}',this)"/>
-          <input type="file" id="refphotoscam_${ref.id}" accept="image/*" capture="environment" style="display:none;" onchange="addRefPhotos('${ref.id}',this)"/>
+          <input type="file" id="refphotos_${ref.id}" accept="image/*,application/pdf" multiple style="display:none;" onchange="addRefPhotos('${ref.id}',this)"/>
+          <input type="file" id="refphotoscam_${ref.id}" accept="image/*" multiple style="display:none;" onchange="addRefPhotos('${ref.id}',this)"/>
         </div>
         <div class="photo-grid" id="refphotosgrid_${ref.id}">
           ${ref.photos.map((p,pi)=>`<div class="photo-thumb-wrap"><img src="${p}" class="photo-thumb" onclick="openLightbox('${p}')"/><button class="photo-remove" style="display:flex;align-items:center;justify-content:center;" onclick="removeRefPhoto('${ref.id}',${pi})"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>`).join('')}
@@ -3427,6 +3427,10 @@ function renderRefItems(){
       </div>` : ''}
     </div>`;
   }).join('');
+  // Enable drag & drop on each ref photo grid after render
+  DB.pendingRefs.forEach(ref=>{
+    setTimeout(()=>enableRefPhotoDrop('refphotosgrid_'+ref.id, ref.id), 0);
+  });
 }
 function updateRefDesc(id,val){ const r=DB.pendingRefs.find(r=>r.id===id); if(r) r.desc=val; }
 function addRefPhotos(id,input){
@@ -3434,6 +3438,93 @@ function addRefPhotos(id,input){
   ref._open=true; // keep item open while adding photos
   Array.from(input.files).forEach(f=>{ const reader=new FileReader(); reader.onload=e=>{ ref.photos.push(e.target.result); renderRefItems(); }; reader.readAsDataURL(f); });
 }
+
+// ── Universal photo file handler — accepts File objects from any source ──────
+function _handlePhotoFiles(files, onEachDataUrl){
+  Array.from(files).forEach(f=>{
+    if(!f.type.startsWith('image/')) return; // skip non-images
+    const reader=new FileReader();
+    reader.onload=e=>onEachDataUrl(e.target.result);
+    reader.readAsDataURL(f);
+  });
+}
+
+// ── Drag & drop on ref photo grids (upload screen) ───────────────────────────
+function enableRefPhotoDrop(gridId, refId){
+  const el=document.getElementById(gridId);
+  if(!el||el._dropEnabled) return;
+  el._dropEnabled=true;
+  el.addEventListener('dragover',e=>{e.preventDefault();el.style.outline='2px dashed var(--accent)';});
+  el.addEventListener('dragleave',()=>{el.style.outline='';});
+  el.addEventListener('drop',e=>{
+    e.preventDefault(); el.style.outline='';
+    const ref=DB.pendingRefs.find(r=>r.id===refId); if(!ref) return;
+    ref._open=true;
+    _handlePhotoFiles(e.dataTransfer.files, url=>{ ref.photos.push(url); renderRefItems(); });
+  });
+}
+
+// ── Drag & drop on item feedback photo grids (reviewer form) ─────────────────
+function enableItemPhotoDrop(gridId, idx){
+  const el=document.getElementById(gridId);
+  if(!el||el._dropEnabled) return;
+  el._dropEnabled=true;
+  el.addEventListener('dragover',e=>{e.preventDefault();el.style.outline='2px dashed var(--accent)';});
+  el.addEventListener('dragleave',()=>{el.style.outline='';});
+  el.addEventListener('drop',async e=>{
+    e.preventDefault(); el.style.outline='';
+    const label=getReviewerName();
+    for(const f of Array.from(e.dataTransfer.files)){
+      if(!f.type.startsWith('image/')) continue;
+      const url=await new Promise(res=>{ const r=new FileReader(); r.onload=ev=>res(ev.target.result); r.readAsDataURL(f); });
+      const stamped=await stampPhoto(url, label);
+      DB.itemFeedbacks[idx].photos.push(stamped);
+    }
+    renderItemPhotoGrid(idx);
+    refreshReviewerItemStatus(idx);
+  });
+}
+
+// ── Global paste handler — paste image from clipboard into active photo area ─
+document.addEventListener('paste', async e=>{
+  const items=Array.from(e.clipboardData?.items||[]);
+  const imgItem=items.find(it=>it.type.startsWith('image/'));
+  if(!imgItem) return;
+  const file=imgItem.getAsFile();
+  if(!file) return;
+
+  // Determine context from currently active screen
+  const activeScreen=document.querySelector('.screen.active');
+  if(!activeScreen) return;
+
+  if(activeScreen.id==='s-upload'||activeScreen.id==='s-add-report'){
+    // Upload screen — add to the currently open ref item
+    const openRef=DB.pendingRefs.find(r=>r._open);
+    if(openRef){
+      const reader=new FileReader();
+      reader.onload=ev=>{ openRef.photos.push(ev.target.result); renderRefItems(); };
+      reader.readAsDataURL(file);
+      e.preventDefault();
+    }
+  } else if(activeScreen.id==='s-reviewer-report'){
+    // Reviewer form — add to the last focused/open item
+    if(typeof _lastFocusedItemIdx !== 'undefined' && _lastFocusedItemIdx >= 0 && DB.itemFeedbacks[_lastFocusedItemIdx]){
+      const label=getReviewerName();
+      const reader=new FileReader();
+      reader.onload=async ev=>{
+        const stamped=await stampPhoto(ev.target.result, label);
+        DB.itemFeedbacks[_lastFocusedItemIdx].photos.push(stamped);
+        renderItemPhotoGrid(_lastFocusedItemIdx);
+        refreshReviewerItemStatus(_lastFocusedItemIdx);
+      };
+      reader.readAsDataURL(file);
+      e.preventDefault();
+    }
+  }
+});
+
+// Track which item the reviewer last interacted with (for paste target)
+let _lastFocusedItemIdx = -1;
 function removeRefPhoto(id,idx){ const r=DB.pendingRefs.find(r=>r.id===id); if(r){ r.photos.splice(idx,1); renderRefItems(); } }
 
 function reportVisibleToStore(r, sid){
@@ -3870,8 +3961,8 @@ function viewFeedback(rid){
             <div style="display:flex;gap:8px;margin-bottom:10px;">
               <button onclick="document.getElementById('refphotosedit_${ref.id}').click()" style="flex:1;height:40px;border-radius:10px;border:1.5px solid var(--border2);background:var(--bg3);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;font-size:12px;color:var(--text2);"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>Photo</button>
               <button onclick="document.getElementById('refphotoseditcam_${ref.id}').click()" style="flex:1;height:40px;border-radius:10px;border:1.5px solid var(--border2);background:var(--bg3);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;font-size:12px;color:var(--text2);"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>Camera</button>
-              <input type="file" id="refphotosedit_${ref.id}" accept="image/*" multiple style="display:none;" onchange="addRefPhotosInline('${ref.id}','${rid}',this)"/>
-              <input type="file" id="refphotoseditcam_${ref.id}" accept="image/*" capture="environment" style="display:none;" onchange="addRefPhotosInline('${ref.id}','${rid}',this)"/>
+              <input type="file" id="refphotosedit_${ref.id}" accept="image/*,application/pdf" multiple style="display:none;" onchange="addRefPhotosInline('${ref.id}','${rid}',this)"/>
+              <input type="file" id="refphotoseditcam_${ref.id}" accept="image/*" multiple style="display:none;" onchange="addRefPhotosInline('${ref.id}','${rid}',this)"/>
             </div>
             <div class="photo-grid" id="refphotosgrid_inline_${ref.id}">${ref.photos.map((p,pi)=>`<div class="photo-thumb-wrap"><img src="${p}" class="photo-thumb" onclick="openLightbox('${p}')"/><button class="photo-remove" style="display:flex;align-items:center;justify-content:center;" onclick="removeRefPhotoInline('${ref.id}','${rid}',${pi})"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>`).join('')}</div>
             <div style="display:flex;gap:8px;margin-top:12px;"><button class="btn btn-primary btn-sm" style="flex:1;" onclick="saveRefEdit('${ref.id}','${rid}')">Save</button><button class="btn btn-sm" onclick="toggleEditRef('${ref.id}','${rid}')">Cancel</button></div>
@@ -4896,7 +4987,7 @@ function renderItemForms(r, brandColor){
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
             </button>
             <input type="file" id="item-photo-input-${i}" accept="image/*" multiple style="display:none;" onchange="addItemPhoto(${i},this)"/>
-            <input type="file" id="item-camera-input-${i}" accept="image/*" capture="environment" style="display:none;" onchange="addItemPhoto(${i},this)"/>
+            <input type="file" id="item-camera-input-${i}" accept="image/*" multiple style="display:none;" onchange="addItemPhoto(${i},this)"/>
           </div>
           <!-- Text input — hidden until Text button tapped -->
           <div id="rvtext_${i}" style="display:none;margin-bottom:10px;">
@@ -4909,6 +5000,18 @@ function renderItemForms(r, brandColor){
     </div>`;
   }).join('');
   refs.forEach((_,i)=>renderItemPhotoGrid(i));
+  // Enable drag & drop and focus tracking on each item photo grid
+  refs.forEach((_,i)=>{
+    setTimeout(()=>{
+      enableItemPhotoDrop('item-photo-grid-'+i, i);
+      // Track last focused item for clipboard paste
+      const grid=document.getElementById('item-photo-grid-'+i);
+      const wrap=grid?.closest('[style*="border-radius"]');
+      if(wrap) wrap.addEventListener('click',()=>{ _lastFocusedItemIdx=i; }, true);
+      const textarea=document.getElementById('item-note-'+i);
+      if(textarea) textarea.addEventListener('focus',()=>{ _lastFocusedItemIdx=i; });
+    }, 0);
+  });
   // Set initial Submit button visibility
   checkAllItemsDone();
 }
@@ -5671,7 +5774,7 @@ function renderErRefs(){
           Camera
         </button>
         <input type="file" id="er_ref_photo_${i}" accept="image/*" multiple style="display:none;" onchange="erAddRefPhoto(${i},this)"/>
-        <input type="file" id="er_ref_cam_${i}" accept="image/*" capture="environment" style="display:none;" onchange="erAddRefPhoto(${i},this)"/>
+        <input type="file" id="er_ref_cam_${i}" accept="image/*" multiple style="display:none;" onchange="erAddRefPhoto(${i},this)"/>
       </div>
       <!-- Photo grid -->
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:5px;" id="er_ref_grid_${i}">
