@@ -5258,10 +5258,10 @@ function openReviewerReport(rid){
     else if(entry.type==='verified') histRows+=pill(`<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#15803d" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`,`Verified · ${entry.by||'Staff'}`,entry.date,'#f0fdf4','var(--success)');
   });
 
-  document.getElementById('rv-inspection-card').innerHTML=hasInsp?`
+  document.getElementById('rv-inspection-card').innerHTML=`
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);padding:14px 16px;margin-bottom:16px;position:relative;">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-        <div style="font-size:12px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;">Inspection details</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:${hasInsp?'10px':'2px'};">
+        <div style="font-size:12px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;">${hasInsp?'Inspection details':'Report'}</div>
         <div style="position:relative;">
           <button id="rv-dl-btn" onclick="toggleRvDownloadMenu(event,'${rid}')" style="width:30px;height:30px;border-radius:8px;border:0.5px solid var(--border2);background:var(--bg3);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text2);padding:0;">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
@@ -5278,12 +5278,13 @@ function openReviewerReport(rid){
           </div>
         </div>
       </div>
+      ${hasInsp?`
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:${(_pdfName||histRows)?'12px':'4px'};">
         ${insp.storeName?`<div><div style="font-size:11px;color:var(--text3);margin-bottom:2px;">Store</div><div style="font-size:14px;font-weight:500;">${insp.storeName}</div></div>`:''}
         ${insp.date?`<div><div style="font-size:11px;color:var(--text3);margin-bottom:2px;">Date</div><div style="font-size:14px;font-weight:500;">${insp.date}</div></div>`:''}
         ${insp.checkedBy?`<div><div style="font-size:11px;color:var(--text3);margin-bottom:2px;">Checked by</div><div style="font-size:14px;font-weight:500;">${insp.checkedBy}</div></div>`:''}
         ${insp.score?`<div><div style="font-size:11px;color:var(--text3);margin-bottom:2px;">Score</div><div style="font-size:22px;font-weight:700;">${scoreHTML(insp.score,22)}</div></div>`:''}
-      </div>
+      </div>`:''}
       ${_pdfName?`<div onclick="openReportPDF()" style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;cursor:pointer;margin-bottom:${histRows?'12px':'0'};" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
         <div style="width:40px;height:40px;border-radius:8px;background:var(--bg2);border:1px solid var(--border);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;flex-shrink:0;">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
@@ -5305,8 +5306,7 @@ function openReviewerReport(rid){
         </div>
         <div style="display:none;margin-top:8px;">${histRows}</div>
       </div>`:''}
-    </div>`:'';
-
+    </div>`;
   // Reset any open pill state
   const submittedDiv=document.getElementById('rv-submitted-view');
   const formDiv=document.getElementById('rv-feedback-form');
