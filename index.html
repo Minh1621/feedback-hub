@@ -3511,7 +3511,8 @@ function addRefPhotos(id,input){
       });
       ref.photos.push(compressed);
       renderRefItems();
-      // Original saved to Camera Roll by iOS (capture=environment); stamped copy via ↓ button
+      // Original saved to Camera Roll by iOS (capture=environment); also save compressed copy
+      if(isCam) await autoSavePhotoToDevice(compressed, 'ref');
     } catch(e) { console.error('addRefPhotos error:', e); }
   });
 }
@@ -5255,31 +5256,52 @@ function getTimestamp(){
 }
 // Auto-save photo to device — triggers a download which iOS/Android saves to Photos/Downloads
 // Called silently after stamping so user has the stamped copy on device
-async function savePhotoToDevice(dataUrl, filename){
-  const name = filename || ('QC_photo_' + new Date().toISOString().slice(0,19).replace(/[T:]/g,'-') + '.jpg');
-  try {
-    // dataUrl can be data: URL or an R2 https:// URL — both work with fetch()
-    const fetchUrl = dataUrl.startsWith('data:') ? dataUrl : dataUrl;
-    const res = await fetch(fetchUrl);
-    const blob = await res.blob();
-    const file = new File([blob], name, { type: blob.type || 'image/jpeg' });
+// Convert dataUrl to Blob without fetch (fast, works offline)
+function _dataUrlToBlob(dataUrl){
+  const comma = dataUrl.indexOf(',');
+  const mime = (dataUrl.slice(0,comma).match(/data:([^;]+)/)||[])[1]||'image/jpeg';
+  const bstr = atob(dataUrl.slice(comma+1));
+  const arr = new Uint8Array(bstr.length);
+  for(let i=0;i<bstr.length;i++) arr[i]=bstr.charCodeAt(i);
+  return new Blob([arr],{type:mime});
+}
 
-    // iOS Safari: Web Share API → native share sheet → "Save Image" → Photos
-    if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
-      await navigator.share({ files: [file], title: name });
-      return;
+async function savePhotoToDevice(dataUrl, filename){
+  const name = filename || ('QC_photo_'+new Date().toISOString().slice(0,19).replace(/[T:]/g,'-')+'.jpg');
+  try {
+    // Build blob — use dataUrlToBlob for data: URLs (fast, no fetch), fetch for https: URLs
+    let blob;
+    if(dataUrl.startsWith('data:')){
+      blob = _dataUrlToBlob(dataUrl);
+    } else {
+      const res = await fetch(dataUrl);
+      blob = await res.blob();
+    }
+    const file = new File([blob], name, { type: 'image/jpeg' });
+
+    // iOS Safari 15+: Web Share API with files → share sheet → "Save Image" → Photos
+    if(navigator.share && navigator.canShare && navigator.canShare({ files: [file] })){
+      try { await navigator.share({ files: [file], title: name }); return; } catch(e){
+        if(e.name==='AbortError') return; // user cancelled — fine
+      }
     }
 
-    // Android / desktop: blob URL download
+    // Android / desktop: blob URL → <a download> → Downloads/Photos
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url; a.download = name; a.style.display = 'none';
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 1000);
+    a.href = url; a.download = name; a.style.display='none';
+    document.body.appendChild(a); a.click();
+    setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); }, 1000);
   } catch(e) {
-    if (e.name !== 'AbortError') console.warn('Save photo error:', e.message);
+    if(e.name !== 'AbortError') console.warn('Save photo:', e.message);
   }
+}
+
+// Auto-save stamped photo — called after camera capture with user gesture still active
+async function autoSavePhotoToDevice(dataUrl, label){
+  const ts = new Date().toISOString().slice(0,19).replace(/[T:]/g,'-');
+  const name = 'QC_'+(label||'photo')+'_'+ts+'.jpg';
+  await savePhotoToDevice(dataUrl, name);
 }
 
 function stampPhoto(dataURL, label){
@@ -5324,8 +5346,8 @@ function addItemPhoto(idx,input){
       DB.itemFeedbacks[idx].photos.push(stamped);
       renderItemPhotoGrid(idx);
       refreshReviewerItemStatus(idx);
-      // Stamped copy is saved via the ↓ button on the thumbnail
-      // (iOS auto-saves original to Camera Roll via capture="environment")
+      // Auto-save stamped copy to device when taken with camera button
+      if(isCameraInput) await autoSavePhotoToDevice(stamped, label);
     } catch(e) { console.error('addItemPhoto error:', e); }
   });
   input.value='';
@@ -6747,41 +6769,57 @@ async function testAdminEmail(){
   }
   setTimeout(()=>{ if(msg) msg.innerHTML=''; },5000);
 }
-function toggleNotif(){
+async function toggleNotif(){
   SETTINGS.notifEnabled=!SETTINGS.notifEnabled;
   applySettingsToUI();
   saveSettingsToStorage();
+  // Persist to DB so it survives restart
+  try{
+    await api('PUT','/api/admin/password',{
+      username:ADMIN_CREDS.username, password:ADMIN_CREDS.password,
+      notif_email:SETTINGS.notifEmail||'',
+      notif_on_submit:SETTINGS.notifOnSubmit,
+      notif_all_done:SETTINGS.notifAllDone,
+      notif_brand_complete:SETTINGS.notifBrandComplete,
+      notif_store_complete:SETTINGS.notifStoreComplete,
+    });
+  }catch(e){}
 }
 
 async function saveNotifSettings(){
-  const email=document.getElementById('notif-email').value.trim();
+  const emailEl=document.getElementById('notif-email');
   const msg=document.getElementById('notif-msg');
-  if(!email||!email.includes('@')){ msg.innerHTML='<div class="alert alert-danger">Please enter a valid email.</div>'; return; }
-  // Update SETTINGS object
-  SETTINGS.notifEmail=email;
-  SETTINGS.notifEnabled=true;
-  SETTINGS.notifOnSubmit=document.getElementById('notif-on-submit').checked;
-  SETTINGS.notifAllDone=document.getElementById('notif-all-done').checked;
-  SETTINGS.notifBrandComplete=document.getElementById('notif-brand-complete').checked;
-  SETTINGS.notifStoreComplete=document.getElementById('notif-store-complete').checked;
-  // Save to localStorage (this device)
-  saveSettingsToStorage();
-  // Save to DB (ALL devices) — this is the key step
-  const result=await api('PUT','/api/admin/password',{
-    username:ADMIN_CREDS.username,
-    password:ADMIN_CREDS.password,
-    notif_email:email,
-    notif_on_submit:SETTINGS.notifOnSubmit,
-    notif_all_done:SETTINGS.notifAllDone,
-    notif_brand_complete:SETTINGS.notifBrandComplete,
-    notif_store_complete:SETTINGS.notifStoreComplete,
-  });
-  if(result && result.ok){
-    msg.innerHTML='<div class="alert alert-success">Email saved! Works on all devices now.</div>';
-  } else {
-    msg.innerHTML='<div class="alert alert-danger">Failed to save — please try again.</div>';
+  const email=(emailEl?.value||'').trim();
+  // If email field is visible and has a value, validate it
+  if(email && !email.includes('@')){
+    if(msg) msg.innerHTML='<div class="alert alert-danger">Please enter a valid email.</div>';
+    setTimeout(()=>{ if(msg) msg.innerHTML=''; },3000);
+    return;
   }
-  setTimeout(()=>{ msg.innerHTML=''; },3000);
+  // Update SETTINGS object
+  if(email) SETTINGS.notifEmail=email;
+  if(email) SETTINGS.notifEnabled=true;
+  SETTINGS.notifOnSubmit=document.getElementById('notif-on-submit')?.checked??true;
+  SETTINGS.notifAllDone=document.getElementById('notif-all-done')?.checked??true;
+  SETTINGS.notifBrandComplete=document.getElementById('notif-brand-complete')?.checked??true;
+  SETTINGS.notifStoreComplete=document.getElementById('notif-store-complete')?.checked??true;
+  // Save to localStorage
+  saveSettingsToStorage();
+  // Save to DB (persists across all devices and restarts)
+  try{
+    const result=await api('PUT','/api/admin/password',{
+      username:ADMIN_CREDS.username, password:ADMIN_CREDS.password,
+      notif_email:SETTINGS.notifEmail||'',
+      notif_on_submit:SETTINGS.notifOnSubmit,
+      notif_all_done:SETTINGS.notifAllDone,
+      notif_brand_complete:SETTINGS.notifBrandComplete,
+      notif_store_complete:SETTINGS.notifStoreComplete,
+    });
+    if(email && result?.ok && msg){
+      msg.innerHTML='<div class="alert alert-success">Saved!</div>';
+      setTimeout(()=>{ if(msg) msg.innerHTML=''; },2000);
+    }
+  }catch(e){ if(msg){ msg.innerHTML='<div class="alert alert-danger">Failed to save.</div>'; setTimeout(()=>{ msg.innerHTML=''; },3000); } }
 }
 
 // Also save when any checkbox changes
