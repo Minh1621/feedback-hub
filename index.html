@@ -790,6 +790,7 @@ label{
   </div>
   <div class="content">
     <div id="rv-inspection-card" style="margin-bottom:14px;"></div>
+    <div id="rv-refs-wrap" style="margin-bottom:14px;"></div>
     <div id="rv-submitted-view" style="display:none;"></div>
     <div id="rv-feedback-form" style="display:none;">
       <div id="rv-items-form"></div>
@@ -4576,8 +4577,68 @@ function openReviewerReport(rid){
       </div>`:''}
     </div>`:'';
 
-  // Reset any open pill state
-  const submittedDiv=document.getElementById('rv-submitted-view');
+  // ── Always render item cards below inspection card ────────────────────────
+  const rw=document.getElementById('rv-refs-wrap');
+  if(rw && r.refs && r.refs.length){
+    const _fbMapRefs={};
+    r.feedbacks.forEach(f=>{ if(!_fbMapRefs[f.storeId]||f.date>=_fbMapRefs[f.storeId].date) _fbMapRefs[f.storeId]=f; });
+    const _myFbRefs=_fbMapRefs[s.id]||null;
+    const _fbByRefIdRefs={};
+    (_myFbRefs?.itemFeedbacks||[]).forEach(it=>{ if(it.refId) _fbByRefIdRefs[it.refId]=it; });
+    rw.innerHTML=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;"><div class="sec-label" style="margin-bottom:0;">Items (${r.refs.length})</div></div>`+
+    r.refs.map((ref,idx)=>{
+      const item=_fbByRefIdRefs[ref.id]||{refId:ref.id,note:'',photos:[]};
+      const hasMyContent=!!(item.note||(item.photos&&item.photos.length));
+      const isRejected=!!(_myFbRefs?.adminRemarks?.[ref.id+'_list']?.length||_myFbRefs?.adminRemarks?.[ref.id]);
+      const isNew=!hasMyContent&&!isRejected&&!!_myFbRefs; // new item added after submission
+      const adminPhotos=ref.photos&&ref.photos.length?ref.photos:[];
+      const remarkList=_myFbRefs?.adminRemarks?.[ref.id+'_list']||[];
+      const remarkText=remarkList.length?remarkList.map(rk=>rk.text).join(' · '):(_myFbRefs?.adminRemarks?.[ref.id]||'');
+      let cardBorder='0.5px solid var(--border)';
+      let statusBadge='';
+      if(isRejected){
+        cardBorder='1.5px solid var(--danger)';
+        statusBadge=`<span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;background:var(--alert-danger-bg);color:var(--danger);">Needs correction</span>`;
+      } else if(isNew){
+        cardBorder='1.5px solid var(--warn)';
+        statusBadge=`<span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;background:#fff3e0;color:var(--warn);">New</span>`;
+      } else if(hasMyContent){
+        statusBadge=`<span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;background:var(--badge-done-bg);color:var(--success);">Responded</span>`;
+      } else {
+        statusBadge=`<span style="font-size:11px;color:var(--text3);">No response</span>`;
+      }
+      return `<div style="background:var(--bg2);border:${cardBorder};border-radius:var(--rl);margin-bottom:10px;overflow:hidden;">
+        <div onclick="(()=>{const b=document.getElementById('rvrefs_${idx}');const a=document.getElementById('rvrefs_arrow_${idx}');const open=b.style.display!=='none';b.style.display=open?'none':'';a.style.transform=open?'':'rotate(180deg)';})()" style="display:flex;align-items:center;gap:10px;padding:13px 14px;cursor:pointer;user-select:none;">
+          <div style="width:28px;height:28px;border-radius:8px;background:var(--bg3);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <span style="font-size:13px;font-weight:600;color:var(--text2);">${idx+1}</span>
+          </div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:14px;font-weight:600;">${ref.name||'Item '+(idx+1)}</div>
+            ${ref.desc?`<div style="font-size:12px;color:var(--text2);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${ref.desc}</div>`:''}
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+            ${statusBadge}
+            <svg id="rvrefs_arrow_${idx}" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="transition:transform .2s;transform:${isRejected||isNew?'rotate(180deg)':'rotate(0deg)'};color:var(--text3);flex-shrink:0;"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+        </div>
+        <div id="rvrefs_${idx}" style="display:${isRejected||isNew?'':'none'};border-top:0.5px solid var(--border);">
+          ${adminPhotos.length?`<div style="padding:10px 14px;background:var(--bg3);border-bottom:1px solid var(--border);">
+            <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;">Reference</div>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:5px;">${adminPhotos.map(p=>`<div style="aspect-ratio:1;border-radius:7px;overflow:hidden;"><img src="${p}" style="width:100%;height:100%;object-fit:cover;cursor:pointer;" onclick="openLightbox('${p}')"/></div>`).join('')}</div>
+          </div>`:''}
+          ${isRejected&&remarkText?`<div style="padding:10px 14px;background:var(--alert-danger-bg);border-bottom:1px solid var(--alert-danger-border);">
+            <div style="font-size:10px;font-weight:700;color:var(--danger);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;">Checker remark</div>
+            <div style="font-size:13px;color:var(--danger);">${remarkText}</div>
+          </div>`:''}
+          <div style="padding:13px 14px;">
+            <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">Your response</div>
+            ${item.note?`<div style="font-size:14px;color:var(--text);line-height:1.6;margin-bottom:8px;">${item.note}</div>`:'<div style="font-size:13px;color:var(--text3);margin-bottom:6px;">No response yet</div>'}
+            ${item.photos&&item.photos.length?`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;">${item.photos.map(p=>`<div style="aspect-ratio:1;border-radius:8px;overflow:hidden;"><img src="${p}" style="width:100%;height:100%;object-fit:cover;cursor:pointer;" onclick="openLightbox('${p}')"/></div>`).join('')}</div>`:''}
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  } else if(rw){ rw.innerHTML=''; }
   const formDiv=document.getElementById('rv-feedback-form');
   // Deduplicate feedbacks — use only the latest per store
   const _fbMapRv={};
@@ -4617,84 +4678,13 @@ function openReviewerReport(rid){
     const newItems=refsToShow.filter(ref=>{ const it=fbByRefId[ref.id]; return !(it&&(it.note||(it.photos&&it.photos.length))); });
     const hasNewItems=newItems.length>0&&_isPartial;
     submittedDiv.innerHTML=`
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:13px 15px;background:${hasNewItems?'#fff3e0':_isPartial?'var(--badge-partial-bg)':'var(--alert-success-bg)'};border:1px solid ${hasNewItems?'var(--warn)':_isPartial?'var(--accent)':'var(--alert-success-border)'};border-radius:var(--rl);margin-bottom:14px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:13px 15px;background:${hasNewItems?'#fff3e0':_isPartial?'var(--badge-partial-bg)':'var(--alert-success-bg)'};border:1px solid ${hasNewItems?'var(--warn)':_isPartial?'var(--accent)':'var(--alert-success-border)'};border-radius:var(--rl);margin-bottom:10px;">
         <div>
           <div style="font-size:13px;font-weight:600;color:${hasNewItems?'var(--warn)':_isPartial?'var(--accent)':'var(--success)'};">${hasNewItems?`New items added · ${_respondedItems}/${_totalRefItems} responded`:_isPartial?`Partial · ${_respondedItems}/${_totalRefItems} items · ${myFb.date}`:`Submitted · ${myFb.date}`}</div>
           ${hasNewItems?`<div style="font-size:11px;color:var(--warn);margin-top:2px;">${newItems.length} item${newItems.length>1?'s':''} need${newItems.length===1?'s':''} your response</div>`:''}
         </div>
         <button class="btn btn-xs" onclick="editAllResponses('${rid}')">Edit all</button>
-      </div>
-      ${refsToShow.map((ref,i)=>{
-        const item=fbByRefId[ref.id]||{refId:ref.id,note:'',photos:[]};
-        const hasMyContent=!!(item.note||(item.photos&&item.photos.length));
-        const isRejected=!!(myFb.adminRemarks?.[ref.id+'_list']?.length||myFb.adminRemarks?.[ref.id]);
-        const isNew=!hasMyContent&&!isRejected;
-        const adminPhotos=ref&&ref.photos&&ref.photos.length?ref.photos:[];
-        const remarkList=myFb.adminRemarks?.[ref.id+'_list']||[];
-        const remarkText=remarkList.length?remarkList.map(rk=>rk.text).join(' · '):(myFb.adminRemarks?.[ref.id]||'');
-        let cardBorder='0.5px solid var(--border)';
-        let statusBadge='';
-        if(isRejected){
-          cardBorder='1.5px solid var(--danger)';
-          statusBadge=`<span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;background:var(--alert-danger-bg);color:var(--danger);">Needs correction</span>`;
-        } else if(isNew){
-          cardBorder='1.5px solid var(--warn)';
-          statusBadge=`<span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;background:#fff3e0;color:var(--warn);">New</span>`;
-        } else {
-          statusBadge=`<span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;background:var(--badge-done-bg);color:var(--success);">Responded</span>`;
-        }
-        return `<div style="background:var(--bg2);border:${cardBorder};border-radius:var(--rl);margin-bottom:10px;overflow:hidden;">
-          <div onclick="toggleReviewerItem('rvs_${i}')" style="display:flex;align-items:center;gap:10px;padding:13px 14px;cursor:pointer;user-select:none;">
-            <div style="width:28px;height:28px;border-radius:8px;background:var(--bg3);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-              <span style="font-size:13px;font-weight:600;color:var(--text2);">${i+1}</span>
-            </div>
-            <div style="flex:1;min-width:0;">
-              <div style="font-size:14px;font-weight:600;">${ref.name||'Item '+(i+1)}</div>
-              ${ref.desc?`<div style="font-size:12px;color:var(--text2);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${ref.desc}</div>`:''}
-            </div>
-            <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
-              ${statusBadge}
-              <div id="rvi_arrow_s${i}" style="font-size:11px;color:var(--text3);transition:transform .2s;">▼</div>
-            </div>
-          </div>
-          <div id="rvs_${i}" style="display:${isRejected||isNew?'block':'none'};border-top:0.5px solid var(--border);">
-            ${adminPhotos.length?`<div style="padding:10px 14px;background:var(--bg3);border-bottom:1px solid var(--border);">
-                <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;">Reference</div>
-                <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:5px;">${adminPhotos.map(p=>`<div style="aspect-ratio:1;border-radius:7px;overflow:hidden;"><img src="${p}" style="width:100%;height:100%;object-fit:cover;cursor:pointer;" onclick="openLightbox('${p}')"/></div>`).join('')}</div>
-              </div>`:''}
-            ${isRejected&&remarkText?`<div style="padding:10px 14px;background:var(--alert-danger-bg);border-bottom:1px solid var(--alert-danger-border);">
-                <div style="font-size:10px;font-weight:700;color:var(--danger);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;">Checker remark</div>
-                <div style="font-size:13px;color:var(--danger);">${remarkText}</div>
-              </div>`:''}
-            <div style="padding:13px 14px;">
-              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-                <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;">Your response</div>
-                <button class="btn btn-xs" onclick="editSingleResponse('${rid}',${i})">Edit</button>
-              </div>
-              <div id="rvs_view_${i}">
-                ${item.note?`<div style="font-size:14px;color:var(--text);line-height:1.6;margin-bottom:8px;">${item.note}</div>`:'<div style="font-size:13px;color:var(--text3);margin-bottom:8px;">No response yet</div>'}
-                ${item.photos&&item.photos.length?`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;">${item.photos.map(p=>`<div style="aspect-ratio:1;border-radius:8px;overflow:hidden;"><img src="${p}" style="width:100%;height:100%;object-fit:cover;cursor:pointer;" onclick="openLightbox('${p}')"/></div>`).join('')}</div>`:''}
-              </div>
-              <div id="rvs_edit_${i}" style="display:none;">
-                <textarea id="rvs_note_${i}" style="min-height:72px;margin-bottom:8px;">${item.note||''}</textarea>
-                <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:8px;" id="rvs_photogrid_${i}">
-                  ${item.photos&&item.photos.length?item.photos.map((p,pi)=>`<div style="position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;"><img src="${p}" style="width:100%;height:100%;object-fit:cover;cursor:pointer;" onclick="openLightbox('${p}')"/><button onclick="removeSubmittedPhoto('${rid}',${i},${pi})" style="position:absolute;top:3px;right:3px;width:18px;height:18px;border-radius:50%;background:rgba(0,0,0,.65);color:#fff;font-size:9px;border:none;cursor:pointer;"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>`).join(''):''}
-                </div>
-                <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap;">
-                  <button onclick="document.getElementById('rvs_photoinput_${i}').click()" style="width:40px;height:40px;border-radius:10px;border:1.5px solid var(--border2);background:var(--bg3);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text2);"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></button>
-                  <button onclick="document.getElementById('rvs_camerainput_${i}').click()" style="width:40px;height:40px;border-radius:10px;border:1.5px solid var(--border2);background:var(--bg3);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text2);"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></button>
-                  <input type="file" id="rvs_photoinput_${i}" accept="image/*" multiple style="display:none;" onchange="addSubmittedPhoto('${rid}',${i},this)"/>
-                  <input type="file" id="rvs_camerainput_${i}" accept="image/*" capture="environment" style="display:none;" onchange="addSubmittedPhoto('${rid}',${i},this)"/>
-                </div>
-                <div style="display:flex;gap:8px;">
-                  <button class="btn btn-primary btn-sm" style="flex:1;" onclick="saveEditedResponse('${rid}',${i})">Save</button>
-                  <button class="btn btn-sm" onclick="cancelEditResponse(${i})">Cancel</button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>`;
-      }).join('')}`;
+      </div>`;
     formDiv.style.display='none';
   } else if(myFb && _hasRejectedItems) {
     // Has feedback but some items were rejected — show form pre-filled, rejected items cleared
