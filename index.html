@@ -1819,6 +1819,15 @@ label{
 
 <!-- ======= STAFF EXPORT VERIFY OVERLAY ======= -->
 <div id="staff-export-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:70;align-items:flex-end;justify-content:center;">
+  <div style="background:var(--bg);border-radius:20px 20px 0 0;padding:24px;width:100%;max-width:480px;">
+    <div style="font-size:17px;font-weight:700;margin-bottom:6px;">Download staff data</div>
+    <div style="font-size:13px;color:var(--text2);margin-bottom:16px;">Enter admin password to export staff credentials</div>
+    <div class="field"><label>Admin password</label><input type="password" id="staff-export-pass" placeholder="••••"/></div>
+    <div id="staff-export-msg"></div>
+    <button class="btn btn-primary btn-full" onclick="doStaffExportVerify()">Download</button>
+    <button onclick="document.getElementById('staff-export-overlay').style.display='none'" style="width:100%;margin-top:10px;padding:10px;background:none;border:none;color:var(--text3);cursor:pointer;font-size:14px;">Cancel</button>
+  </div>
+</div>
 
 <!-- ======= NOTIF EMAIL VERIFY OVERLAY ======= -->
 <div id="notif-email-verify-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:80;align-items:flex-end;justify-content:center;">
@@ -1845,15 +1854,6 @@ label{
       <button class="btn btn-primary btn-full" onclick="nevVerifyCode()">Verify email</button>
     </div>
     <button onclick="nevClose()" style="width:100%;margin-top:10px;padding:10px;background:none;border:none;color:var(--text3);cursor:pointer;font-size:14px;">Cancel</button>
-  </div>
-</div>
-  <div style="background:var(--bg);border-radius:20px 20px 0 0;padding:24px;width:100%;max-width:480px;">
-    <div style="font-size:17px;font-weight:700;margin-bottom:6px;">Download staff data</div>
-    <div style="font-size:13px;color:var(--text2);margin-bottom:16px;">Enter admin password to export staff credentials</div>
-    <div class="field"><label>Admin password</label><input type="password" id="staff-export-pass" placeholder="••••"/></div>
-    <div id="staff-export-msg"></div>
-    <button class="btn btn-primary btn-full" onclick="doStaffExportVerify()">Download</button>
-    <button onclick="document.getElementById('staff-export-overlay').style.display='none'" style="width:100%;margin-top:10px;padding:10px;background:none;border:none;color:var(--text3);cursor:pointer;font-size:14px;">Cancel</button>
   </div>
 </div>
 
