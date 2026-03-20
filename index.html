@@ -783,11 +783,6 @@ label{
   </div>
   <div class="content">
     <div id="rv-inspection-card" style="margin-bottom:14px;"></div>
-    <div id="rv-pdf-box" style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:18px;text-align:center;margin-bottom:16px;cursor:pointer;" onclick="openReportPDF()">
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-      <div style="font-size:13px;color:var(--text2);margin-top:6px;" id="rv-pdf-name"></div>
-      <div style="font-size:11px;color:var(--accent);margin-top:3px;">Tap to open PDF ↗</div>
-    </div>
     <div id="rv-submitted-view" style="display:none;"></div>
     <div id="rv-feedback-form" style="display:none;">
       <div id="rv-items-form"></div>
@@ -800,6 +795,15 @@ label{
     </div>
     <div style="height:40px;"></div>
   </div>
+</div>
+
+<!-- PDF inline viewer overlay -->
+<div id="pdf-viewer-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:200;flex-direction:column;">
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:#1a1a2e;flex-shrink:0;">
+    <div style="font-size:13px;font-weight:600;color:#fff;" id="pdf-viewer-title">Report PDF</div>
+    <button onclick="closePdfViewer()" style="background:rgba(255,255,255,.15);border:none;color:#fff;border-radius:8px;padding:6px 14px;font-size:13px;cursor:pointer;">✕ Close</button>
+  </div>
+  <iframe id="pdf-viewer-frame" src="" style="flex:1;width:100%;border:none;background:#fff;"></iframe>
 </div>
 
 <!-- ======= SETTINGS ======= -->
@@ -4460,7 +4464,6 @@ function openReviewerReport(rid){
   const b=reviewerBrand(), s=reviewerStore();
   const r=b.reports.find(r=>r.id===rid);
   document.getElementById('rv-report-title').textContent=r.title;
-  document.getElementById('rv-pdf-name').textContent=r.file;
   document.getElementById('rv-fb-msg').innerHTML='';
 
   // Inspection card — same as admin viewFeedback
@@ -4531,9 +4534,15 @@ function openReviewerReport(rid){
         ${insp.checkedBy?`<div><div style="font-size:11px;color:var(--text3);margin-bottom:2px;">Checked by</div><div style="font-size:14px;font-weight:500;">${insp.checkedBy}</div></div>`:''}
         ${insp.score?`<div><div style="font-size:11px;color:var(--text3);margin-bottom:2px;">Score</div><div style="font-size:22px;font-weight:700;">${scoreHTML(insp.score,22)}</div></div>`:''}
       </div>
-      ${_pdfName?`<div onclick="openReportPDF()" style="width:52px;height:52px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;margin-bottom:${histRows?'12px':'0'};" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-        <span style="font-size:9px;font-weight:700;color:var(--accent);letter-spacing:.04em;">PDF</span>
+      ${_pdfName?`<div onclick="openReportPDF()" style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;cursor:pointer;margin-bottom:${histRows?'12px':'0'};" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
+        <div style="width:40px;height:40px;border-radius:8px;background:var(--bg2);border:1px solid var(--border);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;flex-shrink:0;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          <span style="font-size:8px;font-weight:700;color:var(--accent);letter-spacing:.04em;">PDF</span>
+        </div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${_pdfName}</div>
+          <div style="font-size:11px;color:var(--accent);margin-top:2px;">Tap to view ↗</div>
+        </div>
       </div>`:''}
       ${histRows?`
       <div style="border-top:1px solid var(--border);padding-top:10px;">
@@ -6568,10 +6577,26 @@ function removeSubmittedPhoto(rid, idx, pi){
 /* ===== OPEN PDF ===== */
 function openReportPDF(){
   let r=null;
-  for(const b of DB.brands){ r=b.reports.find(rep=>rep.id===DB.currentReportId); if(r) break; }
+  // Try reviewer context first
+  if(DB.reviewerReportId){
+    for(const b of DB.brands){ r=b.reports.find(rep=>rep.id===DB.reviewerReportId); if(r) break; }
+  }
+  if(!r){ for(const b of DB.brands){ r=b.reports.find(rep=>rep.id===DB.currentReportId); if(r) break; } }
   if(!r) return;
-  if(r.fileURL){ window.open(r.fileURL,'_blank'); }
-  else { showToast('⚠️ PDF not available — connect a server to enable file storage'); }
+  if(!r.fileURL){ showToast('⚠️ PDF not available'); return; }
+  const overlay=document.getElementById('pdf-viewer-overlay');
+  const frame=document.getElementById('pdf-viewer-frame');
+  const title=document.getElementById('pdf-viewer-title');
+  if(!overlay||!frame) { window.open(r.fileURL,'_blank'); return; }
+  if(title) title.textContent=r.file||'Report PDF';
+  frame.src=r.fileURL;
+  overlay.style.display='flex';
+}
+function closePdfViewer(){
+  const overlay=document.getElementById('pdf-viewer-overlay');
+  const frame=document.getElementById('pdf-viewer-frame');
+  if(overlay) overlay.style.display='none';
+  if(frame) frame.src='';
 }
 
 /* ===== INLINE REF EDITING ===== */
