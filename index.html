@@ -4666,8 +4666,7 @@ function openReviewerReport(rid){
             </div>
           </div>
         </div>`;
-      }).join('')}
-      ${buildReviewerHistory(myFb, r.date||'')}`;
+      }).join('')}`;
     formDiv.style.display='none';
   } else if(myFb && _hasRejectedItems) {
     // Has feedback but some items were rejected — show form pre-filled, rejected items cleared
