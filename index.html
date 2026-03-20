@@ -4602,11 +4602,9 @@ function openReviewerReport(rid){
         const hasMyContent=!!(item.note||(item.photos&&item.photos.length));
         const isRejectedItem=!!(_myFbSRW?.adminRemarks?.[ref.id+'_list']?.length||_myFbSRW?.adminRemarks?.[ref.id]);
         const needsCorrection=isRejectedItem&&!hasMyContent;
-        const isNewItem=!hasMyContent&&!isRejectedItem&&!!_myFbSRW; // new item added after submission
-        const adminPhotos=ref.photos&&ref.photos.length?ref.photos:[];
+        const isNewItem=!hasMyContent&&!isRejectedItem&&!!_myFbSRW;
         const remarkList=_myFbSRW?.adminRemarks?.[ref.id+'_list']||[];
         const remarkText=remarkList.length?remarkList.map(rk=>rk.text).join(' · '):(_myFbSRW?.adminRemarks?.[ref.id]||'');
-        // State for filter
         const itemState=needsCorrection?'rejected':isNewItem?'new_item':hasMyContent?'responded':'no_response';
         if(filterVal==='no_response'&&itemState!=='no_response') return '';
         if(filterVal==='responded'&&itemState!=='responded') return '';
@@ -4614,39 +4612,27 @@ function openReviewerReport(rid){
         if(filterVal==='new_item'&&itemState!=='new_item') return '';
         const cardBorder=needsCorrection?'1.5px solid var(--danger)':isNewItem?'1.5px solid var(--warn)':'0.5px solid var(--border)';
         let statusBadge='';
-        if(needsCorrection) statusBadge=`<span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;background:var(--alert-danger-bg);color:var(--danger);">Needs correction</span>`;
-        else if(isNewItem) statusBadge=`<span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;background:#fff3e0;color:var(--warn);">New</span>`;
-        else if(hasMyContent) statusBadge=`<span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;background:var(--badge-done-bg);color:var(--success);">Responded</span>`;
-        else statusBadge=`<span style="font-size:11px;color:var(--text3);">No response</span>`;
-        return `<div style="background:var(--bg2);border:${cardBorder};border-radius:var(--rl);margin-bottom:10px;overflow:hidden;">
-          <div onclick="(()=>{const b=document.getElementById('srvrefs_${idx}');const a=document.getElementById('srvrefs_arrow_${idx}');const open=b.style.display!=='none';b.style.display=open?'none':'';a.style.transform=open?'':'rotate(180deg)';})()" style="display:flex;align-items:center;gap:10px;padding:13px 14px;cursor:pointer;user-select:none;">
-            <div style="width:28px;height:28px;border-radius:8px;background:var(--bg3);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-              <span style="font-size:13px;font-weight:600;color:var(--text2);">${idx+1}</span>
-            </div>
-            <div style="flex:1;min-width:0;">
-              <div style="font-size:14px;font-weight:600;">${ref.name||'Item '+(idx+1)}</div>
-              ${ref.desc?`<div style="font-size:12px;color:var(--text2);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${ref.desc}</div>`:''}
-            </div>
-            <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
-              ${statusBadge}
-              <svg id="srvrefs_arrow_${idx}" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="transition:transform .2s;flex-shrink:0;color:var(--text3);"><polyline points="6 9 12 15 18 9"/></svg>
-            </div>
+        if(needsCorrection) statusBadge=`<span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;background:var(--alert-danger-bg);color:var(--danger);flex-shrink:0;">Needs correction</span>`;
+        else if(isNewItem) statusBadge=`<span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;background:#fff3e0;color:var(--warn);flex-shrink:0;">New</span>`;
+        else if(hasMyContent) statusBadge=`<span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;background:var(--badge-done-bg);color:var(--success);flex-shrink:0;">Responded</span>`;
+        else statusBadge=`<span style="font-size:11px;color:var(--text3);flex-shrink:0;">No response</span>`;
+        // Build preview: remark text or response note snippet
+        const previewLine=needsCorrection&&remarkText
+          ? `<div style="font-size:11px;color:var(--danger);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${remarkText}</div>`
+          : item.note
+            ? `<div style="font-size:11px;color:var(--text2);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${item.note}</div>`
+            : item.photos&&item.photos.length
+              ? `<div style="font-size:11px;color:var(--text2);margin-top:3px;">${item.photos.length} photo${item.photos.length>1?'s':''}</div>`
+              : '';
+        return `<div style="background:var(--bg2);border:${cardBorder};border-radius:var(--rl);margin-bottom:8px;padding:12px 14px;display:flex;align-items:center;gap:10px;">
+          <div style="width:28px;height:28px;border-radius:8px;background:var(--bg3);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <span style="font-size:13px;font-weight:600;color:var(--text2);">${idx+1}</span>
           </div>
-          <div id="srvrefs_${idx}" style="display:none;border-top:0.5px solid var(--border);">
-            ${adminPhotos.length?`<div style="padding:10px 14px;background:var(--bg3);border-bottom:1px solid var(--border);">
-              <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;">Reference</div>
-              <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:5px;">${adminPhotos.map(p=>`<div style="aspect-ratio:1;border-radius:7px;overflow:hidden;"><img src="${p}" style="width:100%;height:100%;object-fit:cover;cursor:pointer;" onclick="openLightbox('${p}')"/></div>`).join('')}</div>
-            </div>`:''}
-            ${needsCorrection&&remarkText?`<div style="padding:10px 14px;background:var(--alert-danger-bg);border-bottom:1px solid var(--alert-danger-border);">
-              <div style="font-size:10px;font-weight:700;color:var(--danger);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;">Checker remark</div>
-              <div style="font-size:13px;color:var(--danger);">${remarkText}</div>
-            </div>`:''}
-            <div style="padding:13px 14px;">
-              <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">Your response</div>
-              ${item.note?`<div style="font-size:14px;color:var(--text);line-height:1.6;margin-bottom:8px;">${item.note}</div>`:'<div style="font-size:13px;color:var(--text3);margin-bottom:6px;">No response yet</div>'}
-              ${item.photos&&item.photos.length?`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;">${item.photos.map(p=>`<div style="aspect-ratio:1;border-radius:8px;overflow:hidden;"><img src="${p}" style="width:100%;height:100%;object-fit:cover;cursor:pointer;" onclick="openLightbox('${p}')"/></div>`).join('')}</div>`:''}
-            </div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${ref.name||'Item '+(idx+1)}</div>
+            ${previewLine}
           </div>
+          ${statusBadge}
         </div>`;
       }).filter(Boolean).join('')||'<div class="empty">No items match this filter</div>';
     }
