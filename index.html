@@ -1961,9 +1961,8 @@ function toggleRvDownloadMenu(e, rid){
   }
 }
 
-async function downloadReportPDF(rid){
-  const menu=document.getElementById('rv-dl-menu');
-  if(menu) menu.style.display='none';
+async function downloadReportPDF(rid){  // Close whichever download menu is open
+  ['rv-dl-menu','fb-dl-menu'].forEach(id=>{ const m=document.getElementById(id); if(m) m.style.display='none'; });
   // Works for all roles — get report from any context
   let b=null, r=null, storeName='';
   if(DB.role==='reviewer'){
@@ -2197,9 +2196,8 @@ async function downloadReportPDF(rid){
 }
 
 async function downloadReportPhotos(rid){
-  const menu=document.getElementById('rv-dl-menu');
-  if(menu) menu.style.display='none';
-  // All roles
+  ['rv-dl-menu','fb-dl-menu'].forEach(id=>{ const m=document.getElementById(id); if(m) m.style.display='none'; });
+  // All roles — find report
   let b=null, r=null;
   if(DB.role==='reviewer'){
     b=reviewerBrand(); r=b?.reports?.find(rep=>rep.id===rid);
@@ -2208,36 +2206,86 @@ async function downloadReportPhotos(rid){
   }
   if(!r||!b){ showToast('Report not found'); return; }
 
-  const photos=[];
   const safeName=n=>(n||'').replace(/[^a-z0-9]/gi,'_').slice(0,20);
+  const safeTitle=safeName(r.title||'report').slice(0,25);
+  const today=new Date();
+  const dateStr=`${String(today.getDate()).padStart(2,'0')}-${String(today.getMonth()+1).padStart(2,'0')}-${today.getFullYear()}`;
 
-  // 1. Admin reference photos (from refs)
+  // Collect photos: folder → filename → dataUrl
+  const photoEntries=[]; // {folder, filename, url}
+
+  // 1. Reference photos → /Reference/
   (r.refs||[]).forEach((ref,i)=>{
     (ref.photos||[]).forEach((p,pi)=>{
-      photos.push({url:p, name:`QC_Ref_Item${i+1}_${safeName(ref.name)}_${pi+1}.jpg`});
-    });
-  });
-
-  // 2. All store response photos (all stores, latest feedback per store)
-  const latestFbMap={};
-  (r.feedbacks||[]).forEach(f=>{ if(!latestFbMap[f.storeId]||f.date>=latestFbMap[f.storeId].date) latestFbMap[f.storeId]=f; });
-  Object.values(latestFbMap).forEach(fb=>{
-    const storeName=b.stores?.find(s=>s.id===fb.storeId)?.name||'Store';
-    (r.refs||[]).forEach((ref,i)=>{
-      const it=fb.itemFeedbacks?.find(it=>it.refId===ref.id);
-      (it?.photos||[]).forEach((p,pi)=>{
-        photos.push({url:p, name:`QC_${safeName(storeName)}_Item${i+1}_${safeName(ref.name)}_${pi+1}.jpg`});
+      photoEntries.push({
+        folder:'Reference',
+        filename:`Item${i+1}_${safeName(ref.name)}_ref_${pi+1}.jpg`,
+        url:p
       });
     });
   });
 
-  if(!photos.length){ showToast('No photos found'); return; }
-  showToast(`Downloading ${photos.length} photo${photos.length>1?'s':''}...`);
-  for(let i=0;i<photos.length;i++){
-    await new Promise(res=>setTimeout(res,i===0?0:600));
-    await savePhotoToDevice(photos[i].url, photos[i].name);
+  // 2. All store response photos → /StoreName/
+  const latestFbMap={};
+  (r.feedbacks||[]).forEach(f=>{ if(!latestFbMap[f.storeId]||f.date>=latestFbMap[f.storeId].date) latestFbMap[f.storeId]=f; });
+  Object.values(latestFbMap).forEach(fb=>{
+    const storeName=safeName(b.stores?.find(s=>s.id===fb.storeId)?.name||'Store');
+    (r.refs||[]).forEach((ref,i)=>{
+      const it=fb.itemFeedbacks?.find(it=>it.refId===ref.id);
+      (it?.photos||[]).forEach((p,pi)=>{
+        photoEntries.push({
+          folder:storeName,
+          filename:`Item${i+1}_${safeName(ref.name)}_${pi+1}.jpg`,
+          url:p
+        });
+      });
+    });
+  });
+
+  if(!photoEntries.length){ showToast('No photos found'); return; }
+  showToast(`Zipping ${photoEntries.length} photo${photoEntries.length>1?'s':''}...`);
+
+  // Load JSZip
+  if(typeof JSZip==='undefined'){
+    await new Promise((res,rej)=>{
+      const s=document.createElement('script');
+      s.src='https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
+      s.onload=res; s.onerror=rej;
+      document.head.appendChild(s);
+    });
   }
-  showToast('All photos saved!');
+
+  const zip=new JSZip();
+  // Convert dataUrl to Uint8Array
+  function dataUrlToUint8(dataUrl){
+    const base64=dataUrl.split(',')[1]||dataUrl;
+    const bin=atob(base64);
+    const arr=new Uint8Array(bin.length);
+    for(let i=0;i<bin.length;i++) arr[i]=bin.charCodeAt(i);
+    return arr;
+  }
+
+  for(const entry of photoEntries){
+    try{
+      let data;
+      if(entry.url.startsWith('data:')){
+        data=dataUrlToUint8(entry.url);
+      } else {
+        const res=await fetch(entry.url);
+        const ab=await res.arrayBuffer();
+        data=new Uint8Array(ab);
+      }
+      zip.folder(entry.folder).file(entry.filename, data);
+    }catch(e){ console.warn('Skip photo:',e.message); }
+  }
+
+  const zipBlob=await zip.generateAsync({type:'blob',compression:'DEFLATE',compressionOptions:{level:6}});
+  const url=URL.createObjectURL(zipBlob);
+  const a=document.createElement('a');
+  a.href=url; a.download=`QC_Photos_${safeTitle}_${dateStr}.zip`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('Photos downloaded as ZIP!');
 }
 
 function toggleTheme(){
