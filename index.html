@@ -3692,22 +3692,28 @@ function viewFeedback(rid){
     // Reference items — collapsible with store responses inside
   const rw=document.getElementById('fb-refs-wrap');
   if(r.refs&&r.refs.length){
-    rw.innerHTML=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;"><div class="sec-label" style="margin-bottom:0;">Items (${r.refs.length})</div></div>`+
-    r.refs.map((ref,i)=>{
-      // Deduplicate feedbacks — keep only latest per store
-      const latestFbMap={};
-      r.feedbacks.forEach(f=>{ if(!latestFbMap[f.storeId]||f.date>=latestFbMap[f.storeId].date) latestFbMap[f.storeId]=f; });
-      const latestFbs=Object.values(latestFbMap);
-      // Count responses and rejections for this ref item
-      let respCount=0, rejectCount=0;
-      latestFbs.forEach(f=>{
-        const it=f.itemFeedbacks?f.itemFeedbacks.find(it=>it.refId===ref.id):null;
-        const hasRemark=!!(f.adminRemarks?.[ref.id+'_list']?.length || f.adminRemarks?.[ref.id]);
-        if(hasRemark){ rejectCount++; }
-        else if(it&&(it.note||(it.photos&&it.photos.length))){ respCount++; }
-      });
-      return `<div style="background:var(--bg2);border:0.5px solid var(--border);border-radius:var(--rl);margin-bottom:10px;overflow:hidden;">
-        <!-- Header row — tap to toggle -->
+    const isChecker=(DB.role==='admin'||DB.role==='staff');
+    function buildRefCards(filterVal){
+      return r.refs.map((ref,i)=>{
+        const latestFbMap={};
+        r.feedbacks.forEach(f=>{ if(!latestFbMap[f.storeId]||f.date>=latestFbMap[f.storeId].date) latestFbMap[f.storeId]=f; });
+        const latestFbs=Object.values(latestFbMap);
+        let respCount=0, rejectCount=0, rejRespCount=0;
+        latestFbs.forEach(f=>{
+          const it=f.itemFeedbacks?f.itemFeedbacks.find(it=>it.refId===ref.id):null;
+          const hasRemark=!!(f.adminRemarks?.[ref.id+'_list']?.length||f.adminRemarks?.[ref.id]);
+          const hasContent=!!(it&&(it.note||(it.photos&&it.photos.length)));
+          if(hasRemark&&hasContent){ rejRespCount++; }
+          else if(hasRemark){ rejectCount++; }
+          else if(hasContent){ respCount++; }
+        });
+        const itemState=rejRespCount>0?'needs_review':rejectCount>0?'rejected':respCount>0?'responded':'no_response';
+        if(filterVal==='no_response'&&itemState!=='no_response') return '';
+        if(filterVal==='responded'&&itemState!=='responded') return '';
+        if(filterVal==='rejected'&&itemState!=='rejected') return '';
+        if(filterVal==='needs_review'&&itemState!=='needs_review') return '';
+        const _itemBorder=rejRespCount>0?'1.5px solid var(--danger)':rejectCount>0?'1.5px solid var(--warn)':'0.5px solid var(--border)';
+        return `<div style="background:var(--bg2);border:${_itemBorder};border-radius:var(--rl);margin-bottom:10px;overflow:hidden;" data-ref-id="${ref.id}">
         <div onclick="toggleAdminItem('ai_${ref.id}')" style="display:flex;align-items:center;gap:10px;padding:13px 14px;cursor:pointer;user-select:none;">
           <div style="width:28px;height:28px;border-radius:8px;background:var(--bg3);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
             <span style="font-size:13px;font-weight:600;color:var(--text2);">${i+1}</span>
@@ -3718,57 +3724,50 @@ function viewFeedback(rid){
           </div>
           <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
             ${respCount?`<span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;background:var(--badge-done-bg);color:var(--success);">${respCount} response${respCount>1?'s':''}</span>`:''}
-            ${rejectCount?`<span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;background:var(--alert-danger-bg);color:var(--danger);">×${rejectCount} rejected</span>`:''}
-            ${!respCount&&!rejectCount?`<span style="font-size:11px;color:var(--text3);">No responses</span>`:''}
+            ${rejRespCount?`<span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;background:var(--alert-danger-bg);color:var(--danger);">${rejRespCount} needs review</span>`:''}
+            ${rejectCount?`<span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;background:#fff3e0;color:var(--warn);">×${rejectCount} rejected</span>`:''}
+            ${!respCount&&!rejectCount&&!rejRespCount?`<span style="font-size:11px;color:var(--text3);">No responses</span>`:''}
             <div id="ai_arrow_${ref.id}" style="font-size:11px;color:var(--text3);transition:transform .2s;">▼</div>
           </div>
         </div>
-        <!-- Dropdown body -->
         <div id="ai_${ref.id}" style="display:none;border-top:0.5px solid var(--border);">
-          <!-- Admin reference content -->
           <div style="padding:12px 14px;background:var(--bg3);">
             <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;">Reference</div>
             ${ref.desc?`<div style="font-size:13px;color:var(--text2);line-height:1.5;margin-bottom:8px;">${ref.desc}</div>`:''}
             ${ref.photos&&ref.photos.length?`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-bottom:10px;">${ref.photos.map(p=>`<div style="aspect-ratio:1;border-radius:7px;overflow:hidden;"><img src="${p}" style="width:100%;height:100%;object-fit:cover;cursor:pointer;" onclick="openLightbox('${p}')"/></div>`).join('')}</div>`:''}
             ${canEdit()?`<button class="btn btn-xs" onclick="toggleEditRef('${ref.id}','${rid}')">Edit item</button>`:''}
           </div>
-          <!-- Edit form -->
           <div id="refview_edit_${ref.id}" style="display:none;padding:14px;border-top:1px solid var(--border);background:var(--bg2);">
-            <div class="field" style="margin-bottom:10px;">
-              <label style="font-size:11px;">Item name</label>
-              <input type="text" id="refinput_name_${ref.id}" value="${ref.name||''}" placeholder="Item name" style="font-size:13px;"/>
-            </div>
-            <div class="field" style="margin-bottom:10px;">
-              <label style="font-size:11px;">Description (optional)</label>
-              <textarea id="refinput_${ref.id}" placeholder="Description..." style="min-height:56px;font-size:13px;">${ref.desc||''}</textarea>
-            </div>
-            <!-- Action buttons: text shown, photo, camera -->
+            <div class="field" style="margin-bottom:10px;"><label style="font-size:11px;">Item name</label><input type="text" id="refinput_name_${ref.id}" value="${ref.name||''}" placeholder="Item name" style="font-size:13px;"/></div>
+            <div class="field" style="margin-bottom:10px;"><label style="font-size:11px;">Description (optional)</label><textarea id="refinput_${ref.id}" placeholder="Description..." style="min-height:56px;font-size:13px;">${ref.desc||''}</textarea></div>
             <div style="display:flex;gap:8px;margin-bottom:10px;">
-              <button onclick="document.getElementById('refphotosedit_${ref.id}').click()" style="flex:1;height:40px;border-radius:10px;border:1.5px solid var(--border2);background:var(--bg3);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;font-size:12px;color:var(--text2);">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-                Photo
-              </button>
-              <button onclick="document.getElementById('refphotoseditcam_${ref.id}').click()" style="flex:1;height:40px;border-radius:10px;border:1.5px solid var(--border2);background:var(--bg3);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;font-size:12px;color:var(--text2);">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
-                Camera
-              </button>
+              <button onclick="document.getElementById('refphotosedit_${ref.id}').click()" style="flex:1;height:40px;border-radius:10px;border:1.5px solid var(--border2);background:var(--bg3);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;font-size:12px;color:var(--text2);"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>Photo</button>
+              <button onclick="document.getElementById('refphotoseditcam_${ref.id}').click()" style="flex:1;height:40px;border-radius:10px;border:1.5px solid var(--border2);background:var(--bg3);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;font-size:12px;color:var(--text2);"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>Camera</button>
               <input type="file" id="refphotosedit_${ref.id}" accept="image/*" multiple style="display:none;" onchange="addRefPhotosInline('${ref.id}','${rid}',this)"/>
               <input type="file" id="refphotoseditcam_${ref.id}" accept="image/*" capture="environment" style="display:none;" onchange="addRefPhotosInline('${ref.id}','${rid}',this)"/>
             </div>
             <div class="photo-grid" id="refphotosgrid_inline_${ref.id}">${ref.photos.map((p,pi)=>`<div class="photo-thumb-wrap"><img src="${p}" class="photo-thumb" onclick="openLightbox('${p}')"/><button class="photo-remove" style="display:flex;align-items:center;justify-content:center;" onclick="removeRefPhotoInline('${ref.id}','${rid}',${pi})"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>`).join('')}</div>
-            <div style="display:flex;gap:8px;margin-top:12px;">
-              <button class="btn btn-primary btn-sm" style="flex:1;" onclick="saveRefEdit('${ref.id}','${rid}')">Save</button>
-              <button class="btn btn-sm" onclick="toggleEditRef('${ref.id}','${rid}')">Cancel</button>
-            </div>
+            <div style="display:flex;gap:8px;margin-top:12px;"><button class="btn btn-primary btn-sm" style="flex:1;" onclick="saveRefEdit('${ref.id}','${rid}')">Save</button><button class="btn btn-sm" onclick="toggleEditRef('${ref.id}','${rid}')">Cancel</button></div>
           </div>
-          <!-- Store responses — sorted: remarked first, then no response, then responded -->
           <div style="border-top:0.5px solid var(--border);">
             <div style="padding:10px 14px 2px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;">Store responses</div>
             ${buildSortedResponsesHTML(ref, r, b, rid)}
           </div>
         </div>
       </div>`;
-    }).join('');
+      }).filter(Boolean).join('') || '<div class="empty">No items match this filter</div>';
+    }
+    window._buildRefCards=buildRefCards;
+    const filterBtnsHTML=`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">
+      <button data-f="all" onclick="setRefFilter('all','${rid}')" class="ref-filter-btn btn btn-xs" style="background:var(--accent);color:#fff;border-color:var(--accent);">All</button>
+      <button data-f="no_response" onclick="setRefFilter('no_response','${rid}')" class="ref-filter-btn btn btn-xs">No response</button>
+      <button data-f="responded" onclick="setRefFilter('responded','${rid}')" class="ref-filter-btn btn btn-xs">Responded</button>
+      <button data-f="rejected" onclick="setRefFilter('rejected','${rid}')" class="ref-filter-btn btn btn-xs">Rejection</button>
+      ${isChecker?`<button data-f="needs_review" onclick="setRefFilter('needs_review','${rid}')" class="ref-filter-btn btn btn-xs" style="border-color:var(--danger);color:var(--danger);">Needs review</button>`:''}
+    </div>`;
+    rw.innerHTML=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;"><div class="sec-label" style="margin-bottom:0;">Items (${r.refs.length})</div></div>`
+      +filterBtnsHTML
+      +`<div id="ref-cards-wrap">${buildRefCards('all')}</div>`;
   } else { rw.innerHTML=''; }
 
   // A store is "missing" if it has no feedback OR hasn't responded to ALL items
@@ -7380,6 +7379,18 @@ async function doDeleteStaff(){
 
 /* ===== RESPONSE MANAGEMENT ===== */
 
+function setRefFilter(val, rid){
+  // Update active button style
+  document.querySelectorAll('.ref-filter-btn').forEach(btn=>{
+    const isActive=btn.getAttribute('data-f')===val;
+    btn.style.background=isActive?'var(--accent)':'';
+    btn.style.color=isActive?'#fff':'';
+    btn.style.borderColor=isActive?'var(--accent)':(btn.getAttribute('data-f')==='needs_review'?'var(--danger)':'');
+  });
+  const wrap=document.getElementById('ref-cards-wrap');
+  if(wrap && window._buildRefCards) wrap.innerHTML=window._buildRefCards(val);
+}
+
 function buildSortedResponsesHTML(ref, r, b, rid){
   const latestFbMap={};
   r.feedbacks.forEach(f=>{if(!latestFbMap[f.storeId]||f.date>=latestFbMap[f.storeId].date) latestFbMap[f.storeId]=f;});
@@ -7487,18 +7498,22 @@ function buildSortedResponsesHTML(ref, r, b, rid){
 
 
     // Status label for header
-    const statusLabel=isRejectedNow
-      ? `<span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;background:var(--alert-danger-bg);color:var(--danger);display:flex;align-items:center;gap:3px;flex-shrink:0;">×${allRemarks.length} remark${allRemarks.length>1?'s':''}</span>`
-      : hasResponse
-        ? `<span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;background:var(--badge-done-bg);color:var(--success);flex-shrink:0;">Responded</span>`
-        : `<span style="font-size:11px;padding:2px 8px;border-radius:20px;background:var(--bg3);color:var(--text3);flex-shrink:0;">No response</span>`;
+    // rejected+responded = show green "Responded" but store row gets red border
+    const statusLabel=(isRejectedNow&&hasResponse)
+      ? `<span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;background:var(--badge-done-bg);color:var(--success);flex-shrink:0;">Responded</span>`
+      : isRejectedNow
+        ? `<span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;background:var(--alert-danger-bg);color:var(--danger);display:flex;align-items:center;gap:3px;flex-shrink:0;">×${allRemarks.length} remark${allRemarks.length>1?'s':''}</span>`
+        : hasResponse
+          ? `<span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;background:var(--badge-done-bg);color:var(--success);flex-shrink:0;">Responded</span>`
+          : `<span style="font-size:11px;padding:2px 8px;border-radius:20px;background:var(--bg3);color:var(--text3);flex-shrink:0;">No response</span>`;
 
     const clickHandler=canAct&&(hasResponse||fb||hasRemarks)
       ? `onclick="openRespAction('${fbId}','${ref.id}','${store.id}','${rid}','${store.name}','${ref.name||'Item'}')" style="cursor:pointer;"`:'';
 
+    const _storeRowBorder=(isRejectedNow&&hasResponse)?'background:var(--alert-danger-bg);border-radius:10px;padding:8px 10px;border:1px solid var(--alert-danger-border);':isRejectedNow?'':'';
     return `<div style="padding:12px 0;${!isLast?'border-bottom:0.5px solid var(--border);':''}">
       <!-- Store header row -->
-      <div ${clickHandler} style="display:flex;align-items:center;gap:8px;margin-bottom:${hasRemarks||hasResponse?'10px':'0'};">
+      <div ${clickHandler} style="display:flex;align-items:center;gap:8px;margin-bottom:${hasRemarks||hasResponse?'10px':'0'};${_storeRowBorder}">
         <div style="width:8px;height:8px;border-radius:50%;background:${storeColor};flex-shrink:0;"></div>
         <span style="font-size:13px;font-weight:600;flex:1;">${store.name}</span>
         ${fb&&fb.date?`<span style="font-size:11px;color:var(--text3);">${fb.date}</span>`:''}
