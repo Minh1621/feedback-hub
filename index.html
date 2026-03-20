@@ -520,18 +520,59 @@ label{
     </button>
   </div>
   <div class="content">
+    <!-- Preview card -->
+    <div class="sec-label" style="margin-bottom:8px;">Preview</div>
+    <div id="es-card-preview" style="margin-bottom:16px;overflow:visible;"></div>
+
+    <!-- Cover appearance -->
+    <div class="sec-label" style="margin-bottom:8px;">Cover background</div>
+    <div style="display:flex;gap:6px;margin-bottom:12px;">
+      <button id="es-mode-color" class="btn btn-primary btn-sm" style="flex:1;" onclick="esSetCoverMode('color')">Color</button>
+      <button id="es-mode-photo" class="btn btn-sm" style="flex:1;" onclick="esSetCoverMode('photo')">Photo</button>
+    </div>
+    <div id="es-color-section">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
+        <input type="color" id="es-color-pick" value="#7c6fff" oninput="esSetColor(this.value)" style="width:36px;height:30px;border:1px solid var(--border);border-radius:6px;cursor:pointer;padding:1px;"/>
+        <div id="es-swatches" style="display:flex;gap:5px;flex-wrap:wrap;"></div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+        <div><div style="font-size:13px;font-weight:600;">Gradient effect</div></div>
+        <input type="checkbox" id="es-gradient" checked onchange="esUpdatePreview()" style="width:16px;height:16px;accent-color:var(--accent);cursor:pointer;"/>
+      </div>
+    </div>
+    <div id="es-photo-section" style="display:none;">
+      <div style="font-size:12px;color:var(--text2);margin-bottom:8px;">Best size: <strong>800 × 160px</strong></div>
+      <div id="es-cover-photo-wrap" style="display:none;margin-bottom:8px;border-radius:8px;overflow:hidden;height:70px;position:relative;">
+        <img id="es-cover-photo-img" src="" style="width:100%;height:100%;object-fit:cover;"/>
+        <button onclick="esClearCoverPhoto()" style="position:absolute;top:6px;right:6px;background:rgba(0,0,0,.6);border:none;color:#fff;border-radius:50%;width:22px;height:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <label style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1.5px dashed var(--border2);border-radius:10px;cursor:pointer;margin-bottom:10px;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        <div><div style="font-size:13px;font-weight:600;color:var(--text);">Upload cover photo</div><div style="font-size:11px;color:var(--text3);">Wide banner image</div></div>
+        <input type="file" id="es-cover-photo-input" accept="image/*" style="display:none;" onchange="onEsCoverPhotoPick(this)"/>
+      </label>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+        <div><div style="font-size:13px;font-weight:600;">Dark overlay</div></div>
+        <input type="checkbox" id="es-overlay" checked onchange="esUpdatePreview()" style="width:16px;height:16px;accent-color:var(--accent);cursor:pointer;"/>
+      </div>
+    </div>
+
+    <!-- Logo upload -->
     <div style="margin-bottom:12px;">
-      <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:6px;">Logo</label>
+      <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:6px;">Profile logo (optional)</label>
       <div style="display:flex;align-items:center;gap:10px;">
-        <div id="es-logo-preview" style="width:44px;height:44px;border-radius:10px;background:var(--bg3);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;overflow:hidden;cursor:pointer;" onclick="document.getElementById('es-logo-input').click()">
+        <div id="es-logo-preview" style="width:44px;height:44px;border-radius:50%;background:var(--bg3);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;overflow:hidden;cursor:pointer;" onclick="document.getElementById('es-logo-input').click()">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
         </div>
         <input type="file" id="es-logo-input" accept="image/*" style="display:none;" onchange="onEsLogoPick(this)"/>
+        <button class="btn btn-sm" onclick="document.getElementById('es-logo-input').click()">Upload logo</button>
       </div>
     </div>
-    <div class="field"><label>Store name</label><input id="es-name" type="text" placeholder="Store name"/></div>
-    <div class="field"><label>Phone</label><input id="es-phone" type="tel" placeholder="+855..."/></div>
-    <div class="field"><label>Location</label><input id="es-location" type="text" placeholder="Address or location"/></div>
+    <div class="field"><label>Store name</label><input id="es-name" type="text" placeholder="Store name" oninput="esUpdatePreview()"/></div>
+    <div class="field"><label>Phone</label><input id="es-phone" type="tel" placeholder="+855..." oninput="esUpdatePreview()"/></div>
+    <div class="field"><label>Location</label><input id="es-location" type="text" placeholder="Address or location" oninput="esUpdatePreview()"/></div>
     <div class="field"><label>Username</label><input id="es-user" type="text" placeholder="Login username"/></div>
     <div class="field">
       <label>New password <span style="font-size:11px;color:var(--text3);">(leave blank to keep)</span></label>
@@ -559,6 +600,11 @@ label{
   </div>
   <div class="content">
     <div class="field"><label>Brand</label><div id="add-store-brand-name" style="font-weight:600;padding:10px 0;"></div></div>
+    <div class="sec-label" style="margin-bottom:8px;">Cover color</div>
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:14px;">
+      <input type="color" id="ns-color-pick" value="#7c6fff" oninput="nsSetColor(this.value)" style="width:36px;height:30px;border:1px solid var(--border);border-radius:6px;cursor:pointer;padding:1px;"/>
+      <div id="ns-swatches" style="display:flex;gap:5px;flex-wrap:wrap;"></div>
+    </div>
     <div class="field"><label>Store name</label><input id="ns-name" type="text" placeholder="Store name"/></div>
     <div class="field"><label>Phone</label><input id="ns-phone" type="tel" placeholder="+855..."/></div>
     <div class="field"><label>Location</label><input id="ns-location" type="text" placeholder="Address"/></div>
@@ -567,7 +613,7 @@ label{
     <div style="margin-bottom:12px;">
       <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:6px;">Logo (optional)</label>
       <div style="display:flex;align-items:center;gap:10px;">
-        <div id="ns-logo-preview" style="width:44px;height:44px;border-radius:10px;background:var(--bg3);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;overflow:hidden;cursor:pointer;" onclick="document.getElementById('ns-logo-input').click()">
+        <div id="ns-logo-preview" style="width:44px;height:44px;border-radius:50%;background:var(--bg3);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;overflow:hidden;cursor:pointer;" onclick="document.getElementById('ns-logo-input').click()">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
         </div>
         <button class="btn btn-sm" onclick="document.getElementById('ns-logo-input').click()">Upload logo</button>
@@ -2966,7 +3012,16 @@ function renderStoreDetailReports(b,s){
   }).join('');
 }
 
-function goAddStore(){ document.getElementById('add-store-brand-name').textContent=brand().name; goTo('s-add-store'); }
+function goAddStore(){
+  const b=brand();
+  document.getElementById('add-store-brand-name').textContent=b?.name||'';
+  _nsColor=_STORE_COLORS[b?.stores?.length%_STORE_COLORS.length]||'#7c6fff';
+  setTimeout(()=>{
+    document.getElementById('ns-color-pick').value=_nsColor;
+    _buildSwatches('ns-swatches','nsSetColor',_nsColor);
+  },50);
+  goTo('s-add-store');
+}
 async function doAddStore(){
   const name=document.getElementById('ns-name').value.trim();
   const phone=document.getElementById('ns-phone').value.trim();
@@ -2978,7 +3033,7 @@ async function doAddStore(){
   const all=DB.brands.flatMap(b=>b.stores.map(s=>s.username));
   if(all.includes(user)||user==='admin'){ msg.innerHTML='<div class="alert alert-danger">Username already taken.</div>'; return; }
   const b=brand();
-  const newStore={id:'s'+Date.now(),name,username:user,password:pass,phone,location,logo:_nsLogoData||null,color:STORE_DOTS[b.stores.length%STORE_DOTS.length]};
+  const newStore={id:'s'+Date.now(),name,username:user,password:pass,phone,location,logo:_nsLogoData||null,color:_nsColor};
   b.stores.push(newStore);
   await api('POST','/api/stores',{...newStore, brand_id:b.id});
   ['ns-name','ns-phone','ns-location','ns-user','ns-pass'].forEach(id=>document.getElementById(id).value='');
@@ -3011,9 +3066,8 @@ async function testStoreNotifEmail(){
 function goEditStore(){
   const sid = DB.currentStoreId;
   if(!sid){ showToast('⚠️ No store selected'); return; }
-  // Search all brands for this store
-  let s = null;
-  for(const b of DB.brands){ s=b.stores.find(st=>st.id===sid); if(s) break; }
+  let s=null, foundBrand=null;
+  for(const b of DB.brands){ s=b.stores.find(st=>st.id===sid); if(s){foundBrand=b;break;} }
   if(!s) return;
   document.getElementById('es-name').value=s.name||'';
   document.getElementById('es-phone').value=s.phone||'';
@@ -3022,9 +3076,28 @@ function goEditStore(){
   document.getElementById('es-pass').value='';
   document.getElementById('es-notif-email').value=s.notif_email||s.email||'';
   _esLogoData=s.logo||null;
+  _esColor=s.color||'#7c6fff';
+  _esCoverMode=s.coverMode||'color';
+  _esCoverPhoto=s.coverPhoto||null;
+  _esCoverOverlay=s.coverOverlay!==false;
+  _esCoverGradient=s.coverGradient!==false;
+  _esBrandName=foundBrand?.name||'';
   const prev=document.getElementById('es-logo-preview');
-  prev.innerHTML=s.logo?`<img src="${s.logo}" style="width:100%;height:100%;object-fit:cover;border-radius:9px;"/>`:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>';
+  prev.innerHTML=s.logo?`<img src="${s.logo}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"/>`:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>';
   document.getElementById('edit-store-msg').innerHTML='';
+  setTimeout(()=>{
+    document.getElementById('es-color-pick').value=_esColor;
+    document.getElementById('es-gradient').checked=_esCoverGradient;
+    document.getElementById('es-overlay').checked=_esCoverOverlay;
+    _buildSwatches('es-swatches','esSetColor',_esColor);
+    esSetCoverMode(_esCoverMode);
+    if(_esCoverMode==='photo'&&_esCoverPhoto){
+      const wrap=document.getElementById('es-cover-photo-wrap');
+      const img=document.getElementById('es-cover-photo-img');
+      if(wrap){wrap.style.display='';img.src=_esCoverPhoto;}
+    }
+    esUpdatePreview();
+  },50);
   goTo('s-edit-store');
 }
 async function doEditStore(){
@@ -3046,13 +3119,19 @@ async function doEditStore(){
   if(pass) s.password=pass;
   if(_esLogoData) s.logo=_esLogoData;
   if(notifEmail) s.notif_email=notifEmail;
-  // Save to DB including notif_email so it persists across all reviewer devices
+  s.color=_esColor;
+  s.coverMode=_esCoverMode;
+  s.coverPhoto=_esCoverMode==='photo'?(_esCoverPhoto||null):null;
+  s.coverOverlay=_esCoverOverlay;
+  s.coverGradient=_esCoverGradient;
   await api('PUT',`/api/stores/${sid}`,{
     name:s.name, username:s.username, password:s.password,
     phone:s.phone, location:s.location, logo:s.logo||null,
     color:s.color, email:s.email||null,
     notif_email:notifEmail||s.notif_email||null,
     notif_enabled:notifEmail?1:0,
+    cover_mode:s.coverMode, cover_photo:s.coverPhoto||null,
+    cover_overlay:s.coverOverlay?1:0, cover_gradient:s.coverGradient?1:0,
   });
   msg.innerHTML='<div class="alert alert-success">✓ Changes saved!</div>';
   setTimeout(()=>{ msg.innerHTML=''; document.getElementById('sd-store-name').textContent=s.name; openStoreDetail(s.id); },1000);
@@ -4091,22 +4170,28 @@ function renderReviewerHome(){
     else { appLogoTop.style.background='var(--accent)'; appLogoTop.innerHTML=`<span style="font-size:13px;font-weight:800;color:#fff;">FH</span>`; }
   }
 
-  // Store info card — profile card style matching admin/staff home
+  // Store info card — profile card style with cover color/photo support
   const initials=s.name.split(/\s+/).map(w=>w[0]).filter(Boolean).slice(0,2).join('').toUpperCase();
   const avatarContent=s.logo
     ? `<img src="${s.logo}" style="width:100%;height:100%;object-fit:cover;"/>`
     : `<span style="font-size:18px;font-weight:800;color:#fff;">${initials}</span>`;
-  const coverBg=`linear-gradient(135deg,${b.color} 0%,${b.color}99 100%)`;
+  const sColor=s.color||b.color||'#7c6fff';
+  const useGrad=s.coverGradient!==false;
+  const coverBg2=s.coverMode==='photo'&&s.coverPhoto?'#000':(useGrad?`linear-gradient(135deg,${sColor},${sColor}88)`:sColor);
+  const coverInner2=s.coverMode==='photo'&&s.coverPhoto
+    ?`<img src="${s.coverPhoto}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;"/>${s.coverOverlay!==false?'<div style="position:absolute;inset:0;background:rgba(0,0,0,.28);"></div>':''}`
+    :'';
   document.getElementById('rv-store-card').innerHTML=`
     <div style="border-radius:14px;box-shadow:0 2px 10px rgba(0,0,0,.08);position:relative;">
-      <div style="background:${coverBg};height:70px;border-radius:14px 14px 0 0;position:relative;overflow:hidden;"></div>
-      <div style="position:absolute;top:44px;left:16px;width:54px;height:54px;border-radius:50%;overflow:hidden;border:3px solid var(--bg);background:${b.color}30;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.18);z-index:10;">
+      <div style="background:${coverBg2};height:70px;border-radius:14px 14px 0 0;position:relative;overflow:hidden;">${coverInner2}</div>
+      <div style="position:absolute;top:44px;left:16px;width:54px;height:54px;border-radius:50%;overflow:hidden;border:3px solid var(--bg);background:${sColor};display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.18);z-index:10;">
         ${avatarContent}
       </div>
-      <div style="background:var(--bg2);border:1px solid var(--border);border-top:none;padding:34px 16px 14px;border-radius:0 0 14px 14px;">
+      <div style="background:var(--bg2);border:1px solid var(--border);border-top:none;padding:34px 16px 16px;border-radius:0 0 14px 14px;">
         <div style="font-size:17px;font-weight:800;line-height:1.2;">${s.name}</div>
-        <div style="font-size:13px;color:var(--text2);margin-top:3px;">${b.name}${s.location?` · <span style="color:var(--text3);">${s.location}</span>`:''}</div>
-        ${s.phone?`<div style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2);margin-top:8px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13.5 19.79 19.79 0 0 1 1.72 4.9 2 2 0 0 1 3.71 2.72h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 10.36a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>${s.phone}</div>`:''}
+        <div style="font-size:13px;font-weight:600;color:var(--text2);margin-top:2px;">${b.name}</div>
+        ${s.location?`<div style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text2);margin-top:7px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>${s.location}</div>`:''}
+        ${s.phone?`<div style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text2);margin-top:6px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13.5 19.79 19.79 0 0 1 1.72 4.9 2 2 0 0 1 3.71 2.72h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 10.36a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>${s.phone}</div>`:''}
       </div>
     </div>`;
 
@@ -4912,6 +4997,97 @@ function addReviewerPhotos(){}
 function removeReviewerPhoto(){}
 
 let _nsLogoData=null, _esLogoData=null;
+const _STORE_COLORS=['#7c6fff','#20c070','#f5a623','#ff5252','#38bdf8','#f472b6','#fb923c','#a78bfa','#34d399','#f87171'];
+let _esColor='#7c6fff', _esCoverMode='color', _esCoverPhoto=null, _esCoverOverlay=true, _esCoverGradient=true;
+let _nsColor='#7c6fff';
+let _esBrandName='';
+
+function _buildSwatches(containerId, onClickFn, activeColor){
+  const el=document.getElementById(containerId);
+  if(!el) return;
+  el.innerHTML=_STORE_COLORS.map(c=>`<div onclick="${onClickFn}('${c}')" style="width:22px;height:22px;border-radius:50%;background:${c};cursor:pointer;border:${c===activeColor?'2px solid var(--text)':'2px solid transparent'};outline:${c===activeColor?'2px solid var(--bg)':'none'};outline-offset:1px;flex-shrink:0;transition:transform .1s;" onmouseover="this.style.transform='scale(1.15)'" onmouseout="this.style.transform='scale(1)'"></div>`).join('');
+}
+
+// ── Edit store cover functions ──────────────────────────────────────────────
+function esSetCoverMode(mode){
+  _esCoverMode=mode;
+  document.getElementById('es-mode-color').className=mode==='color'?'btn btn-primary btn-sm':'btn btn-sm';
+  document.getElementById('es-mode-photo').className=mode==='photo'?'btn btn-primary btn-sm':'btn btn-sm';
+  document.getElementById('es-color-section').style.display=mode==='color'?'':'none';
+  document.getElementById('es-photo-section').style.display=mode==='photo'?'':'none';
+  esUpdatePreview();
+}
+function esSetColor(c){
+  _esColor=c;
+  document.getElementById('es-color-pick').value=c;
+  _buildSwatches('es-swatches','esSetColor',c);
+  esUpdatePreview();
+}
+function onEsCoverPhotoPick(input){
+  if(!input.files[0]) return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const img=new Image();
+    img.onload=()=>{
+      const canvas=document.createElement('canvas'); canvas.width=800; canvas.height=160;
+      const ctx=canvas.getContext('2d');
+      const srcR=img.width/img.height, tgtR=5;
+      let sw,sh,sx,sy;
+      if(srcR>tgtR){sh=img.height;sw=sh*tgtR;sx=(img.width-sw)/2;sy=0;}
+      else{sw=img.width;sh=sw/tgtR;sx=0;sy=(img.height-sh)/2;}
+      ctx.drawImage(img,sx,sy,sw,sh,0,0,800,160);
+      _esCoverPhoto=canvas.toDataURL('image/jpeg',0.85);
+      const wrap=document.getElementById('es-cover-photo-wrap');
+      const prev=document.getElementById('es-cover-photo-img');
+      if(wrap){wrap.style.display='';prev.src=_esCoverPhoto;}
+      esUpdatePreview();
+    };
+    img.src=e.target.result;
+  };
+  reader.readAsDataURL(input.files[0]);
+}
+function esClearCoverPhoto(){
+  _esCoverPhoto=null;
+  const wrap=document.getElementById('es-cover-photo-wrap'); if(wrap) wrap.style.display='none';
+  const inp=document.getElementById('es-cover-photo-input'); if(inp) inp.value='';
+  esUpdatePreview();
+}
+function esUpdatePreview(){
+  const el=document.getElementById('es-card-preview'); if(!el) return;
+  const name=document.getElementById('es-name')?.value||'Store';
+  const location=document.getElementById('es-location')?.value||'';
+  const phone=document.getElementById('es-phone')?.value||'';
+  const initials=name.split(/\s+/).map(w=>w[0]).filter(Boolean).slice(0,2).join('').toUpperCase()||'S';
+  _esCoverGradient=document.getElementById('es-gradient')?.checked!==false;
+  _esCoverOverlay=document.getElementById('es-overlay')?.checked!==false;
+  let coverStyle, coverInner='';
+  if(_esCoverMode==='photo' && _esCoverPhoto){
+    coverStyle='background:#000;';
+    coverInner=`<img src="${_esCoverPhoto}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;"/>${_esCoverOverlay?'<div style="position:absolute;inset:0;background:rgba(0,0,0,.28);"></div>':''}`;
+  } else {
+    coverStyle=`background:${_esCoverGradient?`linear-gradient(135deg,${_esColor},${_esColor}88)`:_esColor};`;
+  }
+  const avatarHtml=_esLogoData
+    ?`<img src="${_esLogoData}" style="width:100%;height:100%;object-fit:cover;"/>`
+    :`<span style="font-size:18px;font-weight:800;color:#fff;">${initials}</span>`;
+  el.innerHTML=`<div style="border-radius:14px;box-shadow:0 2px 10px rgba(0,0,0,.08);position:relative;">
+    <div style="${coverStyle}height:70px;border-radius:14px 14px 0 0;position:relative;overflow:hidden;">${coverInner}</div>
+    <div style="position:absolute;top:44px;left:16px;width:54px;height:54px;border-radius:50%;overflow:hidden;border:3px solid var(--bg);background:${_esColor};display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.18);z-index:10;">${avatarHtml}</div>
+    <div style="background:var(--bg2);border:1px solid var(--border);border-top:none;padding:34px 16px 14px;border-radius:0 0 14px 14px;">
+      <div style="font-size:17px;font-weight:800;">${name}</div>
+      <div style="font-size:13px;font-weight:600;color:var(--text2);margin-top:2px;">${_esBrandName}</div>
+      ${location?`<div style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text2);margin-top:7px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>${location}</div>`:''}
+      ${phone?`<div style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text2);margin-top:6px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13.5 19.79 19.79 0 0 1 1.72 4.9 2 2 0 0 1 3.71 2.72h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 10.36a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>${phone}</div>`:''}
+    </div>
+  </div>`;
+}
+
+// ── Add store color ─────────────────────────────────────────────────────────
+function nsSetColor(c){
+  _nsColor=c;
+  document.getElementById('ns-color-pick').value=c;
+  _buildSwatches('ns-swatches','nsSetColor',c);
+}
 function compressImage(file, maxSize, quality, callback){
   const img=new Image();
   const url=URL.createObjectURL(file);
