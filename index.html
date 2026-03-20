@@ -380,12 +380,11 @@ label{
 <script>
 (function(){
   try{
-    var s=localStorage.getItem('fh_theme');
-    if(s){ document.documentElement.setAttribute('data-theme',s); }
-    else{
-      var d=window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches;
-      document.documentElement.setAttribute('data-theme',d?'dark':'light');
-    }
+    // fh_theme_manual: 'dark'|'light' = user manually overrode
+    // if no override → always follow device
+    var manual=localStorage.getItem('fh_theme_manual');
+    var d=window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches;
+    document.documentElement.setAttribute('data-theme', manual||(d?'dark':'light'));
   }catch(e){ document.documentElement.setAttribute('data-theme','light'); }
 })();
 </script>
@@ -1864,21 +1863,33 @@ function toggleTheme(){
   const cur=h.getAttribute('data-theme');
   const newTheme=cur==='dark'?'light':'dark';
   h.setAttribute('data-theme', newTheme);
+  // Save manual override
+  try{ localStorage.setItem('fh_theme_manual', newTheme); }catch(e){}
+  // Also keep fh_theme in sync for staff DB save
   try{ localStorage.setItem('fh_theme', newTheme); }catch(e){}
   if(DB.role==='staff' && DB.staffData?.staff_id){ saveStaffNotifPrefsOnly(); }
 }
 
 function applyStoredTheme(){
   try{
-    const saved=localStorage.getItem('fh_theme');
-    if(saved){
-      document.documentElement.setAttribute('data-theme', saved);
+    const manual=localStorage.getItem('fh_theme_manual');
+    if(manual){
+      document.documentElement.setAttribute('data-theme', manual);
     } else {
       const dark=window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches;
       document.documentElement.setAttribute('data-theme', dark?'dark':'light');
     }
   }catch(e){ document.documentElement.setAttribute('data-theme','light'); }
 }
+
+// Live: follow device changes if no manual override
+try{
+  window.matchMedia('(prefers-color-scheme:dark)').addEventListener('change',function(e){
+    if(!localStorage.getItem('fh_theme_manual')){
+      document.documentElement.setAttribute('data-theme', e.matches?'dark':'light');
+    }
+  });
+}catch(e){}
 
 // Apply theme immediately on script load — BEFORE anything renders
 applyStoredTheme();
@@ -2080,7 +2091,7 @@ async function doLogin(){
       saveSession('staff', null, null, result);
       try{
         const prefs=JSON.parse(result.notif_prefs||'null');
-        if(prefs?.theme){ localStorage.setItem('fh_theme', prefs.theme); document.documentElement.setAttribute('data-theme', prefs.theme); }
+        if(prefs?.theme){ localStorage.setItem('fh_theme', prefs.theme); localStorage.setItem('fh_theme_manual', prefs.theme); document.documentElement.setAttribute('data-theme', prefs.theme); }
       }catch(e){}
       renderStaffHome(); goTo('s-home');
     } else if(result.role==='reviewer'){
@@ -2271,7 +2282,7 @@ async function restoreSession(){
       try{
         const prefs=JSON.parse(DB.staffData?.notif_prefs||'null');
         if(prefs?.theme){
-          localStorage.setItem('fh_theme', prefs.theme);
+          localStorage.setItem('fh_theme', prefs.theme); localStorage.setItem('fh_theme_manual', prefs.theme);
           document.documentElement.setAttribute('data-theme', prefs.theme);
         }
       }catch(e){}
