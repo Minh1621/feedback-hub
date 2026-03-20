@@ -2034,7 +2034,6 @@ async function uploadFile(file){
 async function loadAllData(reviewerStoreId=null){
   showLoadingOverlay(true);
   try {
-    await api('POST', '/api/init');
     if(reviewerStoreId){
       const data = await api('GET', `/api/reviewer-data/${reviewerStoreId}`);
       if(data && data.brand){
@@ -2101,41 +2100,36 @@ function goTo(id){
 // Silent background refresh for reviewer — reloads data + re-renders without spinner/toast
 let _rvRefreshPending = false;
 async function _silentRvRefresh(){
-  if(_rvRefreshPending) return; // debounce concurrent calls
+  if(_rvRefreshPending) return;
   _rvRefreshPending = true;
   try{
-    // Fetch fresh data WITHOUT showing the loading overlay
-    await api('POST', '/api/init');
-    const data = await api('GET', '/api/brands');
-    if(Array.isArray(data)){
-      // Only merge in-memory itemFeedbacks if reviewer is ACTIVELY on the form screen
-      // (not just because editingFeedbackId/itemFeedbacks happen to be set from a past session)
-      const activeScreen = document.querySelector('.screen.active');
-      const isOnFormScreen = activeScreen && activeScreen.id === 's-reviewer-report';
-      const formDiv = document.getElementById('rv-feedback-form');
-      const formVisible = formDiv && formDiv.style.display !== 'none';
-
-      if(isOnFormScreen && formVisible && DB.itemFeedbacks && DB.itemFeedbacks.length && DB.reviewerReportId && DB.editingFeedbackId){
-        const newBrands = data;
-        for(const br of newBrands){
-          const r = br.reports && br.reports.find(r=>r.id===DB.reviewerReportId);
-          if(r){
-            const fb = r.feedbacks && r.feedbacks.find(f=>f.id===DB.editingFeedbackId);
-            if(fb){
-              // Merge back in-memory itemFeedbacks (which have photos) into fresh data
-              fb.itemFeedbacks = DB.itemFeedbacks.map(it=>({...it}));
-            }
-            break;
-          }
-        }
-        DB.brands = newBrands;
-      } else {
-        // Not actively editing — use clean data from server, no merge
-        DB.brands = data;
+    // Use reviewer-specific endpoint — much faster than full /api/brands
+    const sid = DB.reviewerStoreId;
+    let data = null;
+    if(sid){
+      const rv = await api('GET', `/api/reviewer-data/${sid}`);
+      if(rv && rv.brand){
+        const idx = DB.brands.findIndex(b => b.id === rv.brand.id);
+        if(idx !== -1) DB.brands[idx] = rv.brand;
+        else DB.brands = [rv.brand];
+        data = true;
       }
     }
-    if(DB.role==='reviewer') renderReviewerHome();
-  } catch(e){ /* silent — don't disrupt UI */ }
+    if(!data){
+      const all = await api('GET', '/api/brands');
+      if(Array.isArray(all)) DB.brands = all;
+    }
+    const activeScreen = document.querySelector('.screen.active');
+    const isOnFormScreen = activeScreen && activeScreen.id === 's-reviewer-report';
+    const formDiv = document.getElementById('rv-feedback-form');
+    const formVisible = formDiv && formDiv.style.display !== 'none';
+    // Don't clobber in-memory form state if reviewer is actively editing
+    if(isOnFormScreen && formVisible && DB.itemFeedbacks && DB.itemFeedbacks.length && DB.reviewerReportId && DB.editingFeedbackId){
+      // Keep in-memory edits — don't re-render
+    } else {
+      if(DB.role==='reviewer') renderReviewerHome();
+    }
+  } catch(e){ /* silent */ }
   _rvRefreshPending = false;
 }
 function brand(){ return DB.brands.find(b=>b.id===DB.currentBrandId); }
@@ -2326,7 +2320,7 @@ async function restoreSession(){
         return false;
       }
     }
-    await loadAllData();
+    await loadAllData(session.role==='reviewer' && session.storeId ? session.storeId : null);
     if(session.role==='staff'){
       // Always re-fetch fresh staff data from server (avatar/profile may have changed)
       try{
@@ -2428,13 +2422,21 @@ window.addEventListener('load', async ()=>{
 });
 
 /* ===== HOME ===== */
+// Central helper — always resolves multi-store (storeIds) AND legacy single-store (storeId)
+function getTargetStores(r, stores){
+  if(r.storeIds && r.storeIds.length > 0)
+    return stores.filter(s => r.storeIds.includes(s.id));
+  if(r.storeId)
+    return stores.filter(s => s.id === r.storeId);
+  return stores;
+}
+
 // Helper: get report completion status based on item responses
-// Status: 'pending' = no response, 'checking' = has rejected items, 'partial' = some responded (no rejects), 'complete' = all done OR manually verified
 function getReportStatus(r, stores){
   // Verified by checker → Complete
   if(r.verified) return 'complete';
 
-  const targetStores = r.storeId ? stores.filter(s=>s.id===r.storeId) : stores;
+  const targetStores = getTargetStores(r, stores);
   if(!targetStores.length) return 'pending';
 
   const totalItems = r.refs && r.refs.length ? r.refs.length : 0;
@@ -2505,8 +2507,10 @@ async function verifyReportComplete(rid){
   } catch(e) {}
 
   showToast('Report verified — all stores notified!');
-  await loadAllData(); renderBrandReports(); renderHome();
-  renderBrandReports(); renderHome(); viewFeedback(rid);
+  await loadAllData();
+  renderHome();
+  renderBrandReports();
+  viewFeedback(rid);
 }
 
 // ── Undo verify — restores to checking or partial ────────────────────────────
@@ -2861,8 +2865,8 @@ function renderBrandReports(){
     else if(_st==='partial'){ bc='badge-partial'; bt='Partial';  borderStyle='border:2px solid var(--accent);'; }
     else if(_st==='checking'){ bc='badge-pending'; bt='Checking'; borderStyle='border:2px solid var(--warn);'; }
     else                    { bc='badge-done';    bt='Complete'; borderStyle='border:2px solid var(--success);'; }
-    const targetStore=r.storeId?b.stores.find(s=>s.id===r.storeId):null;
-    const _targetStoresCard=r.storeId?b.stores.filter(s=>s.id===r.storeId):b.stores;
+    const targetStore=getTargetStores(r,b.stores)[0]||null;
+    const _targetStoresCard=getTargetStores(r,b.stores);
     const _totalItemsCard=r.refs&&r.refs.length?r.refs.length:1;
     const _totalPossCard=_targetStoresCard.length*_totalItemsCard;
     // Deduplicate feedbacks — keep only latest per store
@@ -3517,9 +3521,10 @@ async function doUpload(){
   renderRefItems();
   msg.innerHTML='<div class="alert alert-success">Report uploaded!</div>';
   closeConfirm();
-  // Reload fresh data from DB so reviewer sees the new report immediately
+  // Reload fresh data from DB so all cards update immediately
   await loadAllData();
-  setTimeout(()=>{ msg.innerHTML=''; brandTab('reports'); goTo('s-brand'); },1200);
+  renderHome();
+  setTimeout(()=>{ msg.innerHTML=''; renderBrandHero(); brandTab('reports'); goTo('s-brand'); },1200);
 }
 
 function confirmUpload(){
@@ -3576,7 +3581,7 @@ function viewFeedback(rid){
     // Always build response history regardless of inspection data
     const latestFbMap={};
     r.feedbacks.forEach(f=>{if(!latestFbMap[f.storeId]||f.date>=latestFbMap[f.storeId].date) latestFbMap[f.storeId]=f;});
-    const targetStoresForInsp=r.storeId?b.stores.filter(s=>s.id===r.storeId):b.stores;
+    const targetStoresForInsp=getTargetStores(r,b.stores);
     const subHistoryRows=targetStoresForInsp.map(store=>{
       const fb=latestFbMap[store.id];
       // Show history even if store hasn't responded yet (show report_edited, resubmit_requested entries)
@@ -3754,7 +3759,7 @@ function viewFeedback(rid){
     }
   }
 
-  const targetStores=r.storeId?b.stores.filter(s=>s.id===r.storeId):b.stores;
+  const targetStores=getTargetStores(r,b.stores);
   const ts=targetStores.length;
   // Calculate item-based progress
   const totalItems=r.refs&&r.refs.length?r.refs.length:1;
@@ -3961,7 +3966,7 @@ function viewFeedback(rid){
     // - edited: ALL target stores (they all need to see new items)
     // - rejected: only remarked stores
     // - both: union of all target stores
-    const targetStores = r.storeId ? b.stores.filter(s=>s.id===r.storeId) : b.stores;
+    const targetStores=getTargetStores(r,b.stores);
     const affectedStoreIds = new Set([
       ...(hasEdited ? targetStores.map(s=>s.id) : []),
       ...(hasRejected ? remarkedStores.map(s=>s.id) : [])
@@ -4059,7 +4064,7 @@ async function submitCombinedNotice(rid){
   if(!r) return;
   const authorName=DB.staffData?.name||(DB.role==='admin'?'Admin':'Staff');
   const dateStr=new Date().toISOString().slice(0,10)+' '+new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
-  const targetStores=r.storeId?b.stores.filter(s=>s.id===r.storeId):b.stores;
+  const targetStores=getTargetStores(r,b.stores);
 
   // Find remarked stores
   const latestFbMap={};
@@ -4130,8 +4135,10 @@ async function submitCombinedNotice(rid){
     }
   }catch(e){ console.log('Notify email failed:',e.message); }
   showToast('Stores notified');
-  await loadAllData(); renderBrandReports(); renderHome();
-  renderBrandReports(); renderHome(); viewFeedback(rid);
+  await loadAllData();
+  renderHome();
+  renderBrandReports();
+  viewFeedback(rid);
 }
 
 async function submitEditNoticeToStores(rid){
@@ -4142,7 +4149,7 @@ async function submitEditNoticeToStores(rid){
   const time=new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
   const dateStr=today+' '+time;
   // Add resubmit_requested timeline event to all feedbacks of this report
-  const targetStores=r.storeId?b.stores.filter(s=>s.id===r.storeId):b.stores;
+  const targetStores=getTargetStores(r,b.stores);
   for(const store of targetStores){
     const fb=r.feedbacks.find(f=>f.storeId===store.id);
     if(!fb) continue;
@@ -5220,6 +5227,8 @@ async function submitReviewerFeedback(){
   DB.itemFeedbacks=[];
   DB.editingFeedbackId=null;
   msg.innerHTML='<div class="alert alert-success">Feedback submitted!</div>';
+  // Reload fresh data so reviewer home shows updated status immediately
+  try { await loadAllData(DB.reviewerStoreId||null); } catch(e){}
   setTimeout(()=>{ renderReviewerHome(); goTo('s-reviewer-home'); },1200);
 }
 
@@ -5841,7 +5850,7 @@ async function doRemoveReport(){
 function alertStores(rid){
   const b=brand(), r=b.reports.find(r=>r.id===rid);
   const responded=r.feedbacks.map(f=>f.storeId);
-  const targetStores=r.storeId?b.stores.filter(s=>s.id===r.storeId):b.stores;
+  const targetStores=getTargetStores(r,b.stores);
   const missing=targetStores.filter(s=>!responded.includes(s.id));
   if(!missing.length){ showToast('All stores have already responded!'); return; }
   const names=missing.map(s=>s.name).join(', ');
@@ -6162,7 +6171,7 @@ function openChangeAdminPassword(){
 }
 async function doChangeUsername(){
   const newUser=(document.getElementById('new-admin-username')?.value||'').trim();
-  const msg=document.getElementById('username-msg');
+  const msg=document.getElementById('admin-profile-msg');
   if(!newUser){ if(msg) msg.innerHTML='<div class="alert alert-danger">Enter a username.</div>'; return; }
   ADMIN_CREDS.username=newUser;
   await api('PUT','/api/admin/password',{username:newUser,password:ADMIN_CREDS.password});
@@ -6171,16 +6180,16 @@ async function doChangeUsername(){
   setTimeout(()=>{ if(msg) msg.innerHTML=''; },2000);
 }
 async function doChangeAdminPass(){
-  const np=(document.getElementById('new-admin-pass')?.value||'').trim();
-  const cp=(document.getElementById('confirm-admin-pass')?.value||'').trim();
-  const msg=document.getElementById('admin-pass-msg');
+  const np=(document.getElementById('admin-new-pass')?.value||'').trim();
+  const cp=(document.getElementById('admin-confirm-pass')?.value||'').trim();
+  const msg=document.getElementById('admin-profile-msg');
   if(!np||np.length<4){ msg.innerHTML='<div class="alert alert-danger">Password must be at least 4 characters.</div>'; return; }
   if(np!==cp){ msg.innerHTML='<div class="alert alert-danger">Passwords do not match.</div>'; return; }
   ADMIN_CREDS.password=np;
   await api('PUT','/api/admin/password',{username:ADMIN_CREDS.username,password:np});
   msg.innerHTML='<div class="alert alert-success">Password updated</div>';
-  const npEl=document.getElementById('new-admin-pass'); if(npEl) npEl.value='';
-  const cpEl=document.getElementById('confirm-admin-pass'); if(cpEl) cpEl.value='';
+  const npEl=document.getElementById('admin-new-pass'); if(npEl) npEl.value='';
+  const cpEl=document.getElementById('admin-confirm-pass'); if(cpEl) cpEl.value='';
   setTimeout(()=>{ msg.innerHTML=''; },2000);
 }
 // ── ADMIN PROFILE ────────────────────────────────────────────────
@@ -6559,21 +6568,21 @@ async function testNotif(){
 let ADMIN_CREDS = { username: 'admin', password: '1234' };
 
 async function changeAdminUser(){
-  const newUser=document.getElementById('admin-new-user').value.trim();
-  const msg=document.getElementById('admin-user-msg');
+  const newUser=document.getElementById('admin-username-edit').value.trim();
+  const msg=document.getElementById('admin-profile-msg');
   if(!newUser){ msg.innerHTML='<div class="alert alert-danger">Please enter a new username.</div>'; return; }
   const allStoreUsers=DB.brands.flatMap(b=>b.stores.map(s=>s.username));
   if(allStoreUsers.includes(newUser)){ msg.innerHTML='<div class="alert alert-danger">Username already taken by a store.</div>'; return; }
   ADMIN_CREDS.username=newUser;
   await api('PUT','/api/admin/password',{username:newUser,password:ADMIN_CREDS.password});
-  document.getElementById('admin-new-user').value='';
+  document.getElementById('admin-username-edit').value='';
   msg.innerHTML='<div class="alert alert-success">Username updated to "'+newUser+'"</div>';
   setTimeout(()=>{ msg.innerHTML=''; },2500);
 }
 async function changeAdminPass(){
   const np=document.getElementById('admin-new-pass').value;
   const cp=document.getElementById('admin-confirm-pass').value;
-  const msg=document.getElementById('admin-pass-msg');
+  const msg=document.getElementById('admin-profile-msg');
   if(!np){ msg.innerHTML='<div class="alert alert-danger">Please enter a new password.</div>'; return; }
   if(np!==cp){ msg.innerHTML='<div class="alert alert-danger">Passwords do not match.</div>'; return; }
   ADMIN_CREDS.password=np;
@@ -6843,8 +6852,8 @@ async function doRvRefresh(){
   if(btn) btn.disabled=true;
   if(icon) icon.style.animation='spin .7s linear infinite';
   try{
-    await loadAllData();
-    // Re-sync brand ID in case it shifted (storeId is the stable key)
+    await loadAllData(DB.reviewerStoreId||null);
+    // Re-sync brand ID in case it shifted
     if(DB.reviewerStoreId && !reviewerBrand()){
       for(const br of DB.brands){
         if(br.stores.find(s=>s.id===DB.reviewerStoreId)){
@@ -6852,7 +6861,7 @@ async function doRvRefresh(){
         }
       }
     }
-    // Manual refresh: clear any stale in-memory form state so DB data is shown clean
+    // Manual refresh: clear stale form state
     DB.itemFeedbacks = [];
     DB.editingFeedbackId = null;
     renderReviewerHome();
@@ -7531,7 +7540,7 @@ function setRefFilter(val, rid){
 function buildSortedResponsesHTML(ref, r, b, rid){
   const latestFbMap={};
   r.feedbacks.forEach(f=>{if(!latestFbMap[f.storeId]||f.date>=latestFbMap[f.storeId].date) latestFbMap[f.storeId]=f;});
-  const targetStores=r.storeId?b.stores.filter(s=>s.id===r.storeId):b.stores;
+  const targetStores=getTargetStores(r,b.stores);
   const canAct=canEdit()||(DB.role==='admin');
 
   const entries=targetStores.map(store=>{
@@ -7774,7 +7783,7 @@ async function submitAllRemarkedStores(rid){
 
   const fbMap={};
   r.feedbacks.forEach(f=>{ if(!fbMap[f.storeId]||f.date>=fbMap[f.storeId].date) fbMap[f.storeId]=f; });
-  const targetStores=r.storeId?b.stores.filter(s=>s.id===r.storeId):b.stores;
+  const targetStores=getTargetStores(r,b.stores);
   const _alerter=getAlerterInfo();
   const todayStr=new Date().toISOString().slice(0,10)+' '+new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
   let sent=0;
@@ -8084,7 +8093,7 @@ async function annSave(){
   // Return to correct screen based on who opened the annotator
   if(_annCtx.fromScreen==='reviewer'){
     // Reviewer: re-render reviewer report and stay on s-reviewer-report
-    renderReviewerReport(DB.reviewerReportId||DB.currentReportId);
+    openReviewerReport(DB.reviewerReportId||DB.currentReportId);
     setTimeout(()=>{
       const itemCard=document.getElementById('rv_item_'+refId);
       if(itemCard && itemCard.style.display==='none') itemCard.style.display='';
@@ -8665,8 +8674,9 @@ async function inlineAcceptResponse(fbId, refId, storeId, rid) {
   fb.timeline.push({ type: 'accepted', date: today, by: authorName });
   await api('PUT', `/api/feedbacks/${fbId}`, { adminRemarks: fb.adminRemarks, timeline: fb.timeline });
   showToast('Response accepted');
-  renderBrandReports(); renderHome();
-  renderBrandReports(); renderHome(); viewFeedback(rid);
+  renderHome();
+  renderBrandReports();
+  viewFeedback(rid);
   // After accept: keep card CLOSED (collapse it back)
   setTimeout(() => {
     const card = document.getElementById('ai_' + refId);
@@ -8759,8 +8769,9 @@ async function raAcceptResponse() {
 
   closeRespAction();
   showToast('Response accepted');
-  renderBrandReports(); renderHome();
-  renderBrandReports(); renderHome(); viewFeedback(rid);
+  renderHome();
+  renderBrandReports();
+  viewFeedback(rid);
   // After accept: close the item card
   setTimeout(() => {
     const itemCard = document.getElementById('ai_' + refId);
@@ -8983,12 +8994,32 @@ function openLightbox(src){ document.getElementById('lightbox-img').src=src; doc
 function closeLightbox(){ document.getElementById('lightbox').classList.remove('open'); }
 
 // Refresh reviewer data when they switch back to the tab/app
-document.addEventListener('visibilitychange', ()=>{
-  if(document.visibilityState==='visible' && DB.role==='reviewer'){
-    const activeScreen = document.querySelector('.screen.active');
-    if(activeScreen && activeScreen.id==='s-reviewer-home'){
-      _silentRvRefresh();
+// Silent background refresh for admin/staff — reloads data + re-renders without spinner
+let _adminRefreshPending = false;
+async function _silentAdminRefresh(){
+  if(_adminRefreshPending) return;
+  _adminRefreshPending = true;
+  try {
+    const data = await api('GET', '/api/brands');
+    if(Array.isArray(data)){
+      DB.brands = data;
+      if(DB.role==='staff') renderStaffHome();
+      else { renderHome(); if(DB.currentBrandId) { renderBrandHero(); renderBrandReports(); } }
     }
+  } catch(e) { /* silent */ }
+  _adminRefreshPending = false;
+}
+
+document.addEventListener('visibilitychange', ()=>{
+  if(document.visibilityState !== 'visible') return;
+  const activeScreen = document.querySelector('.screen.active');
+  if(!activeScreen) return;
+  if(DB.role === 'reviewer'){
+    if(activeScreen.id === 's-reviewer-home') _silentRvRefresh();
+  } else if(DB.role === 'admin' || DB.role === 'staff'){
+    // Refresh on any main screen (not mid-edit screens)
+    const refreshScreens = ['s-home','s-brand','s-store-detail'];
+    if(refreshScreens.includes(activeScreen.id)) _silentAdminRefresh();
   }
 });
 </script>
