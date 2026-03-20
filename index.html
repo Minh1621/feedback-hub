@@ -4273,32 +4273,31 @@ function renderReviewerHome(){
     const myFb=_rvFbMap[s.id]||null;
     const insp=r.inspection||{};
     const totalItems=r.refs&&r.refs.length?r.refs.length:0;
-    // Count responded items — exclude rejected (adminRemarks) items
-    let respondedItems=0;
-    if(myFb){
-      if(totalItems>0){
-        const fbByRef={};
-        (myFb.itemFeedbacks||[]).forEach(it=>{ if(it.refId) fbByRef[it.refId]=it; });
-        r.refs.forEach(ref=>{
-          const isRejected=!!(myFb.adminRemarks?.[ref.id+'_list']?.length||myFb.adminRemarks?.[ref.id]);
-          if(isRejected) return; // rejected — don't count
-          const it=fbByRef[ref.id];
-          if(it&&(it.note||(it.photos&&it.photos.length))) respondedItems++;
-        });
-        if(respondedItems===0){
-          respondedItems=Math.min((myFb.itemFeedbacks||[]).filter(it=>{
-            const isRej=!!(myFb.adminRemarks?.[it.refId+'_list']?.length||myFb.adminRemarks?.[it.refId]);
-            return !isRej&&(it.note||(it.photos&&it.photos.length));
-          }).length,totalItems);
+    // Count items by state:
+    // responded = has content (even if adminRemarks exists, if store responded it counts)
+    // rejected  = has adminRemarks AND no new response content
+    // noResponse= no adminRemarks AND no content
+    let respondedItems=0, rejectedCount=0;
+    if(myFb && totalItems>0){
+      const fbByRef={};
+      (myFb.itemFeedbacks||[]).forEach(it=>{ if(it.refId) fbByRef[it.refId]=it; });
+      r.refs.forEach(ref=>{
+        const hasRemark=!!(myFb.adminRemarks?.[ref.id+'_list']?.length||myFb.adminRemarks?.[ref.id]);
+        const it=fbByRef[ref.id];
+        const hasContent=!!(it&&(it.note||(it.photos&&it.photos.length)));
+        if(hasContent){
+          respondedItems++; // has content — counts as responded regardless of remark
+        } else if(hasRemark){
+          rejectedCount++; // remark but no new response — still needs attention
         }
-      } else {
-        respondedItems=(myFb.text||(myFb.itemFeedbacks&&myFb.itemFeedbacks.length))?1:0;
-      }
+        // else: no remark, no content = no response (counted via totalItems-responded-rejected)
+      });
+    } else if(myFb && totalItems===0){
+      respondedItems=(myFb.text||(myFb.itemFeedbacks&&myFb.itemFeedbacks.length))?1:0;
     }
     const effectiveTotal=totalItems||1;
+    const noResponseCount=totalItems>0?Math.max(0,totalItems-respondedItems-rejectedCount):0;
     const itemPct=Math.round(respondedItems/effectiveTotal*100);
-    // Count rejected items for display
-    const rejectedCount=myFb&&r.refs?r.refs.filter(ref=>!!(myFb.adminRemarks?.[ref.id+'_list']?.length||myFb.adminRemarks?.[ref.id])).length:0;
 
     // ── 4-state status rule ────────────────────────────────────────────────
     // Complete  — admin verified (r.verified===true)
@@ -4349,7 +4348,7 @@ function renderReviewerHome(){
           ${totalItems?`<div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0;">
             ${respondedItems>0?`<span style="font-size:11px;font-weight:600;color:var(--success);">${respondedItems} responded</span>`:''}
             ${rejectedCount>0?`<span style="font-size:11px;font-weight:600;color:var(--danger);">×${rejectedCount} rejected</span>`:''}
-            ${(totalItems-respondedItems-rejectedCount)>0?`<span style="font-size:11px;font-weight:600;color:var(--text3);">${totalItems-respondedItems-rejectedCount} no response</span>`:''}
+            ${noResponseCount>0?`<span style="font-size:11px;font-weight:600;color:var(--text3);">${noResponseCount} no response</span>`:''}
             <div style="width:70px;background:var(--bg4);border-radius:3px;height:5px;margin-top:2px;">
               <div style="width:${itemPct}%;background:${rejectedCount>0?'var(--danger)':itemPct===100?'var(--success)':itemPct>0?'var(--accent)':'var(--border2)'};height:5px;border-radius:3px;transition:width .5s;"></div>
             </div>
@@ -4596,9 +4595,8 @@ function openReviewerReport(rid){
     (myFb.itemFeedbacks||[]).forEach(it=>{ if(it.refId) _fbByRefId2[it.refId]=it; });
     let _respondedItems=0;
     (r.refs&&r.refs.length?r.refs:[{id:'general'}]).forEach(ref=>{
-      const isRejected=!!(myFb.adminRemarks?.[ref.id+'_list']?.length||myFb.adminRemarks?.[ref.id]);
-      if(isRejected) return; // rejected — don't count
       const it=_fbByRefId2[ref.id];
+      // Count as responded if has content — regardless of adminRemarks
       if(it&&(it.note||(it.photos&&it.photos.length))) _respondedItems++;
     });
     const _isPartial=_respondedItems<_totalRefItems;
@@ -4621,9 +4619,14 @@ function openReviewerReport(rid){
       ${refsToShow.map((ref,i)=>{
         const item=fbByRefId[ref.id]||{refId:ref.id,note:'',photos:[]};
         const hasMyContent=!!(item.note||(item.photos&&item.photos.length));
-        const isNew=!hasMyContent; // no response = new or unanswered
+        const isRejectedItem=!!(myFb.adminRemarks?.[ref.id+'_list']?.length||myFb.adminRemarks?.[ref.id]);
+        const needsCorrection=isRejectedItem&&!hasMyContent;
+        const isNew=!hasMyContent&&!isRejectedItem;
+        const subCardBorder=needsCorrection?'1.5px solid var(--danger)':isNew?'1.5px solid var(--warn)':'1px solid var(--border)';
+        const subStatusLabel=hasMyContent?'Responded':needsCorrection?'Needs correction':'Needs response';
+        const subStatusColor=hasMyContent?'var(--success)':needsCorrection?'var(--danger)':'var(--warn)';
         const adminPhotos=ref&&ref.photos&&ref.photos.length?ref.photos:[];
-        return `<div style="background:var(--bg2);border:${isNew?'1.5px solid var(--warn)':'1px solid var(--border)'};border-radius:var(--rl);margin-bottom:10px;overflow:hidden;">
+        return `<div style="background:var(--bg2);border:${subCardBorder};border-radius:var(--rl);margin-bottom:10px;overflow:hidden;">
           <!-- Header -->
           <div onclick="toggleReviewerItem('rvs_${i}')" style="display:flex;align-items:center;gap:10px;padding:13px 14px;cursor:pointer;">
             <div style="flex:1;">
@@ -4633,11 +4636,11 @@ function openReviewerReport(rid){
               </div>
               ${ref&&ref.desc?`<div style="font-size:12px;color:var(--text2);margin-top:1px;">${ref.desc}</div>`:''}
             </div>
-            <span style="font-size:11px;font-weight:600;color:${hasMyContent?'var(--success)':'var(--warn)'};">${hasMyContent?'Responded':'Needs response'}</span>
+            <span style="font-size:11px;font-weight:600;color:${subStatusColor};">${subStatusLabel}</span>
             <div id="rvi_arrow_s${i}" style="font-size:13px;color:var(--text3);">▼</div>
           </div>
           <!-- Dropdown -->
-          <div id="rvs_${i}" style="display:${isNew?'block':'none'};border-top:1px solid var(--border);">
+          <div id="rvs_${i}" style="display:none;border-top:1px solid var(--border);">
             ${adminPhotos.length?`
               <div style="padding:10px 14px;background:var(--bg3);border-bottom:1px solid var(--border);">
                 <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:7px;">Admin reference</div>
@@ -4723,18 +4726,6 @@ function openReviewerReport(rid){
           if(btn){ btn.style.background='var(--accent)'; btn.style.color='#fff'; btn.style.borderColor='var(--accent)'; }
         }
         if(!it._rejected && it.photos.length) renderItemPhotoGrid(i);
-        if(it._rejected){
-          // Rejected items start OPEN so store can immediately respond
-          const el=document.getElementById('rvi_'+i);
-          const arrow=document.getElementById('rvi_arrow_'+i);
-          if(el) el.style.display=''; // OPEN
-          if(arrow) arrow.style.transform='rotate(180deg)';
-          // Auto-open text input for rejected items
-          const box=document.getElementById('rvtext_'+i);
-          const btn=document.getElementById('rvtextbtn_'+i);
-          if(box) box.style.display='';
-          if(btn){ btn.style.background='var(--accent)'; btn.style.color='#fff'; btn.style.borderColor='var(--accent)'; }
-        }
         refreshReviewerItemStatus(i);
       });
       checkAllItemsDone();
@@ -4757,9 +4748,11 @@ function renderItemForms(r, brandColor){
   el.innerHTML=refs.map((ref,i)=>{
     const _itFb = DB.itemFeedbacks[i] || {};
     const _isRejected = !!_itFb._rejected;
-    const _isEmpty = !_isRejected && !(_itFb.note&&_itFb.note.trim()) && !(_itFb.photos&&_itFb.photos.length);
+    const _hasContent = !!(_itFb.note&&_itFb.note.trim()) || !!(_itFb.photos&&_itFb.photos.length);
+    const _isEmpty = !_isRejected && !_hasContent;
+    // rejected+no content = danger, rejected+content = normal, new empty = warn, filled = normal
+    const _cardBorder = (_isRejected&&!_hasContent)?'var(--danger)':_isEmpty?'var(--warn)':'var(--border)';
     const _remarkText = _itFb._adminRemark || '';
-    const _cardBorder = _isRejected?'var(--danger)':_isEmpty?'var(--warn)':'var(--border)';
     return `
     <div style="background:var(--bg2);border:1.5px solid ${_cardBorder};border-radius:var(--rl);margin-bottom:10px;overflow:hidden;">
       ${_isRejected ? `
@@ -4889,8 +4882,13 @@ function refreshReviewerItemStatus(idx){
   } else if(it._rejected){
     lbl.textContent='Response needed'; lbl.style.color='var(--danger)';
   } else {
-    // New item with no content — needs response
     lbl.textContent='Response needed'; lbl.style.color='var(--warn)';
+  }
+  // Update card border dynamically
+  const card=lbl.closest('[style*="border:1.5px"]')||lbl.closest('.rv-item-card');
+  if(card){
+    const newBorder=hasContent?'var(--border)':it._rejected?'var(--danger)':'var(--warn)';
+    card.style.borderColor=newBorder;
   }
   // Hide rejection banner once reviewer has added a response
   const banner=document.getElementById('rv_rej_banner_'+idx);
@@ -4988,7 +4986,7 @@ function removeItemPhoto(idx,pi){
 
 async function saveReviewerDraft(){
   const msg=document.getElementById('rv-fb-msg');
-  const hasAny=DB.itemFeedbacks.some(it=>it.note.trim()||it.photos.length);
+  const hasAny=DB.itemFeedbacks.some(it=>(it.note&&it.note.trim())||it.photos.length);
   if(!hasAny){ msg.innerHTML='<div class="alert alert-danger">Please add at least one response first.</div>'; setTimeout(()=>msg.innerHTML='',2500); return; }
   const b=reviewerBrand(), s=reviewerStore();
   const r=b.reports.find(r=>r.id===DB.reviewerReportId);
@@ -5021,6 +5019,7 @@ async function saveReviewerDraft(){
     // Keep the full in-memory state (including photos + UI fields) intact
     existing.itemFeedbacks = DB.itemFeedbacks.map(it=>({...it}));
     existing.text=feedbackObj.text;
+    existing.date=feedbackObj.date;
     existing.adminRemarks=preservedRemarks;
     // Update DB.editingFeedbackId so future saves use this record
     DB.editingFeedbackId = existing.id;
