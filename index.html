@@ -2032,41 +2032,55 @@ async function uploadFile(file){
   } catch(e) { return { error: e.message }; }
 }
 
-// Upload a single base64 dataURL directly to R2 — faster than sending in JSON body
-async function uploadPhotoToR2Browser(dataUrl, key){
-  if(!dataUrl || !dataUrl.startsWith('data:')) return dataUrl;
-  try {
-    const comma = dataUrl.indexOf(',');
-    const mime = (dataUrl.slice(0, comma).match(/data:([^;]+)/) || [])[1] || 'image/jpeg';
-    const data = dataUrl.slice(comma + 1);
-    const res = await fetch(WORKER_URL + '/api/upload-photo', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ data, mime, key })
-    });
-    const result = await res.json();
-    return result.ok ? result.url : dataUrl;
-  } catch(e) { return dataUrl; }
-}
-
-// Upload all ref photos in parallel — returns refs with R2 URLs replacing base64
+// Upload ref photos as binary FormData in batches — much faster than base64 JSON
+// Returns refs with R2 URLs replacing base64 dataURLs
 async function preUploadRefPhotos(refs, reportId, onProgress){
-  let done = 0;
-  const total = refs.reduce((n, r) => n + (r.photos?.filter(p => p?.startsWith('data:')).length || 0), 0);
-  if(!total) return refs;
+  // Collect all photos that need uploading
+  const jobs = [];
+  refs.forEach((ref, ri) => {
+    (ref.photos || []).forEach((p, pi) => {
+      if(p?.startsWith('data:')) {
+        jobs.push({ ri, pi, dataUrl: p, key: `report_${reportId}_ref${ri}_p${pi}_${Date.now()}` });
+      }
+    });
+  });
 
-  return Promise.all(refs.map(async (ref, ri) => {
+  if(!jobs.length) return refs;
+
+  const BATCH = 10; // upload 10 photos per request
+  const urlMap = {}; // key -> R2 url
+  let done = 0;
+
+  for(let i = 0; i < jobs.length; i += BATCH) {
+    const batch = jobs.slice(i, i + BATCH);
+    const form = new FormData();
+    for(const job of batch) {
+      // Convert dataURL to Blob for binary upload
+      const res = await fetch(job.dataUrl);
+      const blob = await res.blob();
+      form.append(job.key, blob, job.key + '.jpg');
+    }
+    try {
+      const r = await fetch(WORKER_URL + '/api/upload-photos', { method: 'POST', body: form });
+      const result = await r.json();
+      if(result.ok && result.urls) Object.assign(urlMap, result.urls);
+    } catch(e) { /* fallback: keep dataUrls */ }
+    done += batch.length;
+    if(onProgress) onProgress(done, jobs.length);
+  }
+
+  // Replace dataUrls with R2 URLs in refs
+  return refs.map((ref, ri) => {
     if(!ref.photos?.length) return ref;
-    const uploadedPhotos = await Promise.all(ref.photos.map(async (p, pi) => {
-      if(!p?.startsWith('data:')) return p;
-      const key = `report_${reportId}_ref${ri}_photo${pi}_${Date.now()}`;
-      const url = await uploadPhotoToR2Browser(p, key);
-      done++;
-      if(onProgress) onProgress(done, total);
-      return url;
-    }));
-    return { ...ref, photos: uploadedPhotos };
-  }));
+    return {
+      ...ref,
+      photos: ref.photos.map((p, pi) => {
+        if(!p?.startsWith('data:')) return p;
+        const job = jobs.find(j => j.ri === ri && j.pi === pi);
+        return (job && urlMap[job.key]) ? urlMap[job.key] : p;
+      })
+    };
+  });
 }
 
 async function loadAllData(reviewerStoreId=null){
@@ -3706,11 +3720,15 @@ async function doUpload(){
   const dateEl=document.getElementById('r-inspect-date');
   if(dateEl) dateEl.value=new Date().toISOString().slice(0,10);
   renderRefItems();
-  msg.innerHTML='<div class="alert alert-success">Report uploaded!</div>';
   closeConfirm();
-  await loadAllData();
+  // Navigate immediately — report already in local DB
   renderHome();
-  setTimeout(()=>{ msg.innerHTML=''; renderBrandHero(); brandTab('reports'); goTo('s-brand'); },1200);
+  renderBrandHero();
+  brandTab('reports');
+  goTo('s-brand');
+  showToast('Report uploaded!');
+  // Reload in background to sync server state
+  loadAllData().then(()=>{ renderHome(); renderBrandReports(); }).catch(()=>{});
 }
 
 function confirmUpload(){
