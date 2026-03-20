@@ -4195,31 +4195,42 @@ function renderReviewerHome(){
       </div>
     </div>`;
 
-  // Stats
+  // Stats — Pending (store hasn't fully responded) + Checking (admin is reviewing)
   const reports=b.reports.filter(r=>isReportVisibleToReviewer(r,s.id));
-  // Count based on item responses
-  const done=reports.filter(r=>{
-    const fb=r.feedbacks.find(f=>f.storeId===s.id);
-    if(!fb) return false;
+  let pendingCount=0, checkingCount=0;
+  reports.forEach(r=>{
+    const _fbMap={};
+    r.feedbacks.forEach(f=>{ if(!_fbMap[f.storeId]||f.date>=_fbMap[f.storeId].date) _fbMap[f.storeId]=f; });
+    const fb=_fbMap[s.id];
     const totalItems=r.refs&&r.refs.length?r.refs.length:1;
-    const responded=(fb.itemFeedbacks||[]).filter(it=>it.note||(it.photos&&it.photos.length)).length;
-    return responded>=totalItems;
-  }).length;
-  const pending=reports.filter(r=>{
-    const fb=r.feedbacks.find(f=>f.storeId===s.id);
-    if(!fb) return true;
-    const totalItems=r.refs&&r.refs.length?r.refs.length:1;
-    const responded=(fb.itemFeedbacks||[]).filter(it=>it.note||(it.photos&&it.photos.length)).length;
-    return responded<totalItems;
-  }).length;
+    const hasRejected=fb&&r.refs&&r.refs.some(ref=>!!(fb.adminRemarks?.[ref.id+'_list']?.length||fb.adminRemarks?.[ref.id]));
+    if(hasRejected){
+      checkingCount++; // admin has remarked items — store needs to resubmit
+    } else if(!fb){
+      pendingCount++; // not responded yet
+    } else {
+      const responded=(fb.itemFeedbacks||[]).filter(it=>it.note||(it.photos&&it.photos.length)).length;
+      if(responded<totalItems) pendingCount++; // partially responded
+    }
+  });
   document.getElementById('rv-stats-row').innerHTML=`
-    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);padding:13px 14px;">
-      <div style="font-size:24px;font-weight:700;color:var(--warn);">${pending}</div>
-      <div style="font-size:12px;color:var(--text2);margin-top:2px;">Pending</div>
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);padding:13px 14px;display:flex;align-items:center;gap:12px;">
+      <div style="width:40px;height:40px;border-radius:10px;background:#fff3cd;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      </div>
+      <div>
+        <div style="font-size:24px;font-weight:700;color:var(--warn);line-height:1;">${pendingCount}</div>
+        <div style="font-size:12px;color:var(--text2);margin-top:2px;">Pending</div>
+      </div>
     </div>
-    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);padding:13px 14px;">
-      <div style="font-size:24px;font-weight:700;color:var(--success);">${done}</div>
-      <div style="font-size:12px;color:var(--text2);margin-top:2px;">Completed</div>
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);padding:13px 14px;display:flex;align-items:center;gap:12px;">
+      <div style="width:40px;height:40px;border-radius:10px;background:#fef9c3;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ca8a04" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+      </div>
+      <div>
+        <div style="font-size:24px;font-weight:700;color:#ca8a04;line-height:1;">${checkingCount}</div>
+        <div style="font-size:12px;color:var(--text2);margin-top:2px;">Checking</div>
+      </div>
     </div>`;
 
   // Report list — pending first then done
@@ -4289,44 +4300,46 @@ function renderReviewerHome(){
     const hasRejectedItems = myFb && r.refs && r.refs.some(ref=>
       !!(myFb.adminRemarks?.[ref.id+'_list']?.length||myFb.adminRemarks?.[ref.id])
     );
-    // Status badge & border color
-    let statusLabel, borderColor, badgeBg, badgeColor, dotColor;
+    // Status — match admin exactly
+    let bc, bt, borderStyle;
     if(hasRejectedItems){
-      statusLabel='Checking'; borderColor='var(--warn)';
-      badgeBg='#fff3cd'; badgeColor='#856404'; dotColor='var(--warn)';
+      bc='badge-pending'; bt='Checking'; borderStyle='border:2px solid var(--warn);';
     } else if(!myFb||respondedItems===0){
-      statusLabel='Pending'; borderColor='var(--border)';
-      badgeBg='var(--bg3)'; badgeColor='var(--text2)'; dotColor='var(--text3)';
+      bc='badge-none'; bt='Pending'; borderStyle='';
     } else if(totalItems>0&&respondedItems<totalItems){
-      statusLabel='Partial'; borderColor='#a78bfa';
-      badgeBg='#ede9fe'; badgeColor='#5b21b6'; dotColor='#a78bfa';
+      bc='badge-partial'; bt='Partial'; borderStyle='border:2px solid var(--accent);';
     } else {
-      statusLabel='Done'; borderColor='var(--success)';
-      badgeBg='#d1fae5'; badgeColor='#065f46'; dotColor='var(--success)';
+      bc='badge-done'; bt='Done'; borderStyle='border:2px solid var(--success);';
     }
-    return `<div class="card card-click" onclick="openReviewerReport('${r.id}')" style="border-color:${borderColor};margin-bottom:10px;">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:8px;">
-        <div style="font-size:15px;font-weight:700;flex:1;line-height:1.3;">${r.title}</div>
-        <span style="flex-shrink:0;display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;background:${badgeBg};color:${badgeColor};">
-          <span style="width:6px;height:6px;border-radius:50%;background:${dotColor};display:inline-block;"></span>
-          ${statusLabel}
-        </span>
+    // Count rejected items for display
+    const rejectedCount = myFb&&r.refs ? r.refs.filter(ref=>!!(myFb.adminRemarks?.[ref.id+'_list']?.length||myFb.adminRemarks?.[ref.id])).length : 0;
+    return `<div class="card card-click" onclick="openReviewerReport('${r.id}')" style="margin-bottom:10px;${borderStyle}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+        <div style="display:flex;align-items:center;gap:6px;flex:1;min-width:0;">
+          <div style="font-size:14px;font-weight:600;flex:1;line-height:1.3;">${r.title}</div>
+        </div>
+        <span class="badge ${bc}" style="flex-shrink:0;">${bt}</span>
       </div>
-      ${r.file?`<div style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;margin-bottom:6px;">${r.file}</div>`:''}
-      ${insp.score?`<div style="margin-bottom:8px;display:flex;align-items:baseline;gap:8px;">
-        <div style="font-size:26px;font-weight:800;line-height:1;">${scoreHTML(insp.score,26)}</div>
-        ${insp.date?`<div style="font-size:11px;color:var(--text3);">${insp.date}</div>`:''}
-      </div>`:''}
-      ${!insp.score&&insp.date?`<div style="font-size:12px;color:var(--text2);margin-bottom:6px;">${insp.date}${insp.checkedBy?' · '+insp.checkedBy:''}</div>`:''}
-      ${totalItems?`<div>
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
-          <div style="font-size:12px;color:var(--text2);">${respondedItems} / ${totalItems} items responded</div>
-          <span style="font-size:11px;font-weight:700;color:${itemPct===100?'var(--success)':'var(--accent)'}">${itemPct}%</span>
+      ${r.file?`<div style="font-size:12px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:4px;">${r.file}</div>`:''}
+      <div style="margin-top:10px;padding:10px 12px;background:var(--bg3);border-radius:10px;">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">
+          <div style="flex:1;">
+            ${insp.score?`<div style="font-size:26px;font-weight:800;line-height:1;">${scoreHTML(insp.score,26)}</div>`:''}
+            ${insp.checkedBy?`<div style="font-size:12px;color:var(--text2);margin-top:3px;">Checked by: <strong>${insp.checkedBy}</strong></div>`:''}
+            ${insp.date?`<div style="font-size:11px;color:var(--text3);margin-top:2px;">${insp.date}</div>`:''}
+          </div>
+          ${totalItems?`<div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;flex-shrink:0;min-width:80px;">
+            <div style="display:flex;align-items:center;gap:5px;">
+              <span style="font-size:11px;color:var(--text2);">${respondedItems}/${totalItems} items</span>
+              ${rejectedCount>0?`<span style="font-size:11px;font-weight:700;color:var(--danger);">✕${rejectedCount}</span>`:''}
+            </div>
+            <div style="width:70px;background:var(--bg4);border-radius:3px;height:5px;">
+              <div style="width:${itemPct}%;background:${rejectedCount>0?'var(--danger)':itemPct===100?'var(--success)':itemPct>0?'var(--accent)':'var(--border2)'};height:5px;border-radius:3px;transition:width .5s;"></div>
+            </div>
+            <span style="font-size:11px;font-weight:600;color:${itemPct===100&&!rejectedCount?'var(--success)':rejectedCount>0?'var(--danger)':itemPct>0?'var(--warn)':'var(--text3)'};">${itemPct}%</span>
+          </div>`:``}
         </div>
-        <div style="background:var(--bg3);border-radius:3px;height:4px;overflow:hidden;">
-          <div style="width:${itemPct}%;background:${itemPct===100?'var(--success)':itemPct>0?'var(--accent)':'var(--border2)'};height:4px;border-radius:3px;transition:width .5s;"></div>
-        </div>
-      </div>`:''}
+      </div>
       ${myFb?`<div style="margin-top:8px;padding:6px 10px;background:var(--bg3);border-radius:8px;font-size:12px;color:var(--text2);">✓ Submitted ${myFb.date}</div>`:''}
     </div>`;
   }).join('');
@@ -4450,21 +4463,92 @@ function openReviewerReport(rid){
   document.getElementById('rv-pdf-name').textContent=r.file;
   document.getElementById('rv-fb-msg').innerHTML='';
 
-  // Inspection card
+  // Inspection card — same as admin viewFeedback
   const insp=r.inspection||{};
   const hasInsp=insp.storeName||insp.date||insp.checkedBy||insp.score;
-  document.getElementById('rv-inspection-card').innerHTML=hasInsp?`
-    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);padding:13px 15px;">
-      <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;">Inspection details</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-        ${insp.storeName?`<div><div style="font-size:11px;color:var(--text3);">Store</div><div style="font-size:13px;font-weight:600;margin-top:2px;">${insp.storeName}</div></div>`:''}
-        ${insp.date?`<div><div style="font-size:11px;color:var(--text3);">Date</div><div style="font-size:13px;font-weight:600;margin-top:2px;">${insp.date}</div></div>`:''}
-        ${insp.checkedBy?`<div><div style="font-size:11px;color:var(--text3);">Checked by</div><div style="font-size:13px;font-weight:600;margin-top:2px;">${insp.checkedBy}</div></div>`:''}
-        ${insp.score?`<div><div style="font-size:11px;color:var(--text3);">Score</div><div style="font-size:20px;font-weight:700;margin-top:2px;">${scoreHTML(insp.score,20)}</div></div>`:''}
+  const _pdfName=r.file||'';
+
+  // Build timeline for this store
+  const _fbMapTl={};
+  r.feedbacks.forEach(f=>{ if(!_fbMapTl[f.storeId]||f.date>=_fbMapTl[f.storeId].date) _fbMapTl[f.storeId]=f; });
+  const myFbTl=_fbMapTl[s.id]||null;
+  const timeline=myFbTl&&Array.isArray(myFbTl.timeline)?myFbTl.timeline:[];
+
+  function pill(icon,label,value,bg,color){
+    const parts=label.split(' · ');
+    const action=parts[0]||'';
+    const who=parts.slice(1).join(' · ');
+    return `<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:0.5px solid var(--border);">
+      <div style="width:28px;height:28px;border-radius:8px;background:${bg};display:flex;align-items:center;justify-content:center;flex-shrink:0;">${icon}</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:12px;font-weight:500;color:var(--text);">${action}${who?`<span style="color:var(--text2);font-weight:400;"> · ${who}</span>`:''}</div>
+        <div style="font-size:11px;color:${color};margin-top:2px;font-weight:500;">${value||''}</div>
       </div>
+    </div>`;
+  }
+
+  const _tl=timeline.map((t,i)=>({...t,_idx:i}));
+  const rejByMin={};
+  _tl.filter(t=>t.type==='rejected').forEach(t=>{const m=(t.date||'').slice(0,16);if(!rejByMin[m])rejByMin[m]={...t,count:1};else rejByMin[m].count++;});
+  const resubByMin={};
+  _tl.filter(t=>t.type==='resubmitted').forEach(t=>{const m=(t.date||'').slice(0,16);if(!resubByMin[m])resubByMin[m]={...t};});
+  const resubMins=new Set(Object.keys(resubByMin));
+  const dedupTl=[
+    ..._tl.filter(t=>t.type!=='rejected'&&t.type!=='resubmitted'&&!(t.type==='store_submitted'&&resubMins.has((t.date||'').slice(0,16)))),
+    ...Object.values(rejByMin),
+    ...Object.values(resubByMin)
+  ];
+  const _tlFirstSub=dedupTl.find(t=>t.type==='first_submitted');
+  const _firstSubDate=_tlFirstSub?.date||'';
+  const _typePri={'first_submitted':0,'store_submitted':1,'report_edited':2,'rejected':3,'resubmit_requested':4,'resubmitted':5,'accepted':6,'verified':99};
+  function _nd(d){return(!d||d.length>10)?d||'':d+' 00:00';}
+  const _firstEntry=_firstSubDate?[{type:'first_submitted',date:_firstSubDate,_idx:-1}]:[];
+  const allEntries=[..._firstEntry,...dedupTl.filter(t=>t.type!=='first_submitted')].sort((a,bb)=>{
+    const ia=a._idx??999,ib=bb._idx??999;
+    if(ia!==ib) return ia-ib;
+    const da=_nd(a.date),db=_nd(bb.date);
+    if(da!==db) return da.localeCompare(db);
+    return (_typePri[a.type]??50)-(_typePri[bb.type]??50);
+  });
+  let histRows='';
+  allEntries.forEach(entry=>{
+    if(entry.type==='first_submitted') histRows+=pill(`<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#15803d" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>`,`First submitted${entry.by?' · '+entry.by:''}`,entry.date||'','#f0fdf4','var(--success)');
+    else if(entry.type==='store_submitted') histRows+=pill(`<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#15803d" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>`,`Response submitted · ${entry.by||'Store'}`,entry.date||'','#f0fdf4','var(--success)');
+    else if(entry.type==='report_edited') histRows+=pill(`<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#534AB7" stroke-width="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`,`Report edited · ${entry.by||'Staff'}`,entry.date,'#EEEDFE','#534AB7');
+    else if(entry.type==='rejected') histRows+=pill(`<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`,`Rejected${entry.count>1?' ('+entry.count+' items)':''} · ${entry.by||'Staff'}`,entry.date,'#fef2f2','var(--danger)');
+    else if(entry.type==='resubmitted') histRows+=pill(`<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#15803d" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>`,`Response submitted · ${entry.by||'Store'}`,entry.date,'#f0fdf4','var(--success)');
+    else if(entry.type==='resubmit_requested') histRows+=pill(`<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>`,`Notified to resubmit · ${entry.by||'Staff'}`,entry.date,'#fffbeb','var(--warn)');
+    else if(entry.type==='accepted') histRows+=pill(`<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#15803d" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`,`Accepted · ${entry.by||'Staff'}`,entry.date,'#f0fdf4','var(--success)');
+    else if(entry.type==='verified') histRows+=pill(`<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#15803d" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`,`Verified · ${entry.by||'Staff'}`,entry.date,'#f0fdf4','var(--success)');
+  });
+
+  document.getElementById('rv-inspection-card').innerHTML=hasInsp?`
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);padding:14px 16px;margin-bottom:16px;">
+      <div style="font-size:12px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;">Inspection details</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:${(_pdfName||histRows)?'12px':'4px'};">
+        ${insp.storeName?`<div><div style="font-size:11px;color:var(--text3);margin-bottom:2px;">Store</div><div style="font-size:14px;font-weight:500;">${insp.storeName}</div></div>`:''}
+        ${insp.date?`<div><div style="font-size:11px;color:var(--text3);margin-bottom:2px;">Date</div><div style="font-size:14px;font-weight:500;">${insp.date}</div></div>`:''}
+        ${insp.checkedBy?`<div><div style="font-size:11px;color:var(--text3);margin-bottom:2px;">Checked by</div><div style="font-size:14px;font-weight:500;">${insp.checkedBy}</div></div>`:''}
+        ${insp.score?`<div><div style="font-size:11px;color:var(--text3);margin-bottom:2px;">Score</div><div style="font-size:22px;font-weight:700;">${scoreHTML(insp.score,22)}</div></div>`:''}
+      </div>
+      ${_pdfName?`<div onclick="openReportPDF()" style="width:52px;height:52px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;margin-bottom:${histRows?'12px':'0'};" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        <span style="font-size:9px;font-weight:700;color:var(--accent);letter-spacing:.04em;">PDF</span>
+      </div>`:''}
+      ${histRows?`
+      <div style="border-top:1px solid var(--border);padding-top:10px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;" onclick="(function(el){el.classList.toggle('open');const body=el.nextElementSibling;body.style.display=el.classList.contains('open')?'':'none';el.querySelector('.hist-chevron').style.transform=el.classList.contains('open')?'rotate(180deg)':'';el.querySelector('.hist-lbl').textContent=el.classList.contains('open')?'Hide':'Show';})(this)">
+          <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;">Response history</div>
+          <div style="display:flex;align-items:center;gap:4px;background:var(--bg3);border:0.5px solid var(--border);border-radius:20px;padding:4px 12px;font-size:12px;font-weight:500;color:var(--text2);">
+            <span class="hist-lbl">Show</span>
+            <svg class="hist-chevron" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="transition:transform .2s;"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+        </div>
+        <div style="display:none;margin-top:8px;">${histRows}</div>
+      </div>`:''}
     </div>`:'';
 
-
+  // Reset any open pill state
   const submittedDiv=document.getElementById('rv-submitted-view');
   const formDiv=document.getElementById('rv-feedback-form');
   // Deduplicate feedbacks — use only the latest per store
