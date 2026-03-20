@@ -1964,110 +1964,144 @@ function toggleRvDownloadMenu(e, rid){
 async function downloadReportPDF(rid){
   const menu=document.getElementById('rv-dl-menu');
   if(menu) menu.style.display='none';
-  const b=reviewerBrand(), s=reviewerStore();
-  const r=b?.reports?.find(r=>r.id===rid);
-  if(!r){ showToast('Report not found'); return; }
+  // Works for all roles — get report from any context
+  let b=null, r=null, storeName='';
+  if(DB.role==='reviewer'){
+    b=reviewerBrand(); r=b?.reports?.find(rep=>rep.id===rid);
+    storeName=reviewerStore()?.name||'';
+  } else {
+    for(const br of DB.brands){ r=br.reports.find(rep=>rep.id===rid); if(r){b=br;break;} }
+    storeName=r?.storeId?b?.stores?.find(s=>s.id===r.storeId)?.name||'':'';
+  }
+  if(!r||!b){ showToast('Report not found'); return; }
   showToast('Building PDF...');
-
-  // Gather feedback
-  const fbMap={};
-  (r.feedbacks||[]).forEach(f=>{ if(!fbMap[f.storeId]||f.date>=fbMap[f.storeId].date) fbMap[f.storeId]=f; });
-  const myFb=fbMap[s.id]||null;
   const insp=r.inspection||{};
 
-  // Build HTML for PDF
-  const rows=(r.refs||[]).map((ref,i)=>{
-    const it=myFb?.itemFeedbacks?.find(it=>it.refId===ref.id)||null;
-    const hasContent=!!(it?.note||(it?.photos?.length));
-    const hasRemark=!!(myFb?.adminRemarks?.[ref.id+'_list']?.length||myFb?.adminRemarks?.[ref.id]);
-    const remarkText=(myFb?.adminRemarks?.[ref.id+'_list']||[]).map(rk=>rk.text).join(' · ')
-      || (myFb?.adminRemarks?.[ref.id]||'');
-    const statusColor=hasContent?'#0F6E56':hasRemark?'#A32D2D':'#888';
-    const statusLabel=hasContent?'Responded':hasRemark?'Needs correction':'No response';
-    const photosHTML=(it?.photos||[]).map(p=>`<img src="${p}" style="width:70px;height:70px;object-fit:cover;border-radius:6px;margin:3px;"/>`).join('');
-    return `<tr>
-      <td style="padding:10px 8px;vertical-align:top;font-weight:600;color:#333;width:28px;text-align:center;">${i+1}</td>
-      <td style="padding:10px 8px;vertical-align:top;">
-        <div style="font-weight:600;font-size:13px;color:#111;margin-bottom:4px;">${ref.name||'Item '+(i+1)}</div>
-        ${ref.desc?`<div style="font-size:11px;color:#666;margin-bottom:4px;">${ref.desc}</div>`:''}
-        ${hasRemark?`<div style="font-size:11px;color:#A32D2D;background:#FCEBEB;padding:5px 8px;border-radius:5px;border-left:3px solid #E24B4A;margin-bottom:5px;">Remark: ${remarkText}</div>`:''}
-        ${it?.note?`<div style="font-size:12px;color:#333;background:#f5f5f5;padding:6px 8px;border-radius:5px;border-left:3px solid #aaa;margin-bottom:5px;">${it.note}</div>`:''}
-        ${photosHTML?`<div style="display:flex;flex-wrap:wrap;">${photosHTML}</div>`:''}
-      </td>
-      <td style="padding:10px 8px;vertical-align:top;text-align:right;white-space:nowrap;">
-        <span style="font-size:11px;font-weight:600;color:${statusColor};background:${hasContent?'#E1F5EE':hasRemark?'#FCEBEB':'#f0f0f0'};padding:3px 9px;border-radius:20px;">${statusLabel}</span>
-      </td>
-    </tr><tr><td colspan="3" style="padding:0;"><div style="height:1px;background:#eee;"></div></td></tr>`;
-  }).join('');
+  // Build one section per store that responded
+  const latestFbMap={};
+  (r.feedbacks||[]).forEach(f=>{ if(!latestFbMap[f.storeId]||f.date>=latestFbMap[f.storeId].date) latestFbMap[f.storeId]=f; });
+  const storeIds=Object.keys(latestFbMap);
+  const targetStores=storeIds.length?storeIds.map(sid=>b.stores?.find(s=>s.id===sid)||{id:sid,name:'Store'}):[{id:'',name:storeName||'Store'}];
 
-  const html=`<!DOCTYPE html><html><head><meta charset="utf-8"/>
-  <title>QC Report - ${s.name}</title>
-  <style>
-    body{font-family:Arial,sans-serif;margin:0;padding:24px;color:#111;font-size:13px;}
-    .header{background:#534AB7;color:#fff;padding:16px 20px;border-radius:10px;margin-bottom:18px;}
-    .header h1{margin:0 0 4px;font-size:17px;}
-    .header p{margin:0;font-size:12px;opacity:.8;}
-    .meta{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px;}
-    .meta-box{background:#f5f5f5;border-radius:7px;padding:9px 14px;flex:1;min-width:100px;}
-    .meta-label{font-size:10px;color:#888;margin-bottom:3px;text-transform:uppercase;letter-spacing:.04em;}
-    .meta-val{font-size:14px;font-weight:700;color:#111;}
-    table{width:100%;border-collapse:collapse;}
-    .sec{font-size:11px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.06em;margin:14px 0 8px;}
-    img{display:inline-block;}
-  </style></head><body>
-  <div class="header">
-    <h1>Quality Control Report — ${s.name}</h1>
-    <p>${b.name}${insp.date?' · '+insp.date:''}${r.verified?' · Verified ✓':''}</p>
-  </div>
-  <div class="meta">
-    ${insp.date?`<div class="meta-box"><div class="meta-label">Inspection date</div><div class="meta-val">${insp.date}</div></div>`:''}
-    ${insp.checkedBy?`<div class="meta-box"><div class="meta-label">Checker</div><div class="meta-val">${insp.checkedBy}</div></div>`:''}
-    ${insp.score?`<div class="meta-box"><div class="meta-label">Score</div><div class="meta-val">${insp.score}</div></div>`:''}
-    <div class="meta-box"><div class="meta-label">Items</div><div class="meta-val">${(r.refs||[]).length}</div></div>
-  </div>
-  <div class="sec">Item responses</div>
-  <table>${rows}</table>
-  <div style="margin-top:20px;font-size:10px;color:#aaa;text-align:center;">Generated by Feedback Hub · ${new Date().toLocaleDateString()}</div>
-  </body></html>`;
+  let allStoreHTML='';
+  targetStores.forEach(store=>{
+    const myFb=latestFbMap[store.id]||null;
+    const rows=(r.refs||[]).map((ref,i)=>{
+      const it=myFb?.itemFeedbacks?.find(it=>it.refId===ref.id)||null;
+      const hasContent=!!(it?.note||(it?.photos?.length));
+      const hasRemark=!!(myFb?.adminRemarks?.[ref.id+'_list']?.length||myFb?.adminRemarks?.[ref.id]);
+      const remarkText=(myFb?.adminRemarks?.[ref.id+'_list']||[]).map(rk=>rk.text).join(' · ')||(myFb?.adminRemarks?.[ref.id]||'');
+      const statusColor=hasContent?'#0F6E56':hasRemark?'#A32D2D':'#888';
+      const statusBg=hasContent?'#E1F5EE':hasRemark?'#FCEBEB':'#f0f0f0';
+      const statusLabel=hasContent?'Responded':hasRemark?'Needs correction':'No response';
+      // Admin ref photos
+      const refPhotosHTML=(ref.photos||[]).map(p=>`<img src="${p}" style="width:60px;height:60px;object-fit:cover;border-radius:5px;margin:2px;border:1px solid #ddd;"/>`).join('');
+      // Store response photos
+      const respPhotosHTML=(it?.photos||[]).map(p=>`<img src="${p}" style="width:60px;height:60px;object-fit:cover;border-radius:5px;margin:2px;"/>`).join('');
+      return `<tr>
+        <td style="padding:10px 8px;vertical-align:top;font-weight:700;color:#534AB7;width:24px;font-size:13px;">${i+1}</td>
+        <td style="padding:10px 8px;vertical-align:top;border-bottom:1px solid #eee;">
+          <div style="font-weight:700;font-size:13px;color:#111;margin-bottom:3px;">${ref.name||'Item '+(i+1)}</div>
+          ${ref.desc?`<div style="font-size:11px;color:#777;margin-bottom:5px;">${ref.desc}</div>`:''}
+          ${refPhotosHTML?`<div style="margin-bottom:5px;">${refPhotosHTML}</div>`:''}
+          ${hasRemark?`<div style="font-size:11px;color:#A32D2D;background:#FCEBEB;padding:5px 8px;border-radius:4px;border-left:3px solid #E24B4A;margin-bottom:5px;">⚑ Remark: ${remarkText}</div>`:''}
+          ${it?.note?`<div style="font-size:12px;color:#222;background:#f8f8f8;padding:6px 8px;border-radius:4px;border-left:3px solid #bbb;margin-bottom:5px;">${it.note}</div>`:''}
+          ${respPhotosHTML?`<div>${respPhotosHTML}</div>`:''}
+        </td>
+        <td style="padding:10px 8px;vertical-align:top;text-align:right;white-space:nowrap;">
+          <span style="font-size:10px;font-weight:700;color:${statusColor};background:${statusBg};padding:3px 8px;border-radius:20px;">${statusLabel}</span>
+        </td>
+      </tr>`;
+    }).join('');
+    allStoreHTML+=`<div style="page-break-before:${allStoreHTML?'always':'avoid'};margin-bottom:24px;">
+      <div style="font-size:13px;font-weight:700;color:#534AB7;padding:8px 12px;background:#EEEDFE;border-radius:6px;margin-bottom:10px;">
+        ${store.name}${myFb?.date?' · '+myFb.date:''}
+      </div>
+      <table style="width:100%;border-collapse:collapse;">${rows}</table>
+    </div>`;
+  });
 
-  const blob=new Blob([html],{type:'text/html'});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement('a');
-  a.href=url;
-  a.download=`QC_${s.name.replace(/\s+/g,'_')}_${r.title.replace(/\s+/g,'_')}.html`;
-  a.style.display='none';
-  document.body.appendChild(a); a.click();
-  setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); },1000);
-  showToast('Report downloaded!');
+  const printWin=window.open('','_blank');
+  printWin.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"/>
+    <title>QC Report - ${r.title}</title>
+    <style>
+      *{box-sizing:border-box}
+      body{font-family:Arial,sans-serif;margin:0;padding:20px;color:#111;font-size:13px;}
+      @page{margin:18mm 14mm}
+      @media print{body{padding:0}}
+      .header{background:#534AB7;color:#fff;padding:14px 18px;border-radius:8px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:flex-start;}
+      .header h1{margin:0 0 3px;font-size:16px;}
+      .header p{margin:0;font-size:11px;opacity:.85;}
+      .badge{font-size:11px;font-weight:700;background:rgba(255,255,255,.25);padding:3px 10px;border-radius:20px;white-space:nowrap;}
+      .meta{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px;}
+      .mbox{background:#f5f5f5;border-radius:6px;padding:8px 10px;}
+      .ml{font-size:9px;color:#888;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px;}
+      .mv{font-size:13px;font-weight:700;color:#111;}
+      table{width:100%;border-collapse:collapse;}
+      img{display:inline-block;vertical-align:middle;}
+    </style></head><body>
+    <div class="header">
+      <div>
+        <h1>Quality Control Report</h1>
+        <p>${b.name} · ${r.title}${insp.date?' · '+insp.date:''}</p>
+      </div>
+      ${r.verified?'<span class="badge">Verified ✓</span>':''}
+    </div>
+    <div class="meta">
+      ${insp.date?`<div class="mbox"><div class="ml">Date</div><div class="mv">${insp.date}</div></div>`:''}
+      ${insp.checkedBy?`<div class="mbox"><div class="ml">Checker</div><div class="mv">${insp.checkedBy}</div></div>`:''}
+      ${insp.score?`<div class="mbox"><div class="ml">Score</div><div class="mv">${insp.score}</div></div>`:''}
+      <div class="mbox"><div class="ml">Items</div><div class="mv">${(r.refs||[]).length}</div></div>
+    </div>
+    ${allStoreHTML}
+    <div style="margin-top:16px;font-size:9px;color:#bbb;text-align:center;border-top:1px solid #eee;padding-top:8px;">
+      Feedback Hub · Generated ${new Date().toLocaleString()}
+    </div>
+  </body></html>`);
+  printWin.document.close();
+  printWin.onload=()=>{ setTimeout(()=>{ printWin.print(); },300); };
+  showToast('Print dialog opening...');
 }
 
 async function downloadReportPhotos(rid){
   const menu=document.getElementById('rv-dl-menu');
   if(menu) menu.style.display='none';
-  const b=reviewerBrand(), s=reviewerStore();
-  const r=b?.reports?.find(r=>r.id===rid);
-  if(!r){ showToast('Report not found'); return; }
+  // All roles
+  let b=null, r=null;
+  if(DB.role==='reviewer'){
+    b=reviewerBrand(); r=b?.reports?.find(rep=>rep.id===rid);
+  } else {
+    for(const br of DB.brands){ r=br.reports.find(rep=>rep.id===rid); if(r){b=br;break;} }
+  }
+  if(!r||!b){ showToast('Report not found'); return; }
 
-  const fbMap={};
-  (r.feedbacks||[]).forEach(f=>{ if(!fbMap[f.storeId]||f.date>=fbMap[f.storeId].date) fbMap[f.storeId]=f; });
-  const myFb=fbMap[s.id]||null;
-  if(!myFb){ showToast('No responses yet'); return; }
-
-  // Collect all photos with labels
   const photos=[];
+  const safeName=n=>(n||'').replace(/[^a-z0-9]/gi,'_').slice(0,20);
+
+  // 1. Admin reference photos (from refs)
   (r.refs||[]).forEach((ref,i)=>{
-    const it=myFb.itemFeedbacks?.find(it=>it.refId===ref.id);
-    (it?.photos||[]).forEach((p,pi)=>{
-      photos.push({url:p, name:`QC_${s.name.replace(/\s+/g,'_')}_Item${i+1}_photo${pi+1}.jpg`});
+    (ref.photos||[]).forEach((p,pi)=>{
+      photos.push({url:p, name:`QC_Ref_Item${i+1}_${safeName(ref.name)}_${pi+1}.jpg`});
     });
   });
 
-  if(!photos.length){ showToast('No photos to download'); return; }
-  showToast(`Downloading ${photos.length} photo${photos.length>1?'s':''}...`);
+  // 2. All store response photos (all stores, latest feedback per store)
+  const latestFbMap={};
+  (r.feedbacks||[]).forEach(f=>{ if(!latestFbMap[f.storeId]||f.date>=latestFbMap[f.storeId].date) latestFbMap[f.storeId]=f; });
+  Object.values(latestFbMap).forEach(fb=>{
+    const storeName=b.stores?.find(s=>s.id===fb.storeId)?.name||'Store';
+    (r.refs||[]).forEach((ref,i)=>{
+      const it=fb.itemFeedbacks?.find(it=>it.refId===ref.id);
+      (it?.photos||[]).forEach((p,pi)=>{
+        photos.push({url:p, name:`QC_${safeName(storeName)}_Item${i+1}_${safeName(ref.name)}_${pi+1}.jpg`});
+      });
+    });
+  });
 
-  // Download one by one with small delay
+  if(!photos.length){ showToast('No photos found'); return; }
+  showToast(`Downloading ${photos.length} photo${photos.length>1?'s':''}...`);
   for(let i=0;i<photos.length;i++){
-    await new Promise(res=>setTimeout(res, i===0?0:600));
+    await new Promise(res=>setTimeout(res,i===0?0:600));
     await savePhotoToDevice(photos[i].url, photos[i].name);
   }
   showToast('All photos saved!');
@@ -6162,25 +6196,37 @@ function erRemoveRef(i){
 function erAddRefPhoto(i, input){
   if(!_erRefs[i]) return;
   if(!_erRefs[i].photos) _erRefs[i].photos=[];
-  const idx = i;
+  const idx=i;
   const isCam=input.id && input.id.startsWith('er_ref_cam');
-  Array.from(input.files).forEach(f=>{
+  Array.from(input.files).forEach(async f=>{
     if(!f.type.startsWith('image/') && !f.name.toLowerCase().match(/\.(heic|heif)$/)) return;
-    compressImage(f, 800, 0.8, async data=>{
+    try{
+      const data=await convertToJpeg(f);
       if(!data) return;
       _erRefs[idx].photos.push(data);
-      if(isCam) await autoSavePhotoToDevice(data, 'ref');
-      const grid=document.getElementById('er_ref_grid_'+idx);
-      if(grid) grid.innerHTML=(_erRefs[idx].photos||[]).map((p,pi)=>`<div style="position:relative;aspect-ratio:1;border-radius:7px;overflow:hidden;"><img src="${p}" style="width:100%;height:100%;object-fit:cover;cursor:pointer;" onclick="openLightbox('${p}')"/><button onclick="erRemoveRefPhoto(${idx},${pi})" style="position:absolute;top:2px;right:2px;width:18px;height:18px;border-radius:50%;background:rgba(0,0,0,.6);border:none;color:#fff;font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>`).join('');
-    });
+      if(isCam) autoSavePhotoToDevice(data, 'ref');
+      erRebuildPhotoGrid(idx);
+    }catch(e){ console.error('erAddRefPhoto:',e); }
   });
+  input.value='';
+}
+
+function erRebuildPhotoGrid(idx){
+  const grid=document.getElementById('er_ref_grid_'+idx);
+  if(!grid) return;
+  grid.innerHTML=(_erRefs[idx].photos||[]).map((p,pi)=>`
+    <div style="position:relative;aspect-ratio:1;border-radius:7px;overflow:hidden;">
+      <img src="${p}" style="width:100%;height:100%;object-fit:cover;cursor:pointer;" onclick="openLightbox('${p}')"/>
+      <button onclick="erRemoveRefPhoto(${idx},${pi})" style="position:absolute;top:2px;right:2px;width:18px;height:18px;border-radius:50%;background:rgba(0,0,0,.6);border:none;color:#fff;font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>`).join('');
 }
 
 function erRemoveRefPhoto(i, pi){
   if(!_erRefs[i]||!_erRefs[i].photos) return;
   _erRefs[i].photos.splice(pi,1);
-  const grid=document.getElementById('er_ref_grid_'+i);
-  if(grid) grid.innerHTML=(_erRefs[i].photos||[]).map((p,pj)=>`<div style="position:relative;aspect-ratio:1;border-radius:7px;overflow:hidden;"><img src="${p}" style="width:100%;height:100%;object-fit:cover;cursor:pointer;" onclick="openLightbox('${p}')"/><button onclick="erRemoveRefPhoto(${i},${pj})" style="position:absolute;top:2px;right:2px;width:18px;height:18px;border-radius:50%;background:rgba(0,0,0,.6);border:none;color:#fff;font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>`).join('');
+  erRebuildPhotoGrid(i);
 }
 
 async function doEditReport(){
