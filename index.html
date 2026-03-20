@@ -3476,10 +3476,10 @@ function renderRefItems(){
             </button>
           </div>
           <input type="file" id="refphotos_${ref.id}" accept="image/*,.heic,.heif,application/pdf" multiple style="display:none;" onchange="addRefPhotos('${ref.id}',this)"/>
-          <input type="file" id="refphotoscam_${ref.id}" accept="image/*,.heic,.heif" multiple style="display:none;" onchange="addRefPhotos('${ref.id}',this)"/>
+          <input type="file" id="refphotoscam_${ref.id}" accept="image/*,.heic,.heif" capture="environment" style="display:none;" onchange="addRefPhotos('${ref.id}',this)"/>
         </div>
         <div class="photo-grid" id="refphotosgrid_${ref.id}">
-          ${ref.photos.map((p,pi)=>`<div class="photo-thumb-wrap"><img src="${p}" class="photo-thumb" onclick="openLightbox('${p}')"/><button class="photo-remove" style="display:flex;align-items:center;justify-content:center;" onclick="removeRefPhoto('${ref.id}',${pi})"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>`).join('')}
+          ${ref.photos.map((p,pi)=>`<div class="photo-thumb-wrap"><img src="${p}" class="photo-thumb" onclick="openLightbox('${p}')"/><button class="photo-save" onclick="savePhotoToDevice('${p}','QC_ref_${pi}.jpg')" title="Save" style="position:absolute;top:2px;left:2px;width:17px;height:17px;border-radius:50%;background:rgba(0,0,0,.65);color:#fff;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button><button class="photo-remove" style="display:flex;align-items:center;justify-content:center;" onclick="removeRefPhoto('${ref.id}',${pi})"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>`).join('')}
         </div>
       </div>` : ''}
     </div>`;
@@ -3493,10 +3493,10 @@ function updateRefDesc(id,val){ const r=DB.pendingRefs.find(r=>r.id===id); if(r)
 function addRefPhotos(id,input){
   const ref=DB.pendingRefs.find(r=>r.id===id); if(!ref) return;
   ref._open=true;
+  const isCam = input.id && input.id.startsWith('refphotoscam');
   Array.from(input.files).forEach(async f=>{
     try {
       const dataUrl = await convertToJpeg(f);
-      // Compress to max 1200px — reduces upload time significantly
       const compressed = await new Promise(res=>{
         const img=new Image();
         img.onload=()=>{
@@ -3511,6 +3511,7 @@ function addRefPhotos(id,input){
       });
       ref.photos.push(compressed);
       renderRefItems();
+      if(isCam){ const ts=new Date().toISOString().slice(0,19).replace(/[T:]/g,'-'); savePhotoToDevice(compressed,'QC_ref_'+ts+'.jpg'); }
     } catch(e) { console.error('addRefPhotos error:', e); }
   });
 }
@@ -5106,7 +5107,7 @@ function renderItemForms(r, brandColor){
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
             </button>
             <input type="file" id="item-photo-input-${i}" accept="image/*,.heic,.heif" multiple style="display:none;" onchange="addItemPhoto(${i},this)"/>
-            <input type="file" id="item-camera-input-${i}" accept="image/*,.heic,.heif" multiple style="display:none;" onchange="addItemPhoto(${i},this)"/>
+            <input type="file" id="item-camera-input-${i}" accept="image/*,.heic,.heif" capture="environment" style="display:none;" onchange="addItemPhoto(${i},this)"/>
           </div>
           <!-- Text input — hidden until Text button tapped -->
           <div id="rvtext_${i}" style="display:none;margin-bottom:10px;">
@@ -5157,7 +5158,10 @@ function renderItemPhotoGrid(idx){
   grid.innerHTML=photos.map((p,pi)=>`
     <div style="position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;">
       <img src="${p}" style="width:100%;height:100%;object-fit:cover;cursor:pointer;" onclick="openLightbox('${p}')"/>
-      <button onclick="removeItemPhoto(${idx},${pi})" style="position:absolute;top:3px;right:3px;width:18px;height:18px;border-radius:50%;background:rgba(0,0,0,.65);color:#fff;font-size:9px;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+      <div style="position:absolute;top:3px;right:3px;display:flex;gap:3px;">
+        <button onclick="savePhotoToDevice('${p}','QC_photo_${idx}_${pi}.jpg')" title="Save to device" style="width:18px;height:18px;border-radius:50%;background:rgba(0,0,0,.65);color:#fff;font-size:9px;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button>
+        <button onclick="removeItemPhoto(${idx},${pi})" style="width:18px;height:18px;border-radius:50%;background:rgba(0,0,0,.65);color:#fff;font-size:9px;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+      </div>
     </div>`).join('');
 }
 
@@ -5249,6 +5253,20 @@ function getTimestamp(){
   const t=now.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
   return d+' '+t;
 }
+// Auto-save photo to device — triggers a download which iOS/Android saves to Photos/Downloads
+// Called silently after stamping so user has the stamped copy on device
+function savePhotoToDevice(dataUrl, filename){
+  try {
+    const a = document.createElement('a');
+    a.href = dataUrl;
+    a.download = filename || ('photo_' + new Date().toISOString().replace(/[:.]/g,'-') + '.jpg');
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(()=>a.remove(), 500);
+  } catch(e) { /* silent — device may block programmatic download */ }
+}
+
 function stampPhoto(dataURL, label){
   return new Promise(resolve=>{
     const img=new Image();
@@ -5283,6 +5301,7 @@ function getReviewerName(){
 }
 function addItemPhoto(idx,input){
   const label=getReviewerName();
+  const isCameraInput = input.id && input.id.startsWith('item-camera-input');
   Array.from(input.files).forEach(async f=>{
     try {
       const dataUrl = await convertToJpeg(f);
@@ -5290,6 +5309,11 @@ function addItemPhoto(idx,input){
       DB.itemFeedbacks[idx].photos.push(stamped);
       renderItemPhotoGrid(idx);
       refreshReviewerItemStatus(idx);
+      // Auto-save stamped copy to device when taken with camera
+      if(isCameraInput){
+        const ts = new Date().toISOString().slice(0,19).replace(/[T:]/g,'-');
+        savePhotoToDevice(stamped, `QC_${label}_${ts}.jpg`);
+      }
     } catch(e) { console.error('addItemPhoto error:', e); }
   });
   input.value='';
@@ -5913,7 +5937,7 @@ function renderErRefs(){
           Camera
         </button>
         <input type="file" id="er_ref_photo_${i}" accept="image/*,.heic,.heif" multiple style="display:none;" onchange="erAddRefPhoto(${i},this)"/>
-        <input type="file" id="er_ref_cam_${i}" accept="image/*,.heic,.heif" multiple style="display:none;" onchange="erAddRefPhoto(${i},this)"/>
+        <input type="file" id="er_ref_cam_${i}" accept="image/*,.heic,.heif" capture="environment" style="display:none;" onchange="erAddRefPhoto(${i},this)"/>
       </div>
       <!-- Photo grid -->
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:5px;" id="er_ref_grid_${i}">
