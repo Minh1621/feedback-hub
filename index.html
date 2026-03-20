@@ -4216,23 +4216,28 @@ function renderReviewerHome(){
       </div>
     </div>`;
 
-  // Stats — Pending (store hasn't fully responded) + Checking (admin is reviewing)
+  // Stats — Pending + Checking (all responded, waiting for admin verify)
   const reports=b.reports.filter(r=>isReportVisibleToReviewer(r,s.id));
   let pendingCount=0, checkingCount=0;
   reports.forEach(r=>{
     const _fbMap={};
     r.feedbacks.forEach(f=>{ if(!_fbMap[f.storeId]||f.date>=_fbMap[f.storeId].date) _fbMap[f.storeId]=f; });
     const fb=_fbMap[s.id];
+    if(r.verified) return; // complete — don't count in pending/checking
     const totalItems=r.refs&&r.refs.length?r.refs.length:1;
-    const hasRejected=fb&&r.refs&&r.refs.some(ref=>!!(fb.adminRemarks?.[ref.id+'_list']?.length||fb.adminRemarks?.[ref.id]));
-    if(hasRejected){
-      checkingCount++; // admin has remarked items — store needs to resubmit
-    } else if(!fb){
-      pendingCount++; // not responded yet
-    } else {
-      const responded=(fb.itemFeedbacks||[]).filter(it=>it.note||(it.photos&&it.photos.length)).length;
-      if(responded<totalItems) pendingCount++; // partially responded
+    let responded=0;
+    if(fb){
+      if(r.refs&&r.refs.length){
+        const fbByRef={};
+        (fb.itemFeedbacks||[]).forEach(it=>{ if(it.refId) fbByRef[it.refId]=it; });
+        r.refs.forEach(ref=>{ const it=fbByRef[ref.id]; if(it&&(it.note||(it.photos&&it.photos.length))) responded++; });
+        if(responded===0) responded=Math.min((fb.itemFeedbacks||[]).filter(it=>it.note||(it.photos&&it.photos.length)).length,totalItems);
+      } else {
+        responded=(fb.text||(fb.itemFeedbacks&&fb.itemFeedbacks.length))?1:0;
+      }
     }
+    if(responded>=totalItems) checkingCount++; // all responded, waiting admin verify
+    else pendingCount++; // not fully responded
   });
   document.getElementById('rv-stats-row').innerHTML=`
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);padding:13px 14px;display:flex;align-items:center;gap:12px;">
@@ -4254,27 +4259,27 @@ function renderReviewerHome(){
       </div>
     </div>`;
 
-  // Report list — pending first then done
+  // Report list — sort: pending → partial → checking → complete
   const sorted=[...reports].sort((a,bb)=>{
-    // Use per-store status for reviewer sorting
     const getMyStatus=(r)=>{
-      // Dedup feedbacks — latest per store
+      if(r.verified) return 3; // complete — last
       const _fbMapSort={};
       r.feedbacks.forEach(f=>{ if(!_fbMapSort[f.storeId]||f.date>=_fbMapSort[f.storeId].date) _fbMapSort[f.storeId]=f; });
       const fb=_fbMapSort[s.id];
-      if(!fb) return 0;
-      const total=r.refs&&r.refs.length?r.refs.length:0;
-      if(total===0) return (fb.text||(fb.itemFeedbacks&&fb.itemFeedbacks.length))?2:0;
-      // Count by refId first
+      if(!fb) return 0; // pending
+      const total=r.refs&&r.refs.length?r.refs.length:1;
       const _fbByRef={};
       (fb.itemFeedbacks||[]).forEach(it=>{ if(it.refId) _fbByRef[it.refId]=it; });
       let responded=0;
-      r.refs.forEach(ref=>{ const it=_fbByRef[ref.id]; if(it&&(it.note||(it.photos&&it.photos.length))) responded++; });
-      // Fallback to direct count
-      if(responded===0) responded=Math.min((fb.itemFeedbacks||[]).filter(it=>it.note||(it.photos&&it.photos.length)).length,total);
-      if(responded===0) return 0;
-      if(responded<total) return 1;
-      return 2;
+      if(r.refs&&r.refs.length){
+        r.refs.forEach(ref=>{ const it=_fbByRef[ref.id]; if(it&&(it.note||(it.photos&&it.photos.length))) responded++; });
+        if(responded===0) responded=Math.min((fb.itemFeedbacks||[]).filter(it=>it.note||(it.photos&&it.photos.length)).length,total);
+      } else {
+        responded=(fb.text||(fb.itemFeedbacks&&fb.itemFeedbacks.length))?1:0;
+      }
+      if(responded===0) return 0;      // pending
+      if(responded<total) return 1;    // partial
+      return 2;                         // checking (all responded, not verified)
     };
     return getMyStatus(a)-getMyStatus(bb);
   });
@@ -4290,50 +4295,44 @@ function renderReviewerHome(){
     const myFb=_rvFbMap[s.id]||null;
     const insp=r.inspection||{};
     const totalItems=r.refs&&r.refs.length?r.refs.length:0;
-    // Count responded items using refId lookup — exclude rejected (remarked) items
+    // Count responded items using refId lookup
     let respondedItems=0;
     if(myFb){
       if(totalItems>0){
         const fbByRef={};
         (myFb.itemFeedbacks||[]).forEach(it=>{ if(it.refId) fbByRef[it.refId]=it; });
         r.refs.forEach(ref=>{
-          const isRejected=!!(myFb.adminRemarks?.[ref.id+'_list']?.length||myFb.adminRemarks?.[ref.id]);
-          if(isRejected) return; // rejected item does not count as responded
           const it=fbByRef[ref.id];
           if(it&&(it.note||(it.photos&&it.photos.length))) respondedItems++;
         });
-        // Fallback: if no refId matches but itemFeedbacks exist with content, count them
         if(respondedItems===0){
-          respondedItems=(myFb.itemFeedbacks||[]).filter(it=>{
-            const isRej=!!(myFb.adminRemarks?.[it.refId+'_list']?.length||myFb.adminRemarks?.[it.refId]);
-            return !isRej&&(it.note||(it.photos&&it.photos.length));
-          }).length;
-          respondedItems=Math.min(respondedItems,totalItems);
+          respondedItems=Math.min((myFb.itemFeedbacks||[]).filter(it=>it.note||(it.photos&&it.photos.length)).length,totalItems);
         }
       } else {
-        // No refs — mark as done if feedback exists with any content
-        respondedItems = (myFb.text||(myFb.itemFeedbacks&&myFb.itemFeedbacks.length)) ? 1 : 0;
+        respondedItems=(myFb.text||(myFb.itemFeedbacks&&myFb.itemFeedbacks.length))?1:0;
       }
     }
     const effectiveTotal=totalItems||1;
     const itemPct=Math.round(respondedItems/effectiveTotal*100);
-    // Check if any items are rejected
-    const hasRejectedItems = myFb && r.refs && r.refs.some(ref=>
-      !!(myFb.adminRemarks?.[ref.id+'_list']?.length||myFb.adminRemarks?.[ref.id])
-    );
-    // Status — match admin exactly
+    // Count rejected items for display
+    const rejectedCount=myFb&&r.refs?r.refs.filter(ref=>!!(myFb.adminRemarks?.[ref.id+'_list']?.length||myFb.adminRemarks?.[ref.id])).length:0;
+
+    // ── 4-state status rule ────────────────────────────────────────────────
+    // Complete  — admin verified (r.verified===true)
+    // Checking  — all items responded but not yet verified (waiting for admin)
+    // Partial   — some items responded, not all
+    // Pending   — no response at all
     let bc, bt, borderStyle;
-    if(hasRejectedItems){
+    const allResponded = myFb && respondedItems >= effectiveTotal;
+    if(r.verified){
+      bc='badge-done'; bt='Complete'; borderStyle='border:2px solid var(--success);';
+    } else if(allResponded){
       bc='badge-pending'; bt='Checking'; borderStyle='border:2px solid var(--warn);';
-    } else if(!myFb||respondedItems===0){
-      bc='badge-none'; bt='Pending'; borderStyle='';
-    } else if(totalItems>0&&respondedItems<totalItems){
+    } else if(myFb && respondedItems>0){
       bc='badge-partial'; bt='Partial'; borderStyle='border:2px solid var(--accent);';
     } else {
-      bc='badge-done'; bt='Done'; borderStyle='border:2px solid var(--success);';
+      bc='badge-none'; bt='Pending'; borderStyle='';
     }
-    // Count rejected items for display
-    const rejectedCount = myFb&&r.refs ? r.refs.filter(ref=>!!(myFb.adminRemarks?.[ref.id+'_list']?.length||myFb.adminRemarks?.[ref.id])).length : 0;
     return `<div class="card card-click" onclick="openReviewerReport('${r.id}')" style="margin-bottom:10px;${borderStyle}">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
         <div style="display:flex;align-items:center;gap:6px;flex:1;min-width:0;">
