@@ -702,13 +702,16 @@ label{
       <button class="btn btn-ghost btn-sm" onclick="openRvSettings()" title="Settings" style="width:36px;height:36px;padding:0;display:flex;align-items:center;justify-content:center;border-radius:10px;">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
       </button>
+      <button id="rv-refresh-btn" class="btn btn-ghost btn-sm" onclick="doRvRefresh()" title="Refresh" style="width:36px;height:36px;padding:0;display:flex;align-items:center;justify-content:center;border-radius:10px;">
+        <svg id="rv-refresh-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+      </button>
       <button class="btn btn-ghost btn-sm" onclick="doLogout()" title="Sign out" style="width:36px;height:36px;padding:0;display:flex;align-items:center;justify-content:center;border-radius:10px;">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
       </button>
     </div>
   </div>
   <div class="content">
-    <div id="rv-store-card" style="margin-bottom:16px;"></div>
+    <div id="rv-store-card" style="margin-bottom:16px;overflow:visible;"></div>
     <div id="rv-stats-row" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:18px;"></div>
     <div class="sec-label" style="margin-bottom:10px;">Reports</div>
     <div id="rv-report-list"></div>
@@ -716,13 +719,7 @@ label{
       <div id="rv-archive-arrow" style="display:none;"></div>
       <div id="rv-archived-list" style="display:none;"></div>
     </div>
-    <div class="screen-fixed" style="position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:20;pointer-events:none;width:100%;max-width:440px;display:flex;justify-content:center;">
-      <button id="rv-refresh-btn" onclick="doRvRefresh()" style="pointer-events:all;display:flex;align-items:center;gap:8px;background:var(--bg2);border:1.5px solid var(--border);border-radius:30px;padding:10px 22px;font-size:13px;font-weight:600;color:var(--text2);cursor:pointer;box-shadow:0 4px 20px rgba(0,0,0,.12);transition:all .2s;">
-        <svg id="rv-refresh-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
-        Refresh
-      </button>
-    </div>
-    <div style="height:80px;"></div>
+    <div style="height:32px;"></div>
   </div>
 </div>
 
@@ -4094,26 +4091,23 @@ function renderReviewerHome(){
     else { appLogoTop.style.background='var(--accent)'; appLogoTop.innerHTML=`<span style="font-size:13px;font-weight:800;color:#fff;">FH</span>`; }
   }
 
-  // Store info card
+  // Store info card — profile card style matching admin/staff home
   const initials=s.name.split(/\s+/).map(w=>w[0]).filter(Boolean).slice(0,2).join('').toUpperCase();
   const avatarContent=s.logo
-    ? `<img src="${s.logo}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"/>`
-    : `<span style="font-size:15px;font-weight:700;color:${b.color};">${initials}</span>`;
+    ? `<img src="${s.logo}" style="width:100%;height:100%;object-fit:cover;"/>`
+    : `<span style="font-size:18px;font-weight:800;color:#fff;">${initials}</span>`;
+  const coverBg=`linear-gradient(135deg,${b.color} 0%,${b.color}99 100%)`;
   document.getElementById('rv-store-card').innerHTML=`
-    <div style="background:${b.color}12;border:1px solid ${b.color}30;border-radius:var(--rl);overflow:hidden;">
-      <div style="display:flex;align-items:center;gap:12px;padding:13px 15px;">
-        <div style="width:48px;height:48px;border-radius:50%;background:${b.color}25;border:2px solid ${b.color}40;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;">
-          ${avatarContent}
-        </div>
-        <div style="flex:1;">
-          <div style="font-size:16px;font-weight:700;">${s.name}</div>
-          <div style="font-size:12px;color:var(--text2);margin-top:1px;">${b.name}</div>
-        </div>
+    <div style="border-radius:14px;box-shadow:0 2px 10px rgba(0,0,0,.08);position:relative;">
+      <div style="background:${coverBg};height:70px;border-radius:14px 14px 0 0;position:relative;overflow:hidden;"></div>
+      <div style="position:absolute;top:44px;left:16px;width:54px;height:54px;border-radius:50%;overflow:hidden;border:3px solid var(--bg);background:${b.color}30;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.18);z-index:10;">
+        ${avatarContent}
       </div>
-      ${s.phone||s.location?`<div style="border-top:1px solid ${b.color}20;padding:10px 15px;display:flex;flex-direction:column;gap:6px;">
-        ${s.phone?`<div style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2);"><span style="width:20px;display:flex;align-items:center;flex-shrink:0;color:var(--text2);"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13.5 19.79 19.79 0 0 1 1.72 4.9 2 2 0 0 1 3.71 2.72h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 10.36a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg></span> ${s.phone}</div>`:''}
-        ${s.location?`<div style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2);"><span style="width:20px;display:flex;align-items:center;flex-shrink:0;color:var(--text2);"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></span> ${s.location}</div>`:''}
-      </div>`:''}
+      <div style="background:var(--bg2);border:1px solid var(--border);border-top:none;padding:34px 16px 14px;border-radius:0 0 14px 14px;">
+        <div style="font-size:17px;font-weight:800;line-height:1.2;">${s.name}</div>
+        <div style="font-size:13px;color:var(--text2);margin-top:3px;">${b.name}${s.location?` · <span style="color:var(--text3);">${s.location}</span>`:''}</div>
+        ${s.phone?`<div style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2);margin-top:8px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13.5 19.79 19.79 0 0 1 1.72 4.9 2 2 0 0 1 3.71 2.72h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 10.36a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>${s.phone}</div>`:''}
+      </div>
     </div>`;
 
   // Stats
@@ -4210,38 +4204,45 @@ function renderReviewerHome(){
     const hasRejectedItems = myFb && r.refs && r.refs.some(ref=>
       !!(myFb.adminRemarks?.[ref.id+'_list']?.length||myFb.adminRemarks?.[ref.id])
     );
-    // Status badge
-    let statusBadge, statusClass;
-    if(hasRejectedItems){ statusBadge='Checking'; statusClass='badge-pending'; }
-    else if(!myFb||respondedItems===0){ statusBadge='Pending'; statusClass='badge-pending'; }
-    else if(totalItems>0&&respondedItems<totalItems){ statusBadge='Partial'; statusClass='badge-partial'; }
-    else { statusBadge='Done'; statusClass='badge-done'; }
-    return `<div class="card card-click" onclick="openReviewerReport('${r.id}')">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
-        <div style="font-size:14px;font-weight:600;flex:1;">${r.title}</div>
-        <span class="badge ${statusClass}" style="flex-shrink:0;">${statusBadge}</span>
+    // Status badge & border color
+    let statusLabel, borderColor, badgeBg, badgeColor, dotColor;
+    if(hasRejectedItems){
+      statusLabel='Checking'; borderColor='var(--warn)';
+      badgeBg='#fff3cd'; badgeColor='#856404'; dotColor='var(--warn)';
+    } else if(!myFb||respondedItems===0){
+      statusLabel='Pending'; borderColor='var(--border)';
+      badgeBg='var(--bg3)'; badgeColor='var(--text2)'; dotColor='var(--text3)';
+    } else if(totalItems>0&&respondedItems<totalItems){
+      statusLabel='Partial'; borderColor='#a78bfa';
+      badgeBg='#ede9fe'; badgeColor='#5b21b6'; dotColor='#a78bfa';
+    } else {
+      statusLabel='Done'; borderColor='var(--success)';
+      badgeBg='#d1fae5'; badgeColor='#065f46'; dotColor='var(--success)';
+    }
+    return `<div class="card card-click" onclick="openReviewerReport('${r.id}')" style="border-color:${borderColor};margin-bottom:10px;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:8px;">
+        <div style="font-size:15px;font-weight:700;flex:1;line-height:1.3;">${r.title}</div>
+        <span style="flex-shrink:0;display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;background:${badgeBg};color:${badgeColor};">
+          <span style="width:6px;height:6px;border-radius:50%;background:${dotColor};display:inline-block;"></span>
+          ${statusLabel}
+        </span>
       </div>
-      <div style="font-size:12px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:4px;">${r.file}</div>
-      ${insp.score?`<div style="margin-top:10px;display:flex;flex-direction:column;align-items:flex-start;gap:4px;">
-        <div style="font-size:28px;font-weight:800;line-height:1;">${scoreHTML(insp.score,28)}</div>
-        ${insp.checkedBy?`<div style="font-size:12px;color:var(--text2);">Checked by: <strong>${insp.checkedBy}</strong></div>`:''}
+      ${r.file?`<div style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;margin-bottom:6px;">${r.file}</div>`:''}
+      ${insp.score?`<div style="margin-bottom:8px;display:flex;align-items:baseline;gap:8px;">
+        <div style="font-size:26px;font-weight:800;line-height:1;">${scoreHTML(insp.score,26)}</div>
         ${insp.date?`<div style="font-size:11px;color:var(--text3);">${insp.date}</div>`:''}
       </div>`:''}
-      ${!insp.score&&insp.date?`<div style="font-size:12px;color:var(--text2);margin-top:6px;">${insp.date}${insp.checkedBy?' · Checked by: '+insp.checkedBy:''}
-      </div>`:''}
-      ${totalItems?`<div style="margin-top:10px;">
+      ${!insp.score&&insp.date?`<div style="font-size:12px;color:var(--text2);margin-bottom:6px;">${insp.date}${insp.checkedBy?' · '+insp.checkedBy:''}</div>`:''}
+      ${totalItems?`<div>
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
-          <div style="font-size:12px;color:var(--accent);display:flex;align-items:center;gap:5px;">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
-            ${respondedItems}/${totalItems} items
-          </div>
+          <div style="font-size:12px;color:var(--text2);">${respondedItems} / ${totalItems} items responded</div>
           <span style="font-size:11px;font-weight:700;color:${itemPct===100?'var(--success)':'var(--accent)'}">${itemPct}%</span>
         </div>
         <div style="background:var(--bg3);border-radius:3px;height:4px;overflow:hidden;">
           <div style="width:${itemPct}%;background:${itemPct===100?'var(--success)':itemPct>0?'var(--accent)':'var(--border2)'};height:4px;border-radius:3px;transition:width .5s;"></div>
         </div>
       </div>`:''}
-      ${myFb?`<div style="margin-top:8px;padding:8px 11px;background:var(--bg3);border-radius:8px;font-size:12px;color:var(--text2);">✓ Submitted ${myFb.date}</div>`:''}
+      ${myFb?`<div style="margin-top:8px;padding:6px 10px;background:var(--bg3);border-radius:8px;font-size:12px;color:var(--text2);">✓ Submitted ${myFb.date}</div>`:''}
     </div>`;
   }).join('');
 
