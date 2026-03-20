@@ -797,7 +797,6 @@ label{
   </div>
   <div class="content">
     <div id="rv-inspection-card" style="margin-bottom:14px;"></div>
-    <div id="rv-store-refs-wrap" style="margin-bottom:14px;"></div>
     <div id="rv-submitted-view" style="display:none;"></div>
     <div id="rv-feedback-form" style="display:none;">
       <div id="rv-items-form"></div>
@@ -4586,68 +4585,7 @@ function openReviewerReport(rid){
     return !!(myFb.adminRemarks?.[ref.id+'_list']?.length || myFb.adminRemarks?.[ref.id]);
   });
 
-  // ── Always render store item cards with filter in rv-store-refs-wrap ────
-  const storeRefsWrap=document.getElementById('rv-store-refs-wrap');
-  if(storeRefsWrap && r.refs && r.refs.length){
-    // Deduplicate feedbacks
-    const _fbMapSRW={};
-    r.feedbacks.forEach(f=>{ if(!_fbMapSRW[f.storeId]||f.date>=_fbMapSRW[f.storeId].date) _fbMapSRW[f.storeId]=f; });
-    const _myFbSRW=_fbMapSRW[s.id]||null;
-    const _fbByRefSRW={};
-    (_myFbSRW?.itemFeedbacks||[]).forEach(it=>{ if(it.refId) _fbByRefSRW[it.refId]=it; });
-
-    function buildStoreRefCards(filterVal){
-      return r.refs.map((ref,idx)=>{
-        const item=_fbByRefSRW[ref.id]||{refId:ref.id,note:'',photos:[]};
-        const hasMyContent=!!(item.note||(item.photos&&item.photos.length));
-        const isRejectedItem=!!(_myFbSRW?.adminRemarks?.[ref.id+'_list']?.length||_myFbSRW?.adminRemarks?.[ref.id]);
-        const needsCorrection=isRejectedItem&&!hasMyContent;
-        const isNewItem=!hasMyContent&&!isRejectedItem&&!!_myFbSRW;
-        const remarkList=_myFbSRW?.adminRemarks?.[ref.id+'_list']||[];
-        const remarkText=remarkList.length?remarkList.map(rk=>rk.text).join(' · '):(_myFbSRW?.adminRemarks?.[ref.id]||'');
-        const itemState=needsCorrection?'rejected':isNewItem?'new_item':hasMyContent?'responded':'no_response';
-        if(filterVal==='no_response'&&itemState!=='no_response') return '';
-        if(filterVal==='responded'&&itemState!=='responded') return '';
-        if(filterVal==='rejected'&&itemState!=='rejected') return '';
-        if(filterVal==='new_item'&&itemState!=='new_item') return '';
-        const cardBorder=needsCorrection?'1.5px solid var(--danger)':isNewItem?'1.5px solid var(--warn)':'0.5px solid var(--border)';
-        let statusBadge='';
-        if(needsCorrection) statusBadge=`<span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;background:var(--alert-danger-bg);color:var(--danger);flex-shrink:0;">Needs correction</span>`;
-        else if(isNewItem) statusBadge=`<span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;background:#fff3e0;color:var(--warn);flex-shrink:0;">New</span>`;
-        else if(hasMyContent) statusBadge=`<span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;background:var(--badge-done-bg);color:var(--success);flex-shrink:0;">Responded</span>`;
-        else statusBadge=`<span style="font-size:11px;color:var(--text3);flex-shrink:0;">No response</span>`;
-        // Build preview: remark text or response note snippet
-        const previewLine=needsCorrection&&remarkText
-          ? `<div style="font-size:11px;color:var(--danger);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${remarkText}</div>`
-          : item.note
-            ? `<div style="font-size:11px;color:var(--text2);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${item.note}</div>`
-            : item.photos&&item.photos.length
-              ? `<div style="font-size:11px;color:var(--text2);margin-top:3px;">${item.photos.length} photo${item.photos.length>1?'s':''}</div>`
-              : '';
-        return `<div style="background:var(--bg2);border:${cardBorder};border-radius:var(--rl);margin-bottom:8px;padding:12px 14px;display:flex;align-items:center;gap:10px;">
-          <div style="width:28px;height:28px;border-radius:8px;background:var(--bg3);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-            <span style="font-size:13px;font-weight:600;color:var(--text2);">${idx+1}</span>
-          </div>
-          <div style="flex:1;min-width:0;">
-            <div style="font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${ref.name||'Item '+(idx+1)}</div>
-            ${previewLine}
-          </div>
-          ${statusBadge}
-        </div>`;
-      }).filter(Boolean).join('')||'<div class="empty">No items match this filter</div>';
-    }
-    window._buildStoreRefCards=buildStoreRefCards;
-    const _hasNewAdded=_myFbSRW && r.refs.some(ref=>{ const it=_fbByRefSRW[ref.id]; const hasRemark=!!(_myFbSRW?.adminRemarks?.[ref.id+'_list']?.length||_myFbSRW?.adminRemarks?.[ref.id]); return !hasRemark&&!(it&&(it.note||(it.photos&&it.photos.length))); });
-    storeRefsWrap.innerHTML=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;"><div class="sec-label" style="margin-bottom:0;">Items (${r.refs.length})</div></div>`
-      +`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">
-        <button data-sf="all" onclick="setStoreRefFilter('all')" class="store-ref-filter-btn btn btn-xs" style="background:var(--accent);color:#fff;border-color:var(--accent);">All</button>
-        <button data-sf="no_response" onclick="setStoreRefFilter('no_response')" class="store-ref-filter-btn btn btn-xs">No response</button>
-        <button data-sf="responded" onclick="setStoreRefFilter('responded')" class="store-ref-filter-btn btn btn-xs">Responded</button>
-        <button data-sf="rejected" onclick="setStoreRefFilter('rejected')" class="store-ref-filter-btn btn btn-xs">Rejection</button>
-        ${_hasNewAdded?`<button data-sf="new_item" onclick="setStoreRefFilter('new_item')" class="store-ref-filter-btn btn btn-xs" style="border-color:var(--warn);color:var(--warn);">New item</button>`:''}
-      </div>`
-      +`<div id="store-ref-cards-wrap">${buildStoreRefCards('all')}</div>`;
-  } else if(storeRefsWrap){ storeRefsWrap.innerHTML=''; }
+  // ── rv-store-refs-wrap removed (was duplicating items shown in the form below) ──
 
   if(myFb && !_hasRejectedItems){
     submittedDiv.style.display='';
