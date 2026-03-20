@@ -2032,6 +2032,43 @@ async function uploadFile(file){
   } catch(e) { return { error: e.message }; }
 }
 
+// Upload a single base64 dataURL directly to R2 — faster than sending in JSON body
+async function uploadPhotoToR2Browser(dataUrl, key){
+  if(!dataUrl || !dataUrl.startsWith('data:')) return dataUrl;
+  try {
+    const comma = dataUrl.indexOf(',');
+    const mime = (dataUrl.slice(0, comma).match(/data:([^;]+)/) || [])[1] || 'image/jpeg';
+    const data = dataUrl.slice(comma + 1);
+    const res = await fetch(WORKER_URL + '/api/upload-photo', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ data, mime, key })
+    });
+    const result = await res.json();
+    return result.ok ? result.url : dataUrl;
+  } catch(e) { return dataUrl; }
+}
+
+// Upload all ref photos in parallel — returns refs with R2 URLs replacing base64
+async function preUploadRefPhotos(refs, reportId, onProgress){
+  let done = 0;
+  const total = refs.reduce((n, r) => n + (r.photos?.filter(p => p?.startsWith('data:')).length || 0), 0);
+  if(!total) return refs;
+
+  return Promise.all(refs.map(async (ref, ri) => {
+    if(!ref.photos?.length) return ref;
+    const uploadedPhotos = await Promise.all(ref.photos.map(async (p, pi) => {
+      if(!p?.startsWith('data:')) return p;
+      const key = `report_${reportId}_ref${ri}_photo${pi}_${Date.now()}`;
+      const url = await uploadPhotoToR2Browser(p, key);
+      done++;
+      if(onProgress) onProgress(done, total);
+      return url;
+    }));
+    return { ...ref, photos: uploadedPhotos };
+  }));
+}
+
 async function loadAllData(reviewerStoreId=null){
   showLoadingOverlay(true);
   try {
@@ -3441,7 +3478,20 @@ function addRefPhotos(id,input){
   Array.from(input.files).forEach(async f=>{
     try {
       const dataUrl = await convertToJpeg(f);
-      ref.photos.push(dataUrl);
+      // Compress to max 1200px — reduces upload time significantly
+      const compressed = await new Promise(res=>{
+        const img=new Image();
+        img.onload=()=>{
+          const MAX=1200;
+          let w=img.width, h=img.height;
+          if(w>MAX||h>MAX){ if(w>h){h=Math.round(h*MAX/w);w=MAX;}else{w=Math.round(w*MAX/h);h=MAX;} }
+          const c=document.createElement('canvas'); c.width=w; c.height=h;
+          c.getContext('2d').drawImage(img,0,0,w,h);
+          res(c.toDataURL('image/jpeg',0.85));
+        };
+        img.src=dataUrl;
+      });
+      ref.photos.push(compressed);
       renderRefItems();
     } catch(e) { console.error('addRefPhotos error:', e); }
   });
@@ -3604,20 +3654,32 @@ async function doUpload(){
   const desc=(descEl||{}).value?.trim()||'';
   if(!title){ msg.innerHTML='<div class="alert alert-danger">Please enter a title.</div>'; return; }
   if(!DB.pendingUpload){ msg.innerHTML='<div class="alert alert-danger">Please select a PDF file.</div>'; return; }
-  
-  msg.innerHTML='<div class="alert alert-success">Uploading file...</div>';
-  
-  // Upload PDF to R2
-  let fileURL=DB.pendingUploadURL||null;
-  let fileName=DB.pendingUpload.name;
-  const uploadResult=await uploadFile(DB.pendingUpload);
+
+  const reportId = 'r'+Date.now();
+
+  // Step 1: Upload PDF + ref photos in parallel
+  const totalPhotos = DB.pendingRefs.reduce((n,r)=>n+(r.photos?.filter(p=>p?.startsWith('data:')).length||0),0);
+  msg.innerHTML=`<div class="alert alert-success">Uploading PDF${totalPhotos?` and ${totalPhotos} photo${totalPhotos>1?'s':''}...`:'...'}</div>`;
+
+  // Run PDF upload and photo pre-upload simultaneously
+  const [uploadResult, uploadedRefs] = await Promise.all([
+    uploadFile(DB.pendingUpload),
+    preUploadRefPhotos(DB.pendingRefs, reportId, (done, total)=>{
+      msg.innerHTML=`<div class="alert alert-success">Uploading photos… ${done}/${total}</div>`;
+    })
+  ]);
+
+  let fileURL = DB.pendingUploadURL||null;
+  let fileName = DB.pendingUpload.name;
   if(uploadResult.key){
-    fileURL=WORKER_URL+'/api/files/'+encodeURIComponent(uploadResult.key);
-    fileName=uploadResult.fileName||fileName;
+    fileURL = WORKER_URL+'/api/files/'+encodeURIComponent(uploadResult.key);
+    fileName = uploadResult.fileName||fileName;
   }
 
+  msg.innerHTML='<div class="alert alert-success">Saving report…</div>';
+
   const storeIds=getSelectedStoreIds();
-  const refs=DB.pendingRefs.map(r=>({...r,name:r.name||''}));
+  const refs=uploadedRefs.map(r=>({...r,name:r.name||''}));
   const inspection={
     storeName:(document.getElementById('r-store-name')||{}).value?.trim()||'',
     date:(document.getElementById('r-inspect-date')||{}).value||'',
@@ -3625,16 +3687,16 @@ async function doUpload(){
     score:(document.getElementById('r-score')||{}).value?.trim()||'',
   };
   const newReport={
-    id:'r'+Date.now(),title,desc,
-    file:fileName,
-    fileURL,
+    id:reportId, title, desc,
+    file:fileName, fileURL,
     date:new Date().toISOString().slice(0,10)+' '+new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}),
     storeId:storeIds.length===1?storeIds[0]:'',
-    storeIds,refs,inspection,feedbacks:[]
+    storeIds, refs, inspection, feedbacks:[]
   };
   const b=brand();
   b.reports.unshift(newReport);
   const _uploadAlerter = getAlerterInfo();
+  // Step 2: POST report — photos are already R2 URLs so worker skips re-upload
   await api('POST','/api/reports',{...newReport, brand_id:b.id, alerter:_uploadAlerter});
 
   DB.pendingUpload=null; DB.pendingUploadURL=null; DB.pendingRefs=[];
@@ -3646,7 +3708,6 @@ async function doUpload(){
   renderRefItems();
   msg.innerHTML='<div class="alert alert-success">Report uploaded!</div>';
   closeConfirm();
-  // Reload fresh data from DB so all cards update immediately
   await loadAllData();
   renderHome();
   setTimeout(()=>{ msg.innerHTML=''; renderBrandHero(); brandTab('reports'); goTo('s-brand'); },1200);
