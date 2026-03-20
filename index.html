@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="light">
+<html lang="en">
 <head>
 <meta charset="UTF-8"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
@@ -377,6 +377,18 @@ label{
 .content{padding:16px 16px calc(env(safe-area-inset-bottom) + 32px);}
 .topbar{padding-top:max(12px,env(safe-area-inset-top));}
 </style>
+<script>
+(function(){
+  try{
+    var saved=localStorage.getItem('fh_theme');
+    if(saved){ document.documentElement.setAttribute('data-theme',saved); }
+    else{
+      var dark=window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches;
+      document.documentElement.setAttribute('data-theme',dark?'dark':'light');
+    }
+  }catch(e){ document.documentElement.setAttribute('data-theme','light'); }
+})();
+</script>
 </head>
 <body>
 <div class="wrap">
@@ -990,10 +1002,18 @@ label{
   <div class="content">
     <div class="sec-label" style="margin-bottom:10px;">Appearance</div>
     <div class="card" style="margin-bottom:18px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+        <div>
+          <div style="font-size:14px;font-weight:500;">Follow device theme</div>
+          <div style="font-size:12px;margin-top:2px;" class="theme-auto-label"></div>
+        </div>
+        <button onclick="useDeviceTheme()" class="btn btn-sm">Use device</button>
+      </div>
+      <div style="height:0.5px;background:var(--border);margin-bottom:14px;"></div>
       <div style="display:flex;align-items:center;justify-content:space-between;">
         <div>
           <div style="font-size:14px;font-weight:500;">Dark mode</div>
-          <div style="font-size:12px;color:var(--text2);margin-top:2px;">Switch between dark and light</div>
+          <div style="font-size:12px;color:var(--text2);margin-top:2px;" class="theme-dark-label"></div>
         </div>
         <div class="theme-toggle" onclick="toggleTheme()"></div>
       </div>
@@ -1445,10 +1465,18 @@ label{
     <!-- Appearance -->
     <div class="sec-label" style="margin-bottom:10px;">Appearance</div>
     <div class="card" style="margin-bottom:18px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+        <div>
+          <div style="font-size:14px;font-weight:500;">Follow device theme</div>
+          <div style="font-size:12px;margin-top:2px;" class="theme-auto-label"></div>
+        </div>
+        <button onclick="useDeviceTheme()" class="btn btn-sm">Use device</button>
+      </div>
+      <div style="height:0.5px;background:var(--border);margin-bottom:14px;"></div>
       <div style="display:flex;align-items:center;justify-content:space-between;">
         <div>
           <div style="font-size:14px;font-weight:500;">Dark mode</div>
-          <div style="font-size:12px;color:var(--text2);margin-top:2px;">Switch between dark and light</div>
+          <div style="font-size:12px;color:var(--text2);margin-top:2px;" class="theme-dark-label"></div>
         </div>
         <div class="theme-toggle" onclick="toggleTheme()"></div>
       </div>
@@ -1865,14 +1893,24 @@ function toggleTheme(){
   updateThemeToggles();
 }
 
+function useDeviceTheme(){
+  // Remove override — follow device
+  try{ localStorage.removeItem('fh_theme'); }catch(e){}
+  const prefersDark=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches;
+  document.documentElement.setAttribute('data-theme', prefersDark?'dark':'light');
+  updateThemeToggles();
+}
+
+function isUsingDeviceTheme(){
+  try{ return !localStorage.getItem('fh_theme'); }catch(e){ return true; }
+}
+
 function applyStoredTheme(){
   try{
     const saved=localStorage.getItem('fh_theme');
     if(saved){
-      // User has explicitly chosen a theme
       document.documentElement.setAttribute('data-theme', saved);
     } else {
-      // Follow device preference
       const prefersDark=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches;
       document.documentElement.setAttribute('data-theme', prefersDark?'dark':'light');
     }
@@ -1881,9 +1919,17 @@ function applyStoredTheme(){
 }
 
 function updateThemeToggles(){
-  // Keep all theme toggle UI in sync
   const isDark=document.documentElement.getAttribute('data-theme')==='dark';
-  // CSS handles toggle appearance via data-theme — nothing extra needed
+  const isAuto=isUsingDeviceTheme();
+  // Update all "Use device theme" labels
+  document.querySelectorAll('.theme-auto-label').forEach(el=>{
+    el.textContent=isAuto?'On (following device)':'Off (manual)';
+    el.style.color=isAuto?'var(--success)':'var(--text3)';
+  });
+  // Update all dark mode toggle labels
+  document.querySelectorAll('.theme-dark-label').forEach(el=>{
+    el.textContent=isDark?'Dark':'Light';
+  });
 }
 
 // Listen for device theme changes (when user hasn't set override)
@@ -1891,8 +1937,8 @@ try{
   window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e=>{
     const saved=localStorage.getItem('fh_theme');
     if(!saved){
-      // No user override — follow device
       document.documentElement.setAttribute('data-theme', e.matches?'dark':'light');
+      updateThemeToggles();
     }
   });
 }catch(e){}
@@ -4639,6 +4685,7 @@ function openReviewerReport(rid){
       </div>`;
     }).join('');
   } else if(rw){ rw.innerHTML=''; }
+  const submittedDiv=document.getElementById('rv-submitted-view');
   const formDiv=document.getElementById('rv-feedback-form');
   // Deduplicate feedbacks — use only the latest per store
   const _fbMapRv={};
@@ -5375,6 +5422,7 @@ function adminViewStorePass(){
 }
 
 function openRvSettings(){
+  updateThemeToggles();
   const s=reviewerStore();
   if(!s) return;
   document.getElementById('rv-settings-name').textContent=s.name;
@@ -5890,6 +5938,7 @@ function loadSettingsFromStorage(){
 }
 
 function applySettingsToUI(){
+  updateThemeToggles();
   // Render settings-content if empty (notifications + account sections)
   const sc=document.getElementById('settings-content');
   loadAdminProfile();
@@ -5915,10 +5964,18 @@ function applySettingsToUI(){
     <div style="margin-bottom:16px;">
       <div class="sec-label">Appearance</div>
       <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+          <div>
+            <div style="font-size:14px;font-weight:600;">Follow device theme</div>
+            <div style="font-size:12px;margin-top:2px;" class="theme-auto-label"></div>
+          </div>
+          <button onclick="useDeviceTheme()" class="btn btn-sm">Use device</button>
+        </div>
+        <div style="height:0.5px;background:var(--border);margin-bottom:12px;"></div>
         <div style="display:flex;align-items:center;justify-content:space-between;">
           <div>
             <div style="font-size:14px;font-weight:600;">Dark mode</div>
-            <div style="font-size:12px;color:var(--text2);margin-top:2px;">Switch between dark and light</div>
+            <div style="font-size:12px;color:var(--text2);margin-top:2px;" class="theme-dark-label"></div>
           </div>
           <div class="theme-toggle" onclick="toggleTheme()"></div>
         </div>
@@ -6988,6 +7045,7 @@ function applyStaffPermissions(){
 }
 
 function openStaffSettings(){
+  updateThemeToggles();
   const staff=DB.staffData||{};
   // Populate settings screen
   const avatarEl=document.getElementById('sf-settings-avatar');
