@@ -722,10 +722,17 @@ label{
     <button id="report-edit-btn" class="btn btn-sm" onclick="goEditReport(DB.currentReportId)" style="display:none;">Edit</button>
   </div>
   <div class="content">
-    <div id="fb-pdf-box" style="display:none;" onclick="openReportPDF()">
-      <div style="color:var(--text3);"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></div>
-      <div style="font-size:13px;color:var(--text2);" id="fb-filename"></div>
-      <div style="font-size:11px;color:var(--accent);">Tap to open PDF ↗</div>
+    <div id="fb-pdf-box" style="display:none;margin-bottom:16px;" onclick="openReportPDF()">
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;cursor:pointer;" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
+        <div style="width:40px;height:40px;border-radius:8px;background:var(--bg3);border:1px solid var(--border);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;flex-shrink:0;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          <span style="font-size:8px;font-weight:700;color:var(--accent);letter-spacing:.04em;">PDF</span>
+        </div>
+        <div style="flex:1;min-width:0;">
+          <div id="fb-filename" style="font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
+          <div style="font-size:11px;color:var(--accent);margin-top:2px;">Tap to view ↗</div>
+        </div>
+      </div>
     </div>
     <div id="fb-inspection" style="margin-bottom:16px;"></div>
     <div id="fb-summary" style="margin-bottom:18px;"></div>
@@ -3578,9 +3585,15 @@ function viewFeedback(rid){
             ${insp.checkedBy?`<div><div style="font-size:11px;color:var(--text3);margin-bottom:2px;">Checked by</div><div style="font-size:14px;font-weight:500;">${insp.checkedBy}</div></div>`:''}
             ${insp.score?`<div><div style="font-size:11px;color:var(--text3);margin-bottom:2px;">Score</div><div style="font-size:22px;font-weight:700;">${scoreHTML(insp.score,22)}</div></div>`:''}
           </div>
-          ${_pdfName?`<div onclick="openReportPDF()" style="width:52px;height:52px;flex-shrink:0;background:var(--bg3);border:1px solid var(--border);border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;transition:border-color .15s;" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-              <span style="font-size:9px;font-weight:700;color:var(--accent);letter-spacing:.04em;">PDF</span>
+          ${_pdfName?`<div onclick="openReportPDF()" style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;cursor:pointer;margin-bottom:${(_pdfName||subHistoryRows)?'12px':'0'};" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
+              <div style="width:40px;height:40px;border-radius:8px;background:var(--bg2);border:1px solid var(--border);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;flex-shrink:0;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                <span style="font-size:8px;font-weight:700;color:var(--accent);letter-spacing:.04em;">PDF</span>
+              </div>
+              <div style="flex:1;min-width:0;">
+                <div style="font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${_pdfName}</div>
+                <div style="font-size:11px;color:var(--accent);margin-top:2px;">Tap to view ↗</div>
+              </div>
             </div>`:''}
           ${subHistoryRows?`
           <div style="border-top:1px solid var(--border);margin-top:12px;padding-top:10px;">
@@ -3598,12 +3611,16 @@ function viewFeedback(rid){
       const _pdfName2=r.file||'';
       inspWrap.innerHTML=`
         <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);padding:14px 16px;margin-bottom:16px;">
-          ${_pdfName2?`<div style="display:flex;justify-content:flex-end;margin-bottom:10px;">
-            <div onclick="openReportPDF()" style="width:52px;height:52px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;transition:border-color .15s;" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-              <span style="font-size:9px;font-weight:700;color:var(--accent);letter-spacing:.04em;">PDF</span>
-            </div>
-          </div>`:''}
+          ${_pdfName2?`<div onclick="openReportPDF()" style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;cursor:pointer;margin-bottom:10px;" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
+              <div style="width:40px;height:40px;border-radius:8px;background:var(--bg2);border:1px solid var(--border);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;flex-shrink:0;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                <span style="font-size:8px;font-weight:700;color:var(--accent);letter-spacing:.04em;">PDF</span>
+              </div>
+              <div style="flex:1;min-width:0;">
+                <div style="font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${_pdfName2}</div>
+                <div style="font-size:11px;color:var(--accent);margin-top:2px;">Tap to view ↗</div>
+              </div>
+            </div>`:''}
           <div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;" onclick="(function(el){el.classList.toggle('open');const body=el.nextElementSibling;body.style.display=el.classList.contains('open')?'':'none';el.querySelector('.hist-chevron').style.transform=el.classList.contains('open')?'rotate(180deg)':'';el.querySelector('.hist-lbl').textContent=el.classList.contains('open')?'Hide':'Show';})(this)">
             <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;">Response history</div>
             <div style="display:flex;align-items:center;gap:4px;background:var(--bg3);border:0.5px solid var(--border);border-radius:20px;padding:3px 10px;font-size:11px;color:var(--text2);">
