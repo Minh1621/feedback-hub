@@ -4585,7 +4585,7 @@ function openReviewerReport(rid){
     return !!(myFb.adminRemarks?.[ref.id+'_list']?.length || myFb.adminRemarks?.[ref.id]);
   });
 
-  // ── rv-store-refs-wrap removed (was duplicating items shown in the form below) ──
+  // ── rv-store-refs-wrap removed — item list is now rendered inside submittedDiv below ──
 
   if(myFb && !_hasRejectedItems){
     submittedDiv.style.display='';
@@ -4601,6 +4601,39 @@ function openReviewerReport(rid){
     const _isPartial=_respondedItems<_totalRefItems;
     const newItems=(r.refs||[]).filter(ref=>{ const _fbByRefId2b={}; (myFb.itemFeedbacks||[]).forEach(it=>{ if(it.refId) _fbByRefId2b[it.refId]=it; }); const it=_fbByRefId2b[ref.id]; const hasRemark=!!(myFb.adminRemarks?.[ref.id+'_list']?.length||myFb.adminRemarks?.[ref.id]); return !hasRemark&&!(it&&(it.note||(it.photos&&it.photos.length))); });
     const hasNewItems=newItems.length>0&&_isPartial;
+    // Build submitted item summary cards
+    const _submittedItemCards = r.refs && r.refs.length ? r.refs.map((ref,idx)=>{
+      const item=_fbByRefId2[ref.id]||{refId:ref.id,note:'',photos:[]};
+      const hasMyContent=!!(item.note||(item.photos&&item.photos.length));
+      const isRejectedItem=!!(myFb.adminRemarks?.[ref.id+'_list']?.length||myFb.adminRemarks?.[ref.id]);
+      const needsCorrection=isRejectedItem&&!hasMyContent;
+      const isNewItem=!hasMyContent&&!isRejectedItem;
+      const remarkList=myFb.adminRemarks?.[ref.id+'_list']||[];
+      const remarkText=remarkList.length?remarkList.map(rk=>rk.text).join(' · '):(myFb.adminRemarks?.[ref.id]||'');
+      const cardBorder=needsCorrection?'1.5px solid var(--danger)':isNewItem?'1.5px solid var(--warn)':'0.5px solid var(--border)';
+      let statusBadge='';
+      if(needsCorrection) statusBadge=`<span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;background:var(--alert-danger-bg);color:var(--danger);flex-shrink:0;">Needs correction</span>`;
+      else if(isNewItem) statusBadge=`<span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;background:#fff3e0;color:var(--warn);flex-shrink:0;">New</span>`;
+      else if(hasMyContent) statusBadge=`<span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;background:var(--badge-done-bg);color:var(--success);flex-shrink:0;">Responded</span>`;
+      else statusBadge=`<span style="font-size:11px;color:var(--text3);flex-shrink:0;">No response</span>`;
+      const previewLine=needsCorrection&&remarkText
+        ? `<div style="font-size:11px;color:var(--danger);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${remarkText}</div>`
+        : item.note
+          ? `<div style="font-size:11px;color:var(--text2);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${item.note}</div>`
+          : item.photos&&item.photos.length
+            ? `<div style="font-size:11px;color:var(--text2);margin-top:3px;">${item.photos.length} photo${item.photos.length>1?'s':''}</div>`
+            : '';
+      return `<div style="background:var(--bg2);border:${cardBorder};border-radius:var(--rl);margin-bottom:8px;padding:12px 14px;display:flex;align-items:center;gap:10px;">
+        <div style="width:28px;height:28px;border-radius:8px;background:var(--bg3);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <span style="font-size:13px;font-weight:600;color:var(--text2);">${idx+1}</span>
+        </div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${ref.name||'Item '+(idx+1)}</div>
+          ${previewLine}
+        </div>
+        ${statusBadge}
+      </div>`;
+    }).join('') : '';
     submittedDiv.innerHTML=`
       <div style="display:flex;align-items:center;justify-content:space-between;padding:13px 15px;background:${hasNewItems?'#fff3e0':_isPartial?'var(--badge-partial-bg)':'var(--alert-success-bg)'};border:1px solid ${hasNewItems?'var(--warn)':_isPartial?'var(--accent)':'var(--alert-success-border)'};border-radius:var(--rl);margin-bottom:14px;">
         <div>
@@ -4608,7 +4641,8 @@ function openReviewerReport(rid){
           ${hasNewItems?`<div style="font-size:11px;color:var(--warn);margin-top:2px;">${newItems.length} item${newItems.length>1?'s':''} need${newItems.length===1?'s':''} your response</div>`:''}
         </div>
         <button class="btn btn-xs" onclick="editAllResponses('${rid}')">Edit all</button>
-      </div>`;
+      </div>
+      ${_submittedItemCards?`<div style="margin-bottom:14px;">${_submittedItemCards}</div>`:''}`;
     formDiv.style.display='none';
     formDiv.style.display='none';
   } else if(myFb && _hasRejectedItems) {
