@@ -4216,28 +4216,20 @@ function renderReviewerHome(){
       </div>
     </div>`;
 
-  // Stats — Pending + Checking (all responded, waiting for admin verify)
+  // Stats — Pending + Checking (submitted, waiting admin verify)
   const reports=b.reports.filter(r=>isReportVisibleToReviewer(r,s.id));
   let pendingCount=0, checkingCount=0;
   reports.forEach(r=>{
     const _fbMap={};
     r.feedbacks.forEach(f=>{ if(!_fbMap[f.storeId]||f.date>=_fbMap[f.storeId].date) _fbMap[f.storeId]=f; });
     const fb=_fbMap[s.id];
-    if(r.verified) return; // complete — don't count in pending/checking
-    const totalItems=r.refs&&r.refs.length?r.refs.length:1;
-    let responded=0;
-    if(fb){
-      if(r.refs&&r.refs.length){
-        const fbByRef={};
-        (fb.itemFeedbacks||[]).forEach(it=>{ if(it.refId) fbByRef[it.refId]=it; });
-        r.refs.forEach(ref=>{ const it=fbByRef[ref.id]; if(it&&(it.note||(it.photos&&it.photos.length))) responded++; });
-        if(responded===0) responded=Math.min((fb.itemFeedbacks||[]).filter(it=>it.note||(it.photos&&it.photos.length)).length,totalItems);
-      } else {
-        responded=(fb.text||(fb.itemFeedbacks&&fb.itemFeedbacks.length))?1:0;
-      }
-    }
-    if(responded>=totalItems) checkingCount++; // all responded, waiting admin verify
-    else pendingCount++; // not fully responded
+    if(r.verified) return; // complete
+    if(!fb){ pendingCount++; return; }
+    const _fbByRef={};
+    (fb.itemFeedbacks||[]).forEach(it=>{ if(it.refId) _fbByRef[it.refId]=it; });
+    const everResponded=Object.values(_fbByRef).filter(it=>it.note||(it.photos&&it.photos.length)).length;
+    if(everResponded>0) checkingCount++; // submitted → checking
+    else pendingCount++;
   });
   document.getElementById('rv-stats-row').innerHTML=`
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);padding:13px 14px;display:flex;align-items:center;gap:12px;">
@@ -4259,27 +4251,18 @@ function renderReviewerHome(){
       </div>
     </div>`;
 
-  // Report list — sort: pending → partial → checking → complete
+  // Report list — sort: pending → checking → complete
   const sorted=[...reports].sort((a,bb)=>{
     const getMyStatus=(r)=>{
-      if(r.verified) return 3; // complete — last
+      if(r.verified) return 2; // complete — last
       const _fbMapSort={};
       r.feedbacks.forEach(f=>{ if(!_fbMapSort[f.storeId]||f.date>=_fbMapSort[f.storeId].date) _fbMapSort[f.storeId]=f; });
       const fb=_fbMapSort[s.id];
       if(!fb) return 0; // pending
-      const total=r.refs&&r.refs.length?r.refs.length:1;
       const _fbByRef={};
       (fb.itemFeedbacks||[]).forEach(it=>{ if(it.refId) _fbByRef[it.refId]=it; });
-      let responded=0;
-      if(r.refs&&r.refs.length){
-        r.refs.forEach(ref=>{ const it=_fbByRef[ref.id]; if(it&&(it.note||(it.photos&&it.photos.length))) responded++; });
-        if(responded===0) responded=Math.min((fb.itemFeedbacks||[]).filter(it=>it.note||(it.photos&&it.photos.length)).length,total);
-      } else {
-        responded=(fb.text||(fb.itemFeedbacks&&fb.itemFeedbacks.length))?1:0;
-      }
-      if(responded===0) return 0;      // pending
-      if(responded<total) return 1;    // partial
-      return 2;                         // checking (all responded, not verified)
+      const everResponded=Object.values(_fbByRef).filter(it=>it.note||(it.photos&&it.photos.length)).length;
+      return everResponded>0 ? 1 : 0; // submitted=checking, else pending
     };
     return getMyStatus(a)-getMyStatus(bb);
   });
@@ -4319,14 +4302,29 @@ function renderReviewerHome(){
 
     // ── 4-state status rule ────────────────────────────────────────────────
     // Complete  — admin verified (r.verified===true)
-    // Checking  — all items responded but not yet verified (waiting for admin)
-    // Partial   — some items responded, not all
+    // Checking  — store has submitted (myFb exists) and not yet verified
+    //             stays Checking even if admin adds new items after submission
+    // Partial   — store has responded some items but never fully submitted all
     // Pending   — no response at all
     let bc, bt, borderStyle;
-    const allResponded = myFb && respondedItems >= effectiveTotal;
+    // Check if store ever submitted all original items (has a submission date)
+    const hasEverSubmitted = !!(myFb && myFb.date);
+    // Count items that had response at time of first submission
+    // We use: if myFb exists and respondedItems > 0 and was ever fully submitted
+    // Simple rule: if myFb exists, it means store submitted. If they submitted fully → Checking.
+    // If they only partially submitted (first time, not all done) → Partial.
+    // We detect "fully submitted once" by checking if respondedItems >= originalItemCount
+    // where originalItemCount = total items at time of submission (we approximate as: if respondedItems covers all refs that existed when submitted)
+    // Best approximation: count only items that have ANY response (ignoring new empty ones)
+    const everRespondedCount = myFb ? (()=>{
+      const fbByRef2={};
+      (myFb.itemFeedbacks||[]).forEach(it=>{ if(it.refId) fbByRef2[it.refId]=it; });
+      return Object.values(fbByRef2).filter(it=>it.note||(it.photos&&it.photos.length)).length;
+    })() : 0;
     if(r.verified){
       bc='badge-done'; bt='Complete'; borderStyle='border:2px solid var(--success);';
-    } else if(allResponded){
+    } else if(hasEverSubmitted && everRespondedCount>0){
+      // Store has submitted — stays Checking regardless of new items added
       bc='badge-pending'; bt='Checking'; borderStyle='border:2px solid var(--warn);';
     } else if(myFb && respondedItems>0){
       bc='badge-partial'; bt='Partial'; borderStyle='border:2px solid var(--accent);';
@@ -4608,27 +4606,37 @@ function openReviewerReport(rid){
     (myFb.itemFeedbacks||[]).forEach(it=>{ if(it.refId) fbByRefId[it.refId]=it; });
     // Use r.refs as the source of truth — iterate refs, not itemFeedbacks
     const refsToShow=r.refs&&r.refs.length?r.refs:[{id:'general',name:'General feedback',desc:'',photos:[]}];
+    // Count new items (refs with no response at all)
+    const newItems=refsToShow.filter(ref=>{ const it=fbByRefId[ref.id]; return !(it&&(it.note||(it.photos&&it.photos.length))); });
+    const hasNewItems=newItems.length>0&&_isPartial;
     submittedDiv.innerHTML=`
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:13px 15px;background:${_isPartial?'var(--badge-partial-bg)':`var(--alert-success-bg)`};border:1px solid ${_isPartial?`var(--accent)`:`var(--alert-success-border)`};border-radius:var(--rl);margin-bottom:14px;">
-        <div style="font-size:13px;font-weight:600;color:${_isPartial?`var(--accent)`:`var(--success)`};">${_isPartial?`⚠️ Partial · ${_respondedItems}/${_totalRefItems} items · ${myFb.date}`:`✓ Submitted · ${myFb.date}`}</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:13px 15px;background:${hasNewItems?'#fff3e0':_isPartial?'var(--badge-partial-bg)':'var(--alert-success-bg)'};border:1px solid ${hasNewItems?'var(--warn)':_isPartial?'var(--accent)':'var(--alert-success-border)'};border-radius:var(--rl);margin-bottom:14px;">
+        <div>
+          <div style="font-size:13px;font-weight:600;color:${hasNewItems?'var(--warn)':_isPartial?'var(--accent)':'var(--success)'};">${hasNewItems?`⚠️ New items added · ${_respondedItems}/${_totalRefItems} responded`:_isPartial?`⚠️ Partial · ${_respondedItems}/${_totalRefItems} items · ${myFb.date}`:`✓ Submitted · ${myFb.date}`}</div>
+          ${hasNewItems?`<div style="font-size:11px;color:var(--warn);margin-top:2px;">${newItems.length} item${newItems.length>1?'s':''} need${newItems.length===1?'s':''} your response</div>`:''}
+        </div>
         <button class="btn btn-xs" onclick="editAllResponses('${rid}')">Edit all</button>
       </div>
       ${refsToShow.map((ref,i)=>{
         const item=fbByRefId[ref.id]||{refId:ref.id,note:'',photos:[]};
-        const hasMyContent=item.note||(item.photos&&item.photos.length);
+        const hasMyContent=!!(item.note||(item.photos&&item.photos.length));
+        const isNew=!hasMyContent; // no response = new or unanswered
         const adminPhotos=ref&&ref.photos&&ref.photos.length?ref.photos:[];
-        return `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);margin-bottom:10px;overflow:hidden;">
+        return `<div style="background:var(--bg2);border:${isNew?'1.5px solid var(--warn)':'1px solid var(--border)'};border-radius:var(--rl);margin-bottom:10px;overflow:hidden;">
           <!-- Header -->
           <div onclick="toggleReviewerItem('rvs_${i}')" style="display:flex;align-items:center;gap:10px;padding:13px 14px;cursor:pointer;">
             <div style="flex:1;">
-              <div style="font-size:14px;font-weight:600;">${i+1}. ${ref&&ref.name?ref.name:'Item '+(i+1)}</div>
+              <div style="display:flex;align-items:center;gap:6px;">
+                <div style="font-size:14px;font-weight:600;">${i+1}. ${ref&&ref.name?ref.name:'Item '+(i+1)}</div>
+                ${isNew?`<span style="font-size:10px;font-weight:700;color:var(--warn);background:#fff3e0;padding:2px 7px;border-radius:10px;flex-shrink:0;">New</span>`:''}
+              </div>
               ${ref&&ref.desc?`<div style="font-size:12px;color:var(--text2);margin-top:1px;">${ref.desc}</div>`:''}
             </div>
-            <span style="font-size:11px;font-weight:600;color:${hasMyContent?'var(--success)':'var(--text3)'};">${hasMyContent?'✓ Responded':'No response'}</span>
+            <span style="font-size:11px;font-weight:600;color:${hasMyContent?'var(--success)':'var(--warn)'};">${hasMyContent?'✓ Responded':'Needs response'}</span>
             <div id="rvi_arrow_s${i}" style="font-size:13px;color:var(--text3);">▼</div>
           </div>
           <!-- Dropdown -->
-          <div id="rvs_${i}" style="display:none;border-top:1px solid var(--border);">
+          <div id="rvs_${i}" style="display:${isNew?'block':'none'};border-top:1px solid var(--border);">
             ${adminPhotos.length?`
               <div style="padding:10px 14px;background:var(--bg3);border-bottom:1px solid var(--border);">
                 <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:7px;">Admin reference</div>
@@ -4640,7 +4648,7 @@ function openReviewerReport(rid){
                 <button class="btn btn-xs" onclick="editSingleResponse('${rid}',${i})">Edit</button>
               </div>
               <div id="rvs_view_${i}">
-                ${item.note?`<div style="font-size:14px;color:var(--text);line-height:1.6;margin-bottom:8px;">${item.note}</div>`:'<div style="font-size:13px;color:var(--text3);margin-bottom:8px;">No note</div>'}
+                ${item.note?`<div style="font-size:14px;color:var(--text);line-height:1.6;margin-bottom:8px;">${item.note}</div>`:'<div style="font-size:13px;color:var(--text3);margin-bottom:8px;">No response yet</div>'}
                 ${item.photos&&item.photos.length?`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;">${item.photos.map(p=>`<div style="aspect-ratio:1;border-radius:8px;overflow:hidden;"><img src="${p}" style="width:100%;height:100%;object-fit:cover;cursor:pointer;" onclick="openLightbox('${p}')"/></div>`).join('')}</div>`:''}
               </div>
               <div id="rvs_edit_${i}" style="display:none;">
