@@ -4346,15 +4346,14 @@ function renderReviewerHome(){
             ${insp.checkedBy?`<div style="font-size:12px;color:var(--text2);margin-top:3px;">Checked by: <strong>${insp.checkedBy}</strong></div>`:''}
             ${insp.date?`<div style="font-size:11px;color:var(--text3);margin-top:2px;">${insp.date}</div>`:''}
           </div>
-          ${totalItems?`<div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;flex-shrink:0;min-width:80px;">
-            <div style="display:flex;align-items:center;gap:5px;">
-              <span style="font-size:11px;color:var(--text2);">${respondedItems}/${totalItems} items</span>
-              ${rejectedCount>0?`<span style="font-size:11px;font-weight:700;color:var(--danger);">×${rejectedCount}</span>`:''}
-            </div>
-            <div style="width:70px;background:var(--bg4);border-radius:3px;height:5px;">
+          ${totalItems?`<div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0;">
+            ${respondedItems>0?`<span style="font-size:11px;font-weight:600;color:var(--success);">${respondedItems} responded</span>`:''}
+            ${rejectedCount>0?`<span style="font-size:11px;font-weight:600;color:var(--danger);">×${rejectedCount} rejected</span>`:''}
+            ${(totalItems-respondedItems-rejectedCount)>0?`<span style="font-size:11px;font-weight:600;color:var(--text3);">${totalItems-respondedItems-rejectedCount} no response</span>`:''}
+            <div style="width:70px;background:var(--bg4);border-radius:3px;height:5px;margin-top:2px;">
               <div style="width:${itemPct}%;background:${rejectedCount>0?'var(--danger)':itemPct===100?'var(--success)':itemPct>0?'var(--accent)':'var(--border2)'};height:5px;border-radius:3px;transition:width .5s;"></div>
             </div>
-            <span style="font-size:11px;font-weight:600;color:${itemPct===100&&!rejectedCount?'var(--success)':rejectedCount>0?'var(--danger)':itemPct>0?'var(--warn)':'var(--text3)'};">${itemPct}%</span>
+            <span style="font-size:11px;font-weight:600;color:${itemPct===100&&!rejectedCount?'var(--success)':rejectedCount>0?'var(--danger)':itemPct>0?'var(--warn)':'var(--text3)'};">${respondedItems}/${totalItems}</span>
           </div>`:``}
         </div>
       </div>
@@ -4758,9 +4757,11 @@ function renderItemForms(r, brandColor){
   el.innerHTML=refs.map((ref,i)=>{
     const _itFb = DB.itemFeedbacks[i] || {};
     const _isRejected = !!_itFb._rejected;
+    const _isEmpty = !_isRejected && !(_itFb.note&&_itFb.note.trim()) && !(_itFb.photos&&_itFb.photos.length);
     const _remarkText = _itFb._adminRemark || '';
+    const _cardBorder = _isRejected?'var(--danger)':_isEmpty?'var(--warn)':'var(--border)';
     return `
-    <div style="background:var(--bg2);border:1.5px solid ${_isRejected?'var(--danger)':'var(--border)'};border-radius:var(--rl);margin-bottom:10px;overflow:hidden;">
+    <div style="background:var(--bg2);border:1.5px solid ${_cardBorder};border-radius:var(--rl);margin-bottom:10px;overflow:hidden;">
       ${_isRejected ? `
       <!-- Rejection timeline — all rounds visible -->
       <div id="rv_rej_banner_${i}" style="background:var(--alert-danger-bg);border-bottom:1px solid var(--alert-danger-border);padding:10px 14px;">
@@ -4882,13 +4883,14 @@ function refreshReviewerItemStatus(idx){
   const it=DB.itemFeedbacks[idx];
   const lbl=document.getElementById('rvi_status_'+idx);
   if(!lbl||!it) return;
-  const hasContent=it.note.trim()||it.photos.length;
+  const hasContent=!!(it.note&&it.note.trim())||!!(it.photos&&it.photos.length);
   if(hasContent){
     lbl.textContent='Added'; lbl.style.color='var(--success)';
   } else if(it._rejected){
     lbl.textContent='Response needed'; lbl.style.color='var(--danger)';
   } else {
-    lbl.textContent='Tap to respond'; lbl.style.color='var(--text3)';
+    // New item with no content — needs response
+    lbl.textContent='Response needed'; lbl.style.color='var(--warn)';
   }
   // Hide rejection banner once reviewer has added a response
   const banner=document.getElementById('rv_rej_banner_'+idx);
@@ -4904,20 +4906,28 @@ function refreshReviewerItemStatus(idx){
   checkAllItemsDone();
 }
 function checkAllItemsDone(){
-  const hasRejected = DB.itemFeedbacks.some(it=>it._rejected);
-  let allDone;
-  if(hasRejected){
-    // Resubmission mode — only require rejected items to have new content
-    allDone = DB.itemFeedbacks.length>0 && DB.itemFeedbacks
-      .filter(it=>it._rejected)
-      .every(it=>it.note.trim()||it.photos.length);
-  } else {
-    allDone = DB.itemFeedbacks.length>0 && DB.itemFeedbacks.every(it=>it.note.trim()||it.photos.length);
+  if(!DB.itemFeedbacks || !DB.itemFeedbacks.length){ 
+    const submitBtn=document.getElementById('rv-submit-btn');
+    const hint=document.getElementById('rv-submit-hint');
+    if(submitBtn) submitBtn.style.display='none';
+    if(hint) hint.style.display='';
+    return;
   }
+  // Every item must have content (note or photos)
+  const missing = DB.itemFeedbacks.filter(it => {
+    const hasContent = !!(it.note && it.note.trim()) || !!(it.photos && it.photos.length);
+    return !hasContent;
+  });
+  const allDone = missing.length === 0;
   const submitBtn=document.getElementById('rv-submit-btn');
   const hint=document.getElementById('rv-submit-hint');
   if(submitBtn) submitBtn.style.display=allDone?'':'none';
-  if(hint) hint.style.display=allDone?'none':'';
+  if(hint){
+    hint.style.display=allDone?'none':'';
+    hint.textContent=missing.length===1
+      ? '1 item still needs a response'
+      : `${missing.length} items still need a response`;
+  }
 }
 function getTimestamp(){
   const now=new Date();
@@ -5038,12 +5048,10 @@ async function saveReviewerDraft(){
 
 async function submitReviewerFeedback(){
   const msg=document.getElementById('rv-fb-msg');
-  const hasRejected = DB.itemFeedbacks.some(it=>it._rejected);
-  const allDone = hasRejected
-    ? DB.itemFeedbacks.filter(it=>it._rejected).every(it=>it.note.trim()||it.photos.length)
-    : DB.itemFeedbacks.every(it=>it.note.trim()||it.photos.length);
-  if(!allDone){
-    msg.innerHTML='<div class="alert alert-danger">'+(hasRejected?'Please fill in all rejected items before resubmitting.':'Please complete all items before submitting.')+'</div>';
+  const missingItems=DB.itemFeedbacks.filter(it=>!(it.note&&it.note.trim())&&!(it.photos&&it.photos.length));
+  if(missingItems.length>0){
+    msg.innerHTML='<div class="alert alert-danger">'+missingItems.length+' item'+(missingItems.length>1?'s':'')+' still need a response before submitting.</div>';
+    setTimeout(()=>msg.innerHTML='',3000);
     return;
   }
   const b=reviewerBrand(), s=reviewerStore();
