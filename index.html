@@ -6021,11 +6021,13 @@ function erAddRefPhoto(i, input){
   if(!_erRefs[i]) return;
   if(!_erRefs[i].photos) _erRefs[i].photos=[];
   const idx = i;
+  const isCam=input.id && input.id.startsWith('er_ref_cam');
   Array.from(input.files).forEach(f=>{
     if(!f.type.startsWith('image/') && !f.name.toLowerCase().match(/\.(heic|heif)$/)) return;
-    compressImage(f, 800, 0.8, data=>{
+    compressImage(f, 800, 0.8, async data=>{
       if(!data) return;
       _erRefs[idx].photos.push(data);
+      if(isCam) await autoSavePhotoToDevice(data, 'ref');
       const grid=document.getElementById('er_ref_grid_'+idx);
       if(grid) grid.innerHTML=(_erRefs[idx].photos||[]).map((p,pi)=>`<div style="position:relative;aspect-ratio:1;border-radius:7px;overflow:hidden;"><img src="${p}" style="width:100%;height:100%;object-fit:cover;cursor:pointer;" onclick="openLightbox('${p}')"/><button onclick="erRemoveRefPhoto(${idx},${pi})" style="position:absolute;top:2px;right:2px;width:18px;height:18px;border-radius:50%;background:rgba(0,0,0,.6);border:none;color:#fff;font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>`).join('');
     });
@@ -7095,9 +7097,15 @@ function addRefPhotosInline(refId, rid, input){
   const b=brand(), r=b.reports.find(r=>r.id===rid);
   const ref=r.refs.find(rf=>rf.id===refId);
   if(!ref) return;
-  Array.from(input.files).forEach(f=>{
+  const isCam=input.id && input.id.startsWith('refphotoseditcam');
+  Array.from(input.files).forEach(async f=>{
     if(!f.type.startsWith('image/') && !f.name.toLowerCase().match(/\.(heic|heif)$/)) return;
-    convertToJpeg(f).then(dataUrl=>{ ref.photos.push(dataUrl); rebuildRefPhotoGrid(refId, rid); }).catch(console.error);
+    try{
+      const dataUrl=await convertToJpeg(f);
+      ref.photos.push(dataUrl);
+      rebuildRefPhotoGrid(refId, rid);
+      if(isCam) await autoSavePhotoToDevice(dataUrl, 'ref');
+    }catch(e){ console.error('addRefPhotosInline error:',e); }
   });
 }
 function removeRefPhotoInline(refId, rid, idx){
