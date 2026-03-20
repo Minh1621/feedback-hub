@@ -593,7 +593,14 @@ label{
       </div>
       <div id="es-pass-shown" style="display:none;"></div>
     </div>
-    <div class="field"><label>Notification email</label><div style="display:flex;gap:8px;"><input id="es-notif-email" type="email" placeholder="email@example.com" style="flex:1;"/><button class="btn btn-sm" onclick="testStoreNotifEmail()">Test</button></div></div>
+    <div class="field"><label>Notification email</label>
+      <div style="display:flex;gap:8px;">
+        <input id="es-notif-email" type="email" placeholder="email@example.com" style="flex:1;" oninput="esOnNotifEmailInput()"/>
+        <button class="btn btn-sm" id="es-verify-btn" onclick="esVerifyNotifEmail()">Verify</button>
+        <button class="btn btn-sm" onclick="testStoreNotifEmail()">Test</button>
+      </div>
+      <div id="es-notif-verified" style="display:none;font-size:11px;color:var(--success);margin-top:4px;">✓ Email verified</div>
+    </div>
     <div id="edit-store-msg" style="margin:8px 0;"></div>
     <button class="btn btn-primary btn-full" onclick="doEditStore()">Save changes</button>
     <div style="height:24px;"></div>
@@ -611,18 +618,49 @@ label{
   </div>
   <div class="content">
     <div class="field"><label>Brand</label><div id="add-store-brand-name" style="font-weight:600;padding:10px 0;"></div></div>
-    <div class="sec-label" style="margin-bottom:8px;">Cover color</div>
-    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:14px;">
-      <input type="color" id="ns-color-pick" value="#7c6fff" oninput="nsSetColor(this.value)" style="width:36px;height:30px;border:1px solid var(--border);border-radius:6px;cursor:pointer;padding:1px;"/>
-      <div id="ns-swatches" style="display:flex;gap:5px;flex-wrap:wrap;"></div>
+
+    <!-- Preview card -->
+    <div class="sec-label" style="margin-bottom:8px;">Preview</div>
+    <div id="ns-card-preview" style="margin-bottom:16px;overflow:visible;"></div>
+
+    <!-- Cover appearance -->
+    <div class="sec-label" style="margin-bottom:8px;">Cover background</div>
+    <div style="display:flex;gap:6px;margin-bottom:12px;">
+      <button id="ns-mode-color" class="btn btn-primary btn-sm" style="flex:1;" onclick="nsSetCoverMode('color')">Color</button>
+      <button id="ns-mode-photo" class="btn btn-sm" style="flex:1;" onclick="nsSetCoverMode('photo')">Photo</button>
     </div>
-    <div class="field"><label>Store name</label><input id="ns-name" type="text" placeholder="Store name"/></div>
-    <div class="field"><label>Phone</label><input id="ns-phone" type="tel" placeholder="+855..."/></div>
-    <div class="field"><label>Location</label><input id="ns-location" type="text" placeholder="Address"/></div>
-    <div class="field"><label>Username</label><input id="ns-user" type="text" placeholder="Login username" autocomplete="off"/></div>
-    <div class="field"><label>Password</label><input id="ns-pass" type="text" placeholder="Password" autocomplete="new-password"/></div>
+    <div id="ns-color-section">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
+        <input type="color" id="ns-color-pick" value="#7c6fff" oninput="nsSetColor(this.value)" style="width:36px;height:30px;border:1px solid var(--border);border-radius:6px;cursor:pointer;padding:1px;"/>
+        <div id="ns-swatches" style="display:flex;gap:5px;flex-wrap:wrap;"></div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+        <div><div style="font-size:13px;font-weight:600;">Gradient effect</div></div>
+        <input type="checkbox" id="ns-gradient" checked onchange="nsUpdatePreview()" style="width:16px;height:16px;accent-color:var(--accent);cursor:pointer;"/>
+      </div>
+    </div>
+    <div id="ns-photo-section" style="display:none;">
+      <div style="font-size:12px;color:var(--text2);margin-bottom:8px;">Best size: <strong>800 × 160px</strong></div>
+      <div id="ns-cover-photo-wrap" style="display:none;margin-bottom:8px;border-radius:8px;overflow:hidden;height:70px;position:relative;">
+        <img id="ns-cover-photo-img" src="" style="width:100%;height:100%;object-fit:cover;"/>
+        <button onclick="nsClearCoverPhoto()" style="position:absolute;top:6px;right:6px;background:rgba(0,0,0,.6);border:none;color:#fff;border-radius:50%;width:22px;height:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <label style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1.5px dashed var(--border2);border-radius:10px;cursor:pointer;margin-bottom:10px;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        <div><div style="font-size:13px;font-weight:600;color:var(--text);">Upload cover photo</div><div style="font-size:11px;color:var(--text3);">Wide banner image</div></div>
+        <input type="file" id="ns-cover-photo-input" accept="image/*" style="display:none;" onchange="onNsCoverPhotoPick(this)"/>
+      </label>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+        <div><div style="font-size:13px;font-weight:600;">Dark overlay</div></div>
+        <input type="checkbox" id="ns-overlay" checked onchange="nsUpdatePreview()" style="width:16px;height:16px;accent-color:var(--accent);cursor:pointer;"/>
+      </div>
+    </div>
+
+    <!-- Logo -->
     <div style="margin-bottom:12px;">
-      <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:6px;">Logo (optional)</label>
+      <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:6px;">Profile logo (optional)</label>
       <div style="display:flex;align-items:center;gap:10px;">
         <div id="ns-logo-preview" style="width:44px;height:44px;border-radius:50%;background:var(--bg3);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;overflow:hidden;cursor:pointer;" onclick="document.getElementById('ns-logo-input').click()">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
@@ -631,6 +669,24 @@ label{
         <input type="file" id="ns-logo-input" accept="image/*" style="display:none;" onchange="onNsLogoPick(this)"/>
       </div>
     </div>
+
+    <div class="field"><label>Store name</label><input id="ns-name" type="text" placeholder="Store name" oninput="nsUpdatePreview()"/></div>
+    <div class="field"><label>Phone</label><input id="ns-phone" type="tel" placeholder="+855..." oninput="nsUpdatePreview()"/></div>
+    <div class="field"><label>Location</label><input id="ns-location" type="text" placeholder="Address" oninput="nsUpdatePreview()"/></div>
+    <div class="field"><label>Username</label><input id="ns-user" type="text" placeholder="Login username" autocomplete="off"/></div>
+    <div class="field"><label>Password</label><input id="ns-pass" type="text" placeholder="Password" autocomplete="new-password"/></div>
+
+    <!-- Notification email with verify -->
+    <div class="field">
+      <label>Notification email</label>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <input id="ns-notif-email" type="email" placeholder="email@example.com" style="flex:1;" oninput="nsOnNotifEmailInput()"/>
+        <button class="btn btn-sm" id="ns-verify-btn" onclick="nsVerifyNotifEmail()" style="display:none;">Verify</button>
+      </div>
+      <div id="ns-notif-verified" style="display:none;font-size:11px;color:var(--success);margin-top:4px;">✓ Email verified</div>
+      <div style="font-size:11px;color:var(--text3);margin-top:4px;">Store receives report notifications at this email. Must be verified before saving.</div>
+    </div>
+
     <div id="add-store-msg"></div>
     <button class="btn btn-primary btn-full" onclick="doAddStore()">Add store</button>
     <div style="height:40px;"></div>
@@ -797,6 +853,7 @@ label{
   </div>
   <div class="content">
     <div id="rv-inspection-card" style="margin-bottom:14px;"></div>
+    <div id="rv-store-refs-wrap" style="margin-bottom:14px;"></div>
     <div id="rv-submitted-view" style="display:none;"></div>
     <div id="rv-feedback-form" style="display:none;">
       <div id="rv-items-form"></div>
@@ -1291,8 +1348,12 @@ label{
     <div class="sec-label" style="margin-bottom:10px;">Notification email</div>
     <div class="field" style="margin-bottom:4px;">
       <label>Email for notifications</label>
-      <input type="email" id="sf-notif-email" placeholder="e.g. staff@company.com"/>
-      <div style="font-size:11px;color:var(--text3);margin-top:5px;">Staff receives report notifications at this email</div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <input type="email" id="sf-notif-email" placeholder="e.g. staff@company.com" style="flex:1;" oninput="sfOnNotifEmailInput()"/>
+        <button class="btn btn-sm" id="sf-verify-btn" onclick="sfVerifyNotifEmail()">Verify</button>
+      </div>
+      <div id="sf-notif-verified" style="display:none;font-size:11px;color:var(--success);margin-top:4px;">✓ Email verified</div>
+      <div style="font-size:11px;color:var(--text3);margin-top:5px;">Staff receives report notifications at this email. Must be verified before saving.</div>
     </div>
 
     <!-- Permissions -->
@@ -1758,6 +1819,34 @@ label{
 
 <!-- ======= STAFF EXPORT VERIFY OVERLAY ======= -->
 <div id="staff-export-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:70;align-items:flex-end;justify-content:center;">
+
+<!-- ======= NOTIF EMAIL VERIFY OVERLAY ======= -->
+<div id="notif-email-verify-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:80;align-items:flex-end;justify-content:center;">
+  <div style="background:var(--bg);border-radius:20px 20px 0 0;padding:24px;width:100%;max-width:480px;">
+    <div style="font-size:17px;font-weight:700;margin-bottom:4px;">Verify notification email</div>
+    <div style="font-size:13px;color:var(--text2);margin-bottom:20px;" id="nev-subtitle">A 6-digit code will be sent to this email</div>
+    <!-- Step 1 -->
+    <div id="nev-step1">
+      <div style="background:var(--bg3);border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:13px;font-weight:600;color:var(--text);" id="nev-email-display"></div>
+      <div id="nev-step1-msg"></div>
+      <button class="btn btn-primary btn-full" onclick="nevSendCode()">Send verification code</button>
+    </div>
+    <!-- Step 2 -->
+    <div id="nev-step2" style="display:none;">
+      <div style="background:var(--bg3);border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:13px;color:var(--text2);">
+        Code sent to <strong id="nev-sent-to"></strong>
+        <button onclick="document.getElementById('nev-step2').style.display='none';document.getElementById('nev-step1').style.display='';" style="font-size:12px;color:var(--accent);background:none;border:none;cursor:pointer;margin-left:6px;">Change</button>
+      </div>
+      <div class="field" style="margin-bottom:14px;">
+        <label>6-digit verification code</label>
+        <input type="text" id="nev-code" placeholder="000000" maxlength="6" inputmode="numeric" style="font-size:24px;letter-spacing:8px;text-align:center;font-weight:700;"/>
+      </div>
+      <div id="nev-step2-msg"></div>
+      <button class="btn btn-primary btn-full" onclick="nevVerifyCode()">Verify email</button>
+    </div>
+    <button onclick="nevClose()" style="width:100%;margin-top:10px;padding:10px;background:none;border:none;color:var(--text3);cursor:pointer;font-size:14px;">Cancel</button>
+  </div>
+</div>
   <div style="background:var(--bg);border-radius:20px 20px 0 0;padding:24px;width:100%;max-width:480px;">
     <div style="font-size:17px;font-weight:700;margin-bottom:6px;">Download staff data</div>
     <div style="font-size:13px;color:var(--text2);margin-bottom:16px;">Enter admin password to export staff credentials</div>
@@ -3022,9 +3111,19 @@ function goAddStore(){
   const b=brand();
   document.getElementById('add-store-brand-name').textContent=b?.name||'';
   _nsColor=_STORE_COLORS[b?.stores?.length%_STORE_COLORS.length]||'#7c6fff';
+  _nsCoverMode='color'; _nsCoverPhoto=null; _nsCoverOverlay=true; _nsCoverGradient=true;
+  _nsLogoData=null; _nsVerifiedEmail='';
+  ['ns-name','ns-phone','ns-location','ns-user','ns-pass','ns-notif-email'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  document.getElementById('ns-logo-preview').innerHTML='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>';
+  document.getElementById('ns-notif-verified').style.display='none';
+  document.getElementById('ns-verify-btn').style.display='none';
+  document.getElementById('add-store-msg').innerHTML='';
   setTimeout(()=>{
     document.getElementById('ns-color-pick').value=_nsColor;
+    document.getElementById('ns-gradient').checked=true;
     _buildSwatches('ns-swatches','nsSetColor',_nsColor);
+    nsSetCoverMode('color');
+    nsUpdatePreview();
   },50);
   goTo('s-add-store');
 }
@@ -3034,17 +3133,32 @@ async function doAddStore(){
   const location=document.getElementById('ns-location').value.trim();
   const user=document.getElementById('ns-user').value.trim();
   const pass=document.getElementById('ns-pass').value;
+  const notifEmail=document.getElementById('ns-notif-email').value.trim();
   const msg=document.getElementById('add-store-msg');
   if(!name||!user||!pass){ msg.innerHTML='<div class="alert alert-danger">Name, username and password are required.</div>'; return; }
   const all=DB.brands.flatMap(b=>b.stores.map(s=>s.username));
   if(all.includes(user)||user==='admin'){ msg.innerHTML='<div class="alert alert-danger">Username already taken.</div>'; return; }
+  // Enforce email verification if email entered
+  if(notifEmail && notifEmail!==_nsVerifiedEmail){
+    msg.innerHTML='<div class="alert alert-danger">Please verify the notification email before saving.</div>';
+    return;
+  }
+  // Sync cover state from checkboxes
+  _nsCoverGradient = document.getElementById('ns-gradient')?.checked !== false;
+  _nsCoverOverlay = document.getElementById('ns-overlay')?.checked !== false;
   const b=brand();
-  const newStore={id:'s'+Date.now(),name,username:user,password:pass,phone,location,logo:_nsLogoData||null,color:_nsColor};
-  b.stores.push(newStore);
+    logo:_nsLogoData||null, color:_nsColor,
+    notif_email:notifEmail||null, notif_enabled:notifEmail?1:0,
+    cover_mode:_nsCoverMode,
+    cover_photo:_nsCoverMode==='photo'?(_nsCoverPhoto||null):null,
+    cover_overlay:_nsCoverOverlay?1:0,
+    cover_gradient:_nsCoverGradient?1:0,
+  };
+  b.stores.push({...newStore, coverMode:_nsCoverMode, coverPhoto:_nsCoverPhoto, coverOverlay:_nsCoverOverlay, coverGradient:_nsCoverGradient});
   await api('POST','/api/stores',{...newStore, brand_id:b.id});
-  ['ns-name','ns-phone','ns-location','ns-user','ns-pass'].forEach(id=>document.getElementById(id).value='');
+  ['ns-name','ns-phone','ns-location','ns-user','ns-pass','ns-notif-email'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
   document.getElementById('ns-logo-preview').innerHTML='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>';
-  _nsLogoData=null;
+  _nsLogoData=null; _nsVerifiedEmail='';
   msg.innerHTML='<div class="alert alert-success">Store added!</div>';
   setTimeout(()=>{ msg.innerHTML=''; renderBrandHero(); brandTab('stores'); goTo('s-brand'); },1200);
 }
@@ -3081,6 +3195,9 @@ function goEditStore(){
   document.getElementById('es-user').value=s.username||'';
   document.getElementById('es-pass').value='';
   document.getElementById('es-notif-email').value=s.notif_email||s.email||'';
+  _esVerifiedEmail = s.notif_email||s.email||''; // treat saved email as already verified
+  const esVerifiedTick = document.getElementById('es-notif-verified');
+  if(esVerifiedTick) esVerifiedTick.style.display = _esVerifiedEmail ? '' : 'none';
   _esLogoData=s.logo||null;
   _esColor=s.color||'#7c6fff';
   _esCoverMode=s.coverMode||'color';
@@ -3121,6 +3238,11 @@ async function doEditStore(){
   if(!name||!user){ msg.innerHTML='<div class="alert alert-danger">Name and username are required.</div>'; return; }
   const allOther=DB.brands.flatMap(b=>b.stores.filter(st=>st.id!==s.id).map(st=>st.username));
   if(allOther.includes(user)||user==='admin'){ msg.innerHTML='<div class="alert alert-danger">Username already taken.</div>'; return; }
+  // Enforce email verification if email changed or new
+  if(notifEmail && notifEmail!==_esVerifiedEmail){
+    msg.innerHTML='<div class="alert alert-danger">Please verify the notification email before saving.</div>';
+    return;
+  }
   s.name=name; s.phone=phone; s.location=location; s.username=user;
   if(pass) s.password=pass;
   if(_esLogoData) s.logo=_esLogoData;
@@ -4585,7 +4707,68 @@ function openReviewerReport(rid){
     return !!(myFb.adminRemarks?.[ref.id+'_list']?.length || myFb.adminRemarks?.[ref.id]);
   });
 
-  // ── rv-store-refs-wrap removed — item list is now rendered inside submittedDiv below ──
+  // ── Always render store item cards with filter in rv-store-refs-wrap ────
+  const storeRefsWrap=document.getElementById('rv-store-refs-wrap');
+  if(storeRefsWrap && r.refs && r.refs.length){
+    // Deduplicate feedbacks
+    const _fbMapSRW={};
+    r.feedbacks.forEach(f=>{ if(!_fbMapSRW[f.storeId]||f.date>=_fbMapSRW[f.storeId].date) _fbMapSRW[f.storeId]=f; });
+    const _myFbSRW=_fbMapSRW[s.id]||null;
+    const _fbByRefSRW={};
+    (_myFbSRW?.itemFeedbacks||[]).forEach(it=>{ if(it.refId) _fbByRefSRW[it.refId]=it; });
+
+    function buildStoreRefCards(filterVal){
+      return r.refs.map((ref,idx)=>{
+        const item=_fbByRefSRW[ref.id]||{refId:ref.id,note:'',photos:[]};
+        const hasMyContent=!!(item.note||(item.photos&&item.photos.length));
+        const isRejectedItem=!!(_myFbSRW?.adminRemarks?.[ref.id+'_list']?.length||_myFbSRW?.adminRemarks?.[ref.id]);
+        const needsCorrection=isRejectedItem&&!hasMyContent;
+        const isNewItem=!hasMyContent&&!isRejectedItem&&!!_myFbSRW;
+        const remarkList=_myFbSRW?.adminRemarks?.[ref.id+'_list']||[];
+        const remarkText=remarkList.length?remarkList.map(rk=>rk.text).join(' · '):(_myFbSRW?.adminRemarks?.[ref.id]||'');
+        const itemState=needsCorrection?'rejected':isNewItem?'new_item':hasMyContent?'responded':'no_response';
+        if(filterVal==='no_response'&&itemState!=='no_response') return '';
+        if(filterVal==='responded'&&itemState!=='responded') return '';
+        if(filterVal==='rejected'&&itemState!=='rejected') return '';
+        if(filterVal==='new_item'&&itemState!=='new_item') return '';
+        const cardBorder=needsCorrection?'1.5px solid var(--danger)':isNewItem?'1.5px solid var(--warn)':'0.5px solid var(--border)';
+        let statusBadge='';
+        if(needsCorrection) statusBadge=`<span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;background:var(--alert-danger-bg);color:var(--danger);flex-shrink:0;">Needs correction</span>`;
+        else if(isNewItem) statusBadge=`<span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;background:#fff3e0;color:var(--warn);flex-shrink:0;">New</span>`;
+        else if(hasMyContent) statusBadge=`<span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;background:var(--badge-done-bg);color:var(--success);flex-shrink:0;">Responded</span>`;
+        else statusBadge=`<span style="font-size:11px;color:var(--text3);flex-shrink:0;">No response</span>`;
+        // Build preview: remark text or response note snippet
+        const previewLine=needsCorrection&&remarkText
+          ? `<div style="font-size:11px;color:var(--danger);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${remarkText}</div>`
+          : item.note
+            ? `<div style="font-size:11px;color:var(--text2);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${item.note}</div>`
+            : item.photos&&item.photos.length
+              ? `<div style="font-size:11px;color:var(--text2);margin-top:3px;">${item.photos.length} photo${item.photos.length>1?'s':''}</div>`
+              : '';
+        return `<div style="background:var(--bg2);border:${cardBorder};border-radius:var(--rl);margin-bottom:8px;padding:12px 14px;display:flex;align-items:center;gap:10px;">
+          <div style="width:28px;height:28px;border-radius:8px;background:var(--bg3);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <span style="font-size:13px;font-weight:600;color:var(--text2);">${idx+1}</span>
+          </div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${ref.name||'Item '+(idx+1)}</div>
+            ${previewLine}
+          </div>
+          ${statusBadge}
+        </div>`;
+      }).filter(Boolean).join('')||'<div class="empty">No items match this filter</div>';
+    }
+    window._buildStoreRefCards=buildStoreRefCards;
+    const _hasNewAdded=_myFbSRW && r.refs.some(ref=>{ const it=_fbByRefSRW[ref.id]; const hasRemark=!!(_myFbSRW?.adminRemarks?.[ref.id+'_list']?.length||_myFbSRW?.adminRemarks?.[ref.id]); return !hasRemark&&!(it&&(it.note||(it.photos&&it.photos.length))); });
+    storeRefsWrap.innerHTML=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;"><div class="sec-label" style="margin-bottom:0;">Items (${r.refs.length})</div></div>`
+      +`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">
+        <button data-sf="all" onclick="setStoreRefFilter('all')" class="store-ref-filter-btn btn btn-xs" style="background:var(--accent);color:#fff;border-color:var(--accent);">All</button>
+        <button data-sf="no_response" onclick="setStoreRefFilter('no_response')" class="store-ref-filter-btn btn btn-xs">No response</button>
+        <button data-sf="responded" onclick="setStoreRefFilter('responded')" class="store-ref-filter-btn btn btn-xs">Responded</button>
+        <button data-sf="rejected" onclick="setStoreRefFilter('rejected')" class="store-ref-filter-btn btn btn-xs">Rejection</button>
+        ${_hasNewAdded?`<button data-sf="new_item" onclick="setStoreRefFilter('new_item')" class="store-ref-filter-btn btn btn-xs" style="border-color:var(--warn);color:var(--warn);">New item</button>`:''}
+      </div>`
+      +`<div id="store-ref-cards-wrap">${buildStoreRefCards('all')}</div>`;
+  } else if(storeRefsWrap){ storeRefsWrap.innerHTML=''; }
 
   if(myFb && !_hasRejectedItems){
     submittedDiv.style.display='';
@@ -4601,39 +4784,6 @@ function openReviewerReport(rid){
     const _isPartial=_respondedItems<_totalRefItems;
     const newItems=(r.refs||[]).filter(ref=>{ const _fbByRefId2b={}; (myFb.itemFeedbacks||[]).forEach(it=>{ if(it.refId) _fbByRefId2b[it.refId]=it; }); const it=_fbByRefId2b[ref.id]; const hasRemark=!!(myFb.adminRemarks?.[ref.id+'_list']?.length||myFb.adminRemarks?.[ref.id]); return !hasRemark&&!(it&&(it.note||(it.photos&&it.photos.length))); });
     const hasNewItems=newItems.length>0&&_isPartial;
-    // Build submitted item summary cards
-    const _submittedItemCards = r.refs && r.refs.length ? r.refs.map((ref,idx)=>{
-      const item=_fbByRefId2[ref.id]||{refId:ref.id,note:'',photos:[]};
-      const hasMyContent=!!(item.note||(item.photos&&item.photos.length));
-      const isRejectedItem=!!(myFb.adminRemarks?.[ref.id+'_list']?.length||myFb.adminRemarks?.[ref.id]);
-      const needsCorrection=isRejectedItem&&!hasMyContent;
-      const isNewItem=!hasMyContent&&!isRejectedItem;
-      const remarkList=myFb.adminRemarks?.[ref.id+'_list']||[];
-      const remarkText=remarkList.length?remarkList.map(rk=>rk.text).join(' · '):(myFb.adminRemarks?.[ref.id]||'');
-      const cardBorder=needsCorrection?'1.5px solid var(--danger)':isNewItem?'1.5px solid var(--warn)':'0.5px solid var(--border)';
-      let statusBadge='';
-      if(needsCorrection) statusBadge=`<span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;background:var(--alert-danger-bg);color:var(--danger);flex-shrink:0;">Needs correction</span>`;
-      else if(isNewItem) statusBadge=`<span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;background:#fff3e0;color:var(--warn);flex-shrink:0;">New</span>`;
-      else if(hasMyContent) statusBadge=`<span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;background:var(--badge-done-bg);color:var(--success);flex-shrink:0;">Responded</span>`;
-      else statusBadge=`<span style="font-size:11px;color:var(--text3);flex-shrink:0;">No response</span>`;
-      const previewLine=needsCorrection&&remarkText
-        ? `<div style="font-size:11px;color:var(--danger);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${remarkText}</div>`
-        : item.note
-          ? `<div style="font-size:11px;color:var(--text2);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${item.note}</div>`
-          : item.photos&&item.photos.length
-            ? `<div style="font-size:11px;color:var(--text2);margin-top:3px;">${item.photos.length} photo${item.photos.length>1?'s':''}</div>`
-            : '';
-      return `<div style="background:var(--bg2);border:${cardBorder};border-radius:var(--rl);margin-bottom:8px;padding:12px 14px;display:flex;align-items:center;gap:10px;">
-        <div style="width:28px;height:28px;border-radius:8px;background:var(--bg3);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-          <span style="font-size:13px;font-weight:600;color:var(--text2);">${idx+1}</span>
-        </div>
-        <div style="flex:1;min-width:0;">
-          <div style="font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${ref.name||'Item '+(idx+1)}</div>
-          ${previewLine}
-        </div>
-        ${statusBadge}
-      </div>`;
-    }).join('') : '';
     submittedDiv.innerHTML=`
       <div style="display:flex;align-items:center;justify-content:space-between;padding:13px 15px;background:${hasNewItems?'#fff3e0':_isPartial?'var(--badge-partial-bg)':'var(--alert-success-bg)'};border:1px solid ${hasNewItems?'var(--warn)':_isPartial?'var(--accent)':'var(--alert-success-border)'};border-radius:var(--rl);margin-bottom:14px;">
         <div>
@@ -4641,8 +4791,7 @@ function openReviewerReport(rid){
           ${hasNewItems?`<div style="font-size:11px;color:var(--warn);margin-top:2px;">${newItems.length} item${newItems.length>1?'s':''} need${newItems.length===1?'s':''} your response</div>`:''}
         </div>
         <button class="btn btn-xs" onclick="editAllResponses('${rid}')">Edit all</button>
-      </div>
-      ${_submittedItemCards?`<div style="margin-bottom:14px;">${_submittedItemCards}</div>`:''}`;
+      </div>`;
     formDiv.style.display='none';
     formDiv.style.display='none';
   } else if(myFb && _hasRejectedItems) {
@@ -7126,6 +7275,9 @@ function openAddStaff(){
   document.getElementById('sf-phone').value='';
   document.getElementById('sf-location').value='';
   document.getElementById('sf-notif-email').value='';
+  _sfVerifiedEmail = '';
+  const sfTick = document.getElementById('sf-notif-verified');
+  if(sfTick){ sfTick.style.display='none'; }
   document.getElementById('sf-username').value='';
   document.getElementById('sf-password').value='';
   document.getElementById('sf-pass-label').textContent='Password';
@@ -7169,6 +7321,9 @@ function openEditStaff(id){
   document.getElementById('sf-phone').value=s.phone||'';
   document.getElementById('sf-location').value=s.location||'';
   document.getElementById('sf-notif-email').value=s.notif_email||'';
+  _sfVerifiedEmail = s.notif_email||'';
+  const sfTickE = document.getElementById('sf-notif-verified');
+  if(sfTickE){ sfTickE.style.display = _sfVerifiedEmail ? '' : 'none'; }
   document.getElementById('sf-username').value=s.username||'';
   document.getElementById('sf-password').value='';
   document.getElementById('sf-pass-label').textContent='New password (leave blank to keep)';
@@ -7289,11 +7444,14 @@ async function doSaveStaff(){
 
   if(!username){ msg.innerHTML='<div class="alert alert-danger">Username is required.</div>'; return; }
   if(!_sfEditingId && !password){ msg.innerHTML='<div class="alert alert-danger">Password is required for new staff.</div>'; return; }
-
+  const notifEmail=document.getElementById('sf-notif-email').value.trim();
+  if(notifEmail && notifEmail!==_sfVerifiedEmail){
+    msg.innerHTML='<div class="alert alert-danger">Please verify the notification email before saving.</div>';
+    return;
+  }
   msg.innerHTML='<div class="alert alert-success">Saving...</div>';
   const company=document.getElementById('sf-company').value.trim();
   const location=document.getElementById('sf-location').value.trim();
-  const notifEmail=document.getElementById('sf-notif-email').value.trim();
   const cardStyle=JSON.stringify({
     coverColor:_sfCoverColor, companyColor:_sfCompanyColor,
     avatarPos:_sfAvatarPos, gradient:_sfCoverGradient,
@@ -8061,6 +8219,179 @@ async function evVerifyAndChange(){
       setTimeout(()=>{ document.getElementById('email-verify-overlay').style.display='none'; },1500);
     } else { msg.innerHTML='<div class="alert alert-danger">Failed to change password.</div>'; }
   }
+}
+
+}
+
+/* ===== NOTIF EMAIL VERIFY (for add store, edit store, add/edit staff) ===== */
+let _nevContext = null; // { source: 'ns'|'es'|'sf', email, onSuccess }
+
+function nevOpen(source, email, onSuccess) {
+  _nevContext = { source, email, onSuccess };
+  document.getElementById('nev-email-display').textContent = email;
+  document.getElementById('nev-subtitle').textContent = 'A 6-digit code will be sent to this email';
+  document.getElementById('nev-step1').style.display = '';
+  document.getElementById('nev-step2').style.display = 'none';
+  document.getElementById('nev-step1-msg').innerHTML = '';
+  document.getElementById('nev-step2-msg').innerHTML = '';
+  document.getElementById('nev-code').value = '';
+  document.getElementById('notif-email-verify-overlay').style.display = 'flex';
+}
+
+function nevClose() {
+  document.getElementById('notif-email-verify-overlay').style.display = 'none';
+  _nevContext = null;
+}
+
+async function nevSendCode() {
+  if (!_nevContext) return;
+  const email = _nevContext.email;
+  const msg = document.getElementById('nev-step1-msg');
+  msg.innerHTML = '<div class="alert alert-success">Sending code...</div>';
+  const result = await api('POST', '/api/send-verify-code', { email });
+  if (result && result.ok) {
+    document.getElementById('nev-sent-to').textContent = email;
+    document.getElementById('nev-step1').style.display = 'none';
+    document.getElementById('nev-step2').style.display = '';
+    document.getElementById('nev-step2-msg').innerHTML = '';
+    setTimeout(() => document.getElementById('nev-code').focus(), 100);
+  } else {
+    msg.innerHTML = `<div class="alert alert-danger">${result?.error || 'Failed to send. Check the email address.'}</div>`;
+  }
+}
+
+async function nevVerifyCode() {
+  const code = document.getElementById('nev-code').value.trim();
+  const email = document.getElementById('nev-sent-to').textContent;
+  const msg = document.getElementById('nev-step2-msg');
+  if (code.length !== 6) { msg.innerHTML = '<div class="alert alert-danger">Please enter the 6-digit code.</div>'; return; }
+  msg.innerHTML = '<div class="alert alert-success">Verifying...</div>';
+  const verify = await api('POST', '/api/verify-code', { email, code });
+  if (!verify || !verify.ok) { msg.innerHTML = `<div class="alert alert-danger">${verify?.error || 'Invalid code. Please try again.'}</div>`; return; }
+  msg.innerHTML = '<div class="alert alert-success">Email verified!</div>';
+  // Call the success callback
+  if (_nevContext?.onSuccess) _nevContext.onSuccess(email);
+  setTimeout(() => nevClose(), 900);
+}
+
+// ── Add store: notif email verify helpers ────────────────────────────────────
+let _nsVerifiedEmail = '';
+function nsOnNotifEmailInput() {
+  const val = document.getElementById('ns-notif-email').value.trim();
+  const btn = document.getElementById('ns-verify-btn');
+  const tick = document.getElementById('ns-notif-verified');
+  if (val !== _nsVerifiedEmail) { _nsVerifiedEmail = ''; tick.style.display = 'none'; }
+  btn.style.display = (val && val.includes('@')) ? '' : 'none';
+}
+function nsVerifyNotifEmail() {
+  const email = document.getElementById('ns-notif-email').value.trim();
+  if (!email || !email.includes('@')) return;
+  nevOpen('ns', email, (verifiedEmail) => {
+    _nsVerifiedEmail = verifiedEmail;
+    document.getElementById('ns-notif-verified').style.display = '';
+  });
+}
+
+// ── Edit store: notif email verify helpers ───────────────────────────────────
+let _esVerifiedEmail = '';
+function esOnNotifEmailInput() {
+  const val = document.getElementById('es-notif-email').value.trim();
+  const tick = document.getElementById('es-notif-verified');
+  if (val !== _esVerifiedEmail) { _esVerifiedEmail = ''; tick.style.display = 'none'; }
+}
+function esVerifyNotifEmail() {
+  const email = document.getElementById('es-notif-email').value.trim();
+  if (!email || !email.includes('@')) return;
+  nevOpen('es', email, (verifiedEmail) => {
+    _esVerifiedEmail = verifiedEmail;
+    document.getElementById('es-notif-verified').style.display = '';
+  });
+}
+
+// ── Staff form: notif email verify helpers ───────────────────────────────────
+let _sfVerifiedEmail = '';
+function sfOnNotifEmailInput() {
+  const val = document.getElementById('sf-notif-email').value.trim();
+  const tick = document.getElementById('sf-notif-verified');
+  if (val !== _sfVerifiedEmail) { _sfVerifiedEmail = ''; tick.style.display = 'none'; }
+}
+function sfVerifyNotifEmail() {
+  const email = document.getElementById('sf-notif-email').value.trim();
+  if (!email || !email.includes('@')) return;
+  nevOpen('sf', email, (verifiedEmail) => {
+    _sfVerifiedEmail = verifiedEmail;
+    document.getElementById('sf-notif-verified').style.display = '';
+  });
+}
+
+// ── Add store: cover photo helpers ──────────────────────────────────────────
+let _nsCoverMode = 'color';
+let _nsCoverPhoto = null;
+let _nsCoverOverlay = true;
+let _nsCoverGradient = true;
+
+function nsSetCoverMode(mode) {
+  _nsCoverMode = mode;
+  document.getElementById('ns-color-section').style.display = mode === 'color' ? '' : 'none';
+  document.getElementById('ns-photo-section').style.display = mode === 'photo' ? '' : 'none';
+  document.getElementById('ns-mode-color').className = 'btn btn-sm' + (mode === 'color' ? ' btn-primary' : '');
+  document.getElementById('ns-mode-photo').className = 'btn btn-sm' + (mode === 'photo' ? ' btn-primary' : '');
+  nsUpdatePreview();
+}
+
+function nsClearCoverPhoto() {
+  _nsCoverPhoto = null;
+  document.getElementById('ns-cover-photo-wrap').style.display = 'none';
+  document.getElementById('ns-cover-photo-img').src = '';
+  nsUpdatePreview();
+}
+
+function onNsCoverPhotoPick(input) {
+  const file = input.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    _nsCoverPhoto = e.target.result;
+    const wrap = document.getElementById('ns-cover-photo-wrap');
+    const img = document.getElementById('ns-cover-photo-img');
+    wrap.style.display = ''; img.src = _nsCoverPhoto;
+    nsUpdatePreview();
+  };
+  reader.readAsDataURL(file);
+}
+
+function nsUpdatePreview() {
+  const name = document.getElementById('ns-name').value.trim() || 'Store name';
+  const phone = document.getElementById('ns-phone').value.trim();
+  const location = document.getElementById('ns-location').value.trim();
+  const color = _nsColor || '#7c6fff';
+  const gradient = document.getElementById('ns-gradient')?.checked !== false;
+  const overlay = document.getElementById('ns-overlay')?.checked !== false;
+  const b = brand();
+  const previewEl = document.getElementById('ns-card-preview');
+  if (!previewEl) return;
+  let coverStyle = '';
+  if (_nsCoverMode === 'photo' && _nsCoverPhoto) {
+    coverStyle = `background:url('${_nsCoverPhoto}') center/cover no-repeat;`;
+    if (overlay) coverStyle += `filter:brightness(.75);`;
+  } else {
+    coverStyle = gradient
+      ? `background:linear-gradient(135deg,${color} 0%,#c4b5fd 100%);`
+      : `background:${color};`;
+  }
+  const logoHTML = _nsLogoData
+    ? `<img src="${_nsLogoData}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"/>`
+    : `<span style="font-size:15px;font-weight:700;color:#fff;">${name.slice(0,2).toUpperCase()}</span>`;
+  previewEl.innerHTML = `
+    <div style="border-radius:16px;overflow:hidden;border:1px solid var(--border);">
+      <div style="height:80px;${coverStyle}"></div>
+      <div style="background:var(--bg);padding:12px 14px 14px;">
+        <div style="width:52px;height:52px;border-radius:50%;background:${color};border:3px solid var(--bg);margin-top:-30px;margin-bottom:8px;display:flex;align-items:center;justify-content:center;overflow:hidden;">${logoHTML}</div>
+        <div style="font-size:16px;font-weight:700;">${name}</div>
+        ${b?.name ? `<div style="font-size:12px;color:var(--text2);margin-top:2px;">${b.name}</div>` : ''}
+        ${location ? `<div style="font-size:12px;color:var(--text3);margin-top:4px;">📍 ${location}</div>` : ''}
+        ${phone ? `<div style="font-size:12px;color:var(--text3);margin-top:2px;">📞 ${phone}</div>` : ''}
+      </div>
+    </div>`;
 }
 
 function showPasswordLimitReached(){
