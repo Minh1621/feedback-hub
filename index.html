@@ -730,7 +730,7 @@ label{
         </div>
         <div style="flex:1;min-width:0;">
           <div id="fb-filename" style="font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
-          <div style="font-size:11px;color:var(--accent);margin-top:2px;">Tap to view ↗</div>
+          <div style="font-size:11px;color:var(--accent);margin-top:2px;">Tap to view</div>
         </div>
       </div>
     </div>
@@ -808,7 +808,7 @@ label{
 <div id="pdf-viewer-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:200;flex-direction:column;">
   <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:#1a1a2e;flex-shrink:0;">
     <div style="font-size:13px;font-weight:600;color:#fff;" id="pdf-viewer-title">Report PDF</div>
-    <button onclick="closePdfViewer()" style="background:rgba(255,255,255,.15);border:none;color:#fff;border-radius:8px;padding:6px 14px;font-size:13px;cursor:pointer;">✕ Close</button>
+    <button onclick="closePdfViewer()" style="background:rgba(255,255,255,.15);border:none;color:#fff;border-radius:8px;padding:6px 14px;font-size:13px;cursor:pointer;">Close</button>
   </div>
   <iframe id="pdf-viewer-frame" src="" style="flex:1;width:100%;border:none;background:#fff;"></iframe>
 </div>
@@ -2238,7 +2238,7 @@ async function restoreSession(){
       if(check && check.valid===false){
         // Kicked out by another device
         localStorage.removeItem('fh_session');
-        showToast('⚠️ Logged out — another device signed in');
+        showToast('Logged out — another device signed in');
         return false;
       }
     }
@@ -2420,7 +2420,7 @@ async function verifyReportComplete(rid){
     });
   } catch(e) {}
 
-  showToast('✓ Report verified — all stores notified!');
+  showToast('Report verified — all stores notified!');
   await loadAllData(); renderBrandReports(); renderHome();
   renderBrandReports(); renderHome(); viewFeedback(rid);
 }
@@ -2534,7 +2534,7 @@ function renderHome(_brandsOverride){
     {
       v: nIncompleteReports,
       l: 'Incomplete',
-      sub: allComplete ? 'All done ✓' : 'of '+nTotalReports+' reports',
+      sub: allComplete ? 'All done' : 'of '+nTotalReports+' reports',
       subColor: allComplete ? 'var(--success)' : 'var(--text3)',
       border: allComplete ? '1px solid var(--success)' : '1px solid #fecaca',
       numColor: allComplete ? 'var(--success)' : 'var(--danger)',
@@ -2612,9 +2612,9 @@ function renderHome(_brandsOverride){
         </div>
         <div style="padding:12px 16px;border-top:1px solid var(--border);background:var(--bg3);">
           <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;">
-            ${nComplete?`<span style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;background:var(--badge-done-bg);color:var(--success);">✓ ${nComplete} Complete</span>`:''}
-            ${nChecking?`<span style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;background:#fff3e0;color:var(--warn);">⟳ ${nChecking} Checking</span>`:''}
-            ${nPending?`<span style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;background:var(--badge-none-bg);color:var(--text3);">○ ${nPending} Pending</span>`:''}
+            ${nComplete?`<span style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;background:var(--badge-done-bg);color:var(--success);">${nComplete} Complete</span>`:''}
+            ${nChecking?`<span style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;background:#fff3e0;color:var(--warn);">${nChecking} Checking</span>`:''}
+            ${nPending?`<span style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;background:var(--badge-none-bg);color:var(--text3);">${nPending} Pending</span>`:''}
             ${b.reports.length===0?`<span style="font-size:11px;color:var(--text3);">No reports yet</span>`:''}
           </div>
           <div style="display:flex;align-items:center;gap:8px;">
@@ -2819,7 +2819,7 @@ function renderBrandReports(){
           <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;flex-shrink:0;min-width:80px;">
             <div style="display:flex;align-items:center;gap:5px;">
               <span style="font-size:11px;color:var(--text2);">${_totalRespCard}/${_totalPossCard} items</span>
-              ${_hasReject?`<span style="font-size:11px;font-weight:700;color:var(--danger);">✕${_totalRejCard}</span>`:''}
+              ${_hasReject?`<span style="font-size:11px;font-weight:700;color:var(--danger);">×${_totalRejCard}</span>`:''}
             </div>
             <div style="width:70px;background:var(--bg4);border-radius:3px;height:5px;">
               <div style="width:${_itemPctCard}%;background:${_hasReject?'var(--danger)':b.color};height:5px;border-radius:3px;transition:width .5s;"></div>
@@ -3050,7 +3050,7 @@ async function doAddStore(){
   ['ns-name','ns-phone','ns-location','ns-user','ns-pass'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('ns-logo-preview').innerHTML='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>';
   _nsLogoData=null;
-  msg.innerHTML='<div class="alert alert-success">✓ Store added!</div>';
+  msg.innerHTML='<div class="alert alert-success">Store added!</div>';
   setTimeout(()=>{ msg.innerHTML=''; renderBrandHero(); brandTab('stores'); goTo('s-brand'); },1200);
 }
 async function testStoreNotifEmail(){
@@ -3064,10 +3064,10 @@ async function testStoreNotifEmail(){
   const sid=DB.currentStoreId;
   let storeName='Store';
   for(const b of DB.brands){ const s=b.stores.find(s=>s.id===sid); if(s){ storeName=s.name; break; } }
-  msg.innerHTML='<div class="alert alert-success">⏳ Sending test...</div>';
+  msg.innerHTML='<div class="alert alert-success">Sending test...</div>';
   const result=await api('POST','/api/test-reviewer-email',{store_id:sid, email});
   if(result.ok){
-    msg.innerHTML=`<div class="alert alert-success">✓ Test sent to <strong>${result.sent_to}</strong></div>`;
+    msg.innerHTML=`<div class="alert alert-success">Test sent to <strong>${result.sent_to}</strong></div>`;
   } else {
     msg.innerHTML=`<div class="alert alert-danger">Failed: ${result.error||'check email address'}</div>`;
   }
@@ -3076,7 +3076,7 @@ async function testStoreNotifEmail(){
 
 function goEditStore(){
   const sid = DB.currentStoreId;
-  if(!sid){ showToast('⚠️ No store selected'); return; }
+  if(!sid){ showToast('No store selected'); return; }
   let s=null, foundBrand=null;
   for(const b of DB.brands){ s=b.stores.find(st=>st.id===sid); if(s){foundBrand=b;break;} }
   if(!s) return;
@@ -3144,18 +3144,18 @@ async function doEditStore(){
     cover_mode:s.coverMode, cover_photo:s.coverPhoto||null,
     cover_overlay:s.coverOverlay?1:0, cover_gradient:s.coverGradient?1:0,
   });
-  msg.innerHTML='<div class="alert alert-success">✓ Changes saved!</div>';
+  msg.innerHTML='<div class="alert alert-success">Changes saved!</div>';
   setTimeout(()=>{ msg.innerHTML=''; document.getElementById('sd-store-name').textContent=s.name; openStoreDetail(s.id); },1000);
 }
 function confirmRemoveStore(sid){
   const storeId = sid || DB.currentStoreId;
-  if(!storeId){ showToast('⚠️ No store selected'); return; }
+  if(!storeId){ showToast('No store selected'); return; }
   let foundBrand=null, foundStore=null;
   for(const b of DB.brands){
     const s=b.stores.find(s=>s.id===storeId);
     if(s){ foundBrand=b; foundStore=s; break; }
   }
-  if(!foundBrand||!foundStore){ showToast('⚠️ Store not found'); return; }
+  if(!foundBrand||!foundStore){ showToast('Store not found'); return; }
   showRemoveStoreConfirm(foundStore.name, async ()=>{
     await api('DELETE',`/api/stores/${storeId}`);
     foundBrand.stores=foundBrand.stores.filter(s=>s.id!==storeId);
@@ -3191,7 +3191,7 @@ function closeRemoveStoreOverlay(){
 }
 
 function goUploadForStore(sid){
-  if(!canUpload()){ showToast('⚠️ You do not have permission to upload reports.'); return; }
+  if(!canUpload()){ showToast('No permission to upload reports.'); return; }
   // Open upload screen with this store pre-selected
   goUpload();
   setTimeout(()=>{
@@ -3357,7 +3357,7 @@ async function doUpload(){
   if(!title){ msg.innerHTML='<div class="alert alert-danger">Please enter a title.</div>'; return; }
   if(!DB.pendingUpload){ msg.innerHTML='<div class="alert alert-danger">Please select a PDF file.</div>'; return; }
   
-  msg.innerHTML='<div class="alert alert-success">⏳ Uploading file...</div>';
+  msg.innerHTML='<div class="alert alert-success">Uploading file...</div>';
   
   // Upload PDF to R2
   let fileURL=DB.pendingUploadURL||null;
@@ -3396,7 +3396,7 @@ async function doUpload(){
   const dateEl=document.getElementById('r-inspect-date');
   if(dateEl) dateEl.value=new Date().toISOString().slice(0,10);
   renderRefItems();
-  msg.innerHTML='<div class="alert alert-success">✓ Report uploaded!</div>';
+  msg.innerHTML='<div class="alert alert-success">Report uploaded!</div>';
   closeConfirm();
   // Reload fresh data from DB so reviewer sees the new report immediately
   await loadAllData();
@@ -3592,7 +3592,7 @@ function viewFeedback(rid){
               </div>
               <div style="flex:1;min-width:0;">
                 <div style="font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${_pdfName}</div>
-                <div style="font-size:11px;color:var(--accent);margin-top:2px;">Tap to view ↗</div>
+                <div style="font-size:11px;color:var(--accent);margin-top:2px;">Tap to view</div>
               </div>
             </div>`:''}
           ${subHistoryRows?`
@@ -3618,7 +3618,7 @@ function viewFeedback(rid){
               </div>
               <div style="flex:1;min-width:0;">
                 <div style="font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${_pdfName2}</div>
-                <div style="font-size:11px;color:var(--accent);margin-top:2px;">Tap to view ↗</div>
+                <div style="font-size:11px;color:var(--accent);margin-top:2px;">Tap to view</div>
               </div>
             </div>`:''}
           <div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;" onclick="(function(el){el.classList.toggle('open');const body=el.nextElementSibling;body.style.display=el.classList.contains('open')?'':'none';el.querySelector('.hist-chevron').style.transform=el.classList.contains('open')?'rotate(180deg)':'';el.querySelector('.hist-lbl').textContent=el.classList.contains('open')?'Hide':'Show';})(this)">
@@ -3671,7 +3671,7 @@ function viewFeedback(rid){
       </div>
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
         <span style="font-size:11px;color:var(--text3);">${totalItems} item${totalItems>1?'s':''} per store · ${ts} store${ts>1?'s':''}</span>
-        ${totalRejected>0?`<span style="font-size:11px;font-weight:600;color:var(--danger);padding:1px 8px;border-radius:20px;background:var(--alert-danger-bg);border:1px solid var(--alert-danger-border);">✕ ${totalRejected} rejected</span>`:''}
+        ${totalRejected>0?`<span style="font-size:11px;font-weight:600;color:var(--danger);padding:1px 8px;border-radius:20px;background:var(--alert-danger-bg);border:1px solid var(--alert-danger-border);">×${totalRejected} rejected</span>`:''}
       </div>
       <div class="prog-wrap" style="height:8px;">
         <div class="prog-bar" style="width:${overallPct}%;background:${b.color};height:8px;"></div>
@@ -3684,7 +3684,7 @@ function viewFeedback(rid){
             <span style="font-size:12px;color:var(--text);flex:1;">${store.name}</span>
             <div style="display:flex;align-items:center;gap:5px;">
               <span style="font-size:11px;color:var(--text2);">${responded}/${total}</span>
-              ${rejected>0?`<span style="font-size:11px;font-weight:700;color:var(--danger);">✕${rejected}</span>`:''}
+              ${rejected>0?`<span style="font-size:11px;font-weight:700;color:var(--danger);">×${rejected}</span>`:''}
             </div>
             <div style="width:56px;background:var(--bg3);border-radius:3px;height:5px;flex-shrink:0;">
               <div style="width:${pct}%;background:${pct===100?'var(--success)':pct>0?'var(--accent)':'var(--border2)'};height:5px;border-radius:3px;transition:width .5s;"></div>
@@ -3723,7 +3723,7 @@ function viewFeedback(rid){
           </div>
           <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
             ${respCount?`<span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;background:var(--badge-done-bg);color:var(--success);">${respCount} response${respCount>1?'s':''}</span>`:''}
-            ${rejectCount?`<span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;background:var(--alert-danger-bg);color:var(--danger);">✕ ${rejectCount} rejected</span>`:''}
+            ${rejectCount?`<span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;background:var(--alert-danger-bg);color:var(--danger);">×${rejectCount} rejected</span>`:''}
             ${!respCount&&!rejectCount?`<span style="font-size:11px;color:var(--text3);">No responses</span>`:''}
             <div id="ai_arrow_${ref.id}" style="font-size:11px;color:var(--text3);transition:transform .2s;">▼</div>
           </div>
@@ -3859,11 +3859,11 @@ function viewFeedback(rid){
     if(hasEdited && hasRejected){
       notifyLabel = `Notify ${affectedStores.length} store${affectedStores.length>1?'s':''} — new items & rejection`;
       notifyColor = 'var(--warn)'; notifyShadow = 'rgba(245,166,35,.3)';
-      notifyWarning = '⚠ New items added and has rejection remarks — notify stores to resubmit';
+      notifyWarning = 'New items added and has rejection remarks — notify stores to resubmit';
     } else if(hasEdited){
       notifyLabel = `Notify ${affectedStores.length} store${affectedStores.length>1?'s':''} — new items added, submit again`;
       notifyColor = 'var(--warn)'; notifyShadow = 'rgba(245,166,35,.3)';
-      notifyWarning = '⚠ New items added — stores need to review and resubmit';
+      notifyWarning = 'New items added — stores need to review and resubmit';
     } else {
       notifyLabel = `Submit rejection to ${affectedStores.length} store${affectedStores.length>1?'s':''} — notify to resubmit`;
     }
@@ -3911,7 +3911,7 @@ function viewFeedback(rid){
   }
   // ── Priority 4: ALL items responded by ALL stores, no remarks, no edits ────
   if(!r.verified && !waitingForResubmit && !remarkedStores.length && !missing.length && !r.editedAfterResponse && overallPct===100){
-    bottomHTML+=`<div style="text-align:center;padding:10px 0 4px;font-size:13px;color:var(--success);">✓ All stores have responded</div>`;
+    bottomHTML+=`<div style="text-align:center;padding:10px 0 4px;font-size:13px;color:var(--success);">All stores have responded</div>`;
     if(canEdit()||DB.role==='admin'){
       bottomHTML+=`<button onclick="verifyReportComplete('${rid}')" style="margin-top:8px;width:100%;padding:14px;border-radius:14px;background:var(--success);border:none;color:#fff;font-size:15px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 4px 14px rgba(34,197,94,.3);">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
@@ -4012,7 +4012,7 @@ async function submitCombinedNotice(rid){
       });
     }
   }catch(e){ console.log('Notify email failed:',e.message); }
-  showToast('✓ Stores notified');
+  showToast('Stores notified');
   await loadAllData(); renderBrandReports(); renderHome();
   renderBrandReports(); renderHome(); viewFeedback(rid);
 }
@@ -4045,7 +4045,7 @@ async function submitEditNoticeToStores(rid){
     date:r.date, verified:false, verifiedBy:'', verifiedAt:'',
     editedAfterResponse:false
   });
-  showToast('✓ Stores notified to resubmit');
+  showToast('Stores notified to resubmit');
   renderBrandReports(); renderHome(); viewFeedback(rid);
 }
 
@@ -4105,14 +4105,14 @@ async function saveBrand(){
       if(DB.pendingLogo) b.logo=DB.pendingLogo;
       const res=await api('PUT',`/api/brands/${b.id}`,{name:b.name,color:b.color,logo:b.logo||null,logoText});
       if(res&&res.error) throw new Error(res.error);
-      msg.innerHTML='<div class="alert alert-success">✓ Brand updated!</div>';
+      msg.innerHTML='<div class="alert alert-success">Brand updated!</div>';
       setTimeout(()=>{ msg.innerHTML=''; DB.currentBrandId=DB.editingBrandId; renderBrandHero(); document.getElementById('brand-topbar-title').textContent=name; renderHome(); goTo('s-brand'); },1200);
     } else {
       const newBrand={id:'b'+Date.now(),name,color:DB.pickedColor||'#7c6fff',logo:DB.pendingLogo||null,logoText,stores:[],reports:[]};
       const res=await api('POST','/api/brands',{id:newBrand.id,name:newBrand.name,color:newBrand.color,logo:newBrand.logo,logoText:newBrand.logoText});
       if(res&&res.error) throw new Error(res.error);
       DB.brands.push(newBrand);
-      msg.innerHTML='<div class="alert alert-success">✓ Brand created!</div>';
+      msg.innerHTML='<div class="alert alert-success">Brand created!</div>';
       setTimeout(()=>{ msg.innerHTML=''; renderHome(); goTo('s-home'); },1200);
     }
   } catch(e) {
@@ -4124,7 +4124,7 @@ async function saveBrand(){
 }
 
 async function deleteBrand(){
-  if(DB.role==='staff'){ showToast('⚠️ No permission to delete brands.'); return; }
+  if(DB.role==='staff'){ showToast('No permission to delete brands.'); return; }
   const b=brand();
   if(!b){ showToast('Brand not found.'); return; }
   showGenericConfirm(
@@ -4137,7 +4137,7 @@ async function deleteBrand(){
         DB.currentBrandId=null;
         renderHome();
         goTo('s-home');
-        showToast('✓ Brand deleted');
+        showToast('Brand deleted');
       } catch(e) {
         showToast('Failed to delete: '+e.message);
       }
@@ -4278,18 +4278,23 @@ function renderReviewerHome(){
     const myFb=_rvFbMap[s.id]||null;
     const insp=r.inspection||{};
     const totalItems=r.refs&&r.refs.length?r.refs.length:0;
-    // Count responded items using refId lookup
+    // Count responded items — exclude rejected (adminRemarks) items
     let respondedItems=0;
     if(myFb){
       if(totalItems>0){
         const fbByRef={};
         (myFb.itemFeedbacks||[]).forEach(it=>{ if(it.refId) fbByRef[it.refId]=it; });
         r.refs.forEach(ref=>{
+          const isRejected=!!(myFb.adminRemarks?.[ref.id+'_list']?.length||myFb.adminRemarks?.[ref.id]);
+          if(isRejected) return; // rejected — don't count
           const it=fbByRef[ref.id];
           if(it&&(it.note||(it.photos&&it.photos.length))) respondedItems++;
         });
         if(respondedItems===0){
-          respondedItems=Math.min((myFb.itemFeedbacks||[]).filter(it=>it.note||(it.photos&&it.photos.length)).length,totalItems);
+          respondedItems=Math.min((myFb.itemFeedbacks||[]).filter(it=>{
+            const isRej=!!(myFb.adminRemarks?.[it.refId+'_list']?.length||myFb.adminRemarks?.[it.refId]);
+            return !isRej&&(it.note||(it.photos&&it.photos.length));
+          }).length,totalItems);
         }
       } else {
         respondedItems=(myFb.text||(myFb.itemFeedbacks&&myFb.itemFeedbacks.length))?1:0;
@@ -4349,7 +4354,7 @@ function renderReviewerHome(){
           ${totalItems?`<div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;flex-shrink:0;min-width:80px;">
             <div style="display:flex;align-items:center;gap:5px;">
               <span style="font-size:11px;color:var(--text2);">${respondedItems}/${totalItems} items</span>
-              ${rejectedCount>0?`<span style="font-size:11px;font-weight:700;color:var(--danger);">✕${rejectedCount}</span>`:''}
+              ${rejectedCount>0?`<span style="font-size:11px;font-weight:700;color:var(--danger);">×${rejectedCount}</span>`:''}
             </div>
             <div style="width:70px;background:var(--bg4);border-radius:3px;height:5px;">
               <div style="width:${itemPct}%;background:${rejectedCount>0?'var(--danger)':itemPct===100?'var(--success)':itemPct>0?'var(--accent)':'var(--border2)'};height:5px;border-radius:3px;transition:width .5s;"></div>
@@ -4358,7 +4363,7 @@ function renderReviewerHome(){
           </div>`:``}
         </div>
       </div>
-      ${myFb?`<div style="margin-top:8px;padding:6px 10px;background:var(--bg3);border-radius:8px;font-size:12px;color:var(--text2);">✓ Submitted ${myFb.date}</div>`:''}
+      ${myFb?`<div style="margin-top:8px;padding:6px 10px;background:var(--bg3);border-radius:8px;font-size:12px;color:var(--text2);">Submitted ${myFb.date}</div>`:''}
     </div>`;
   }).join('');
 
@@ -4555,7 +4560,7 @@ function openReviewerReport(rid){
         </div>
         <div style="flex:1;min-width:0;">
           <div style="font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${_pdfName}</div>
-          <div style="font-size:11px;color:var(--accent);margin-top:2px;">Tap to view ↗</div>
+          <div style="font-size:11px;color:var(--accent);margin-top:2px;">Tap to view</div>
         </div>
       </div>`:''}
       ${histRows?`
@@ -4597,6 +4602,8 @@ function openReviewerReport(rid){
     (myFb.itemFeedbacks||[]).forEach(it=>{ if(it.refId) _fbByRefId2[it.refId]=it; });
     let _respondedItems=0;
     (r.refs&&r.refs.length?r.refs:[{id:'general'}]).forEach(ref=>{
+      const isRejected=!!(myFb.adminRemarks?.[ref.id+'_list']?.length||myFb.adminRemarks?.[ref.id]);
+      if(isRejected) return; // rejected — don't count
       const it=_fbByRefId2[ref.id];
       if(it&&(it.note||(it.photos&&it.photos.length))) _respondedItems++;
     });
@@ -4612,7 +4619,7 @@ function openReviewerReport(rid){
     submittedDiv.innerHTML=`
       <div style="display:flex;align-items:center;justify-content:space-between;padding:13px 15px;background:${hasNewItems?'#fff3e0':_isPartial?'var(--badge-partial-bg)':'var(--alert-success-bg)'};border:1px solid ${hasNewItems?'var(--warn)':_isPartial?'var(--accent)':'var(--alert-success-border)'};border-radius:var(--rl);margin-bottom:14px;">
         <div>
-          <div style="font-size:13px;font-weight:600;color:${hasNewItems?'var(--warn)':_isPartial?'var(--accent)':'var(--success)'};">${hasNewItems?`⚠️ New items added · ${_respondedItems}/${_totalRefItems} responded`:_isPartial?`⚠️ Partial · ${_respondedItems}/${_totalRefItems} items · ${myFb.date}`:`✓ Submitted · ${myFb.date}`}</div>
+          <div style="font-size:13px;font-weight:600;color:${hasNewItems?'var(--warn)':_isPartial?'var(--accent)':'var(--success)'};">${hasNewItems?`New items added · ${_respondedItems}/${_totalRefItems} responded`:_isPartial?`Partial · ${_respondedItems}/${_totalRefItems} items · ${myFb.date}`:`Submitted · ${myFb.date}`}</div>
           ${hasNewItems?`<div style="font-size:11px;color:var(--warn);margin-top:2px;">${newItems.length} item${newItems.length>1?'s':''} need${newItems.length===1?'s':''} your response</div>`:''}
         </div>
         <button class="btn btn-xs" onclick="editAllResponses('${rid}')">Edit all</button>
@@ -4632,7 +4639,7 @@ function openReviewerReport(rid){
               </div>
               ${ref&&ref.desc?`<div style="font-size:12px;color:var(--text2);margin-top:1px;">${ref.desc}</div>`:''}
             </div>
-            <span style="font-size:11px;font-weight:600;color:${hasMyContent?'var(--success)':'var(--warn)'};">${hasMyContent?'✓ Responded':'Needs response'}</span>
+            <span style="font-size:11px;font-weight:600;color:${hasMyContent?'var(--success)':'var(--warn)'};">${hasMyContent?'Responded':'Needs response'}</span>
             <div id="rvi_arrow_s${i}" style="font-size:13px;color:var(--text3);">▼</div>
           </div>
           <!-- Dropdown -->
@@ -4882,9 +4889,9 @@ function refreshReviewerItemStatus(idx){
   if(!lbl||!it) return;
   const hasContent=it.note.trim()||it.photos.length;
   if(hasContent){
-    lbl.textContent='✓ Added'; lbl.style.color='var(--success)';
+    lbl.textContent='Added'; lbl.style.color='var(--success)';
   } else if(it._rejected){
-    lbl.textContent='↩ Response needed'; lbl.style.color='var(--danger)';
+    lbl.textContent='Response needed'; lbl.style.color='var(--danger)';
   } else {
     lbl.textContent='Tap to respond'; lbl.style.color='var(--text3)';
   }
@@ -4988,7 +4995,7 @@ async function saveReviewerDraft(){
     date:new Date().toISOString().slice(0,10)+' '+new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}),
     draft:true
   };
-  msg.innerHTML='<div class="alert alert-success">⏳ Saving...</div>';
+  msg.innerHTML='<div class="alert alert-success">Saving...</div>';
   // Find existing — check editingFeedbackId first, then by storeId (deduped)
   const fbMapDraft={}; r.feedbacks.forEach(f=>{if(!fbMapDraft[f.storeId]||f.date>=fbMapDraft[f.storeId].date) fbMapDraft[f.storeId]=f;});
   const existing=(DB.editingFeedbackId && r.feedbacks.find(f=>f.id===DB.editingFeedbackId)) || fbMapDraft[s.id] || null;
@@ -5030,7 +5037,7 @@ async function saveReviewerDraft(){
     }
     r.feedbacks.push(feedbackObj);
   }
-  msg.innerHTML='<div class="alert alert-success">✓ Progress saved! Admin can see your partial responses.</div>';
+  msg.innerHTML='<div class="alert alert-success">Progress saved! Admin can see your partial responses.</div>';
   setTimeout(()=>{ msg.innerHTML=''; },2500);
 }
 
@@ -5049,7 +5056,7 @@ async function submitReviewerFeedback(){
   const newText=DB.itemFeedbacks.map((it,i)=>it.note?`Item ${i+1}: ${it.note}`:'').filter(Boolean).join(' | ');
   const newItems=DB.itemFeedbacks.map(it=>{ const {_rejected,_adminRemark,_prevNote,_prevPhotos,_allRemarks,...clean}=it; return {...clean,photos:[...it.photos]}; });
   const newDate=new Date().toISOString().slice(0,10);
-  msg.innerHTML='<div class="alert alert-success">⏳ Submitting...</div>';
+  msg.innerHTML='<div class="alert alert-success">Submitting...</div>';
 
   // Find existing feedback — check DB.editingFeedbackId first, then by storeId
   const fbMap={}; r.feedbacks.forEach(f=>{if(!fbMap[f.storeId]||f.date>=fbMap[f.storeId].date) fbMap[f.storeId]=f;});
@@ -5094,7 +5101,7 @@ async function submitReviewerFeedback(){
   }
   DB.itemFeedbacks=[];
   DB.editingFeedbackId=null;
-  msg.innerHTML='<div class="alert alert-success">✓ Feedback submitted!</div>';
+  msg.innerHTML='<div class="alert alert-success">Feedback submitted!</div>';
   setTimeout(()=>{ renderReviewerHome(); goTo('s-reviewer-home'); },1200);
 }
 
@@ -5104,7 +5111,7 @@ function openReviewerPDF(){
   const r=b.reports.find(r=>r.id===DB.reviewerReportId);
   if(!r) return;
   if(r.fileURL){ window.open(r.fileURL,'_blank'); }
-  else { showToast('⚠️ PDF not available — connect a server to enable file storage'); }
+  else { showToast('PDF not available'); }
 }
 
 // legacy stubs (no longer used but keep to avoid errors)
@@ -5300,10 +5307,10 @@ async function testRvNotif(){
     return;
   }
   const s=reviewerStore();
-  msg.innerHTML='<div class="alert alert-success">⏳ Sending test email...</div>';
+  msg.innerHTML='<div class="alert alert-success">Sending test email...</div>';
   const result=await api('POST','/api/test-reviewer-email',{store_id:s?s.id:'', email});
   if(result.ok){
-    msg.innerHTML=`<div class="alert alert-success">✓ Test email sent to <strong>${result.sent_to}</strong></div>`;
+    msg.innerHTML=`<div class="alert alert-success">Test email sent to <strong>${result.sent_to}</strong></div>`;
   } else {
     msg.innerHTML=`<div class="alert alert-danger">Failed: ${result.error||'Unknown error'}</div>`;
   }
@@ -5317,7 +5324,7 @@ async function saveRvNotif(){
     msg.innerHTML='<div class="alert alert-danger">Please enter a valid email.</div>';
     return;
   }
-  msg.innerHTML='<div class="alert alert-success">⏳ Saving...</div>';
+  msg.innerHTML='<div class="alert alert-success">Saving...</div>';
   const s=reviewerStore();
   if(s){
     // Update in-memory store record immediately
@@ -5349,7 +5356,7 @@ async function saveRvNotif(){
   // Apply to UI
   applyRvSettingsToUI({notifEnabled:true, notifEmail:email,
     notifNewReport:true, notifReminder:true, notifAlert:true});
-  msg.innerHTML='<div class="alert alert-success">✓ Email saved! Works on all devices now.</div>';
+  msg.innerHTML='<div class="alert alert-success">Email saved! Works on all devices now.</div>';
   setTimeout(()=>{ msg.innerHTML=''; },3000);
 }
 
@@ -5457,7 +5464,7 @@ function doVerifyAdmin(){
       await loadStaff();
       renderStaffList();
       goTo('s-staff-list');
-      showToast(`✓ ${staffName} removed`);
+      showToast(`${staffName} removed`);
     });
   }
 }
@@ -5469,7 +5476,7 @@ function doChangeRvPass(){
   if(np!==cp){ msg.innerHTML='<div class="alert alert-danger">Passwords do not match.</div>'; return; }
   const s=reviewerStore();
   if(s) s.password=np;
-  msg.innerHTML='<div class="alert alert-success">✓ Password updated!</div>';
+  msg.innerHTML='<div class="alert alert-success">Password updated!</div>';
   document.getElementById('rv-new-pass').value='';
   document.getElementById('rv-confirm-pass').value='';
   setTimeout(()=>{ msg.innerHTML=''; },1500);
@@ -5489,7 +5496,7 @@ let _editingReportId=null, _removingReportId=null, _pendingRemoveStoreAction=nul
 
 function goEditReport(rid){
   if(!rid){ console.warn('goEditReport: no rid'); return; }
-  if(!canEdit()){ showToast('⚠️ You do not have permission to edit reports.'); return; }
+  if(!canEdit()){ showToast('No permission to edit reports.'); return; }
   _editingReportId=rid;
   // Search all brands for this report
   let foundBrand=null, r=null;
@@ -5621,7 +5628,7 @@ async function doEditReport(){
   const title=document.getElementById('er-title').value.trim();
   const msg=document.getElementById('er-msg');
   if(!title){ msg.innerHTML='<div class="alert alert-danger">Title is required.</div>'; return; }
-  msg.innerHTML='<div class="alert alert-success">⏳ Saving...</div>';
+  msg.innerHTML='<div class="alert alert-success">Saving...</div>';
   // Update report in memory
   r.title=title;
   r.desc=document.getElementById('er-desc').value.trim();
@@ -5638,7 +5645,7 @@ async function doEditReport(){
   }));
   // Handle PDF replacement
   if(_erNewPdfData && _erNewPdfName){
-    msg.innerHTML='<div class="alert alert-success">⏳ Uploading new PDF...</div>';
+    msg.innerHTML='<div class="alert alert-success">Uploading new PDF...</div>';
     try{
       const uploadRes=await api('POST','/api/upload',{fileName:_erNewPdfName, fileData:_erNewPdfData});
       if(uploadRes.url){ r.fileURL=uploadRes.url; r.file=_erNewPdfName; }
@@ -5666,7 +5673,7 @@ async function doEditReport(){
     verified:r.verified||false, verifiedBy:r.verifiedBy||'', verifiedAt:r.verifiedAt||'',
     editedAfterResponse:r.editedAfterResponse||false
   });
-  msg.innerHTML='<div class="alert alert-success">✓ Report updated!</div>';
+  msg.innerHTML='<div class="alert alert-success">Report updated!</div>';
   setTimeout(async ()=>{
     msg.innerHTML='';
     // Reload fresh data from server so all cards show updated percentages
@@ -5718,7 +5725,7 @@ function alertStores(rid){
   const responded=r.feedbacks.map(f=>f.storeId);
   const targetStores=r.storeId?b.stores.filter(s=>s.id===r.storeId):b.stores;
   const missing=targetStores.filter(s=>!responded.includes(s.id));
-  if(!missing.length){ showToast('✓ All stores have already responded!'); return; }
+  if(!missing.length){ showToast('All stores have already responded!'); return; }
   const names=missing.map(s=>s.name).join(', ');
   showAlertConfirm(`Send reminder to all ${missing.length} store${missing.length>1?'s':''}?\n\n${names}`, ()=>{
     missing.forEach(s=>sendReminder(s, r, b));
@@ -6041,7 +6048,7 @@ async function doChangeUsername(){
   if(!newUser){ if(msg) msg.innerHTML='<div class="alert alert-danger">Enter a username.</div>'; return; }
   ADMIN_CREDS.username=newUser;
   await api('PUT','/api/admin/password',{username:newUser,password:ADMIN_CREDS.password});
-  if(msg) msg.innerHTML='<div class="alert alert-success">✓ Username updated</div>';
+  if(msg) msg.innerHTML='<div class="alert alert-success">Username updated</div>';
   const inp=document.getElementById('new-admin-username'); if(inp) inp.value='';
   setTimeout(()=>{ if(msg) msg.innerHTML=''; },2000);
 }
@@ -6053,7 +6060,7 @@ async function doChangeAdminPass(){
   if(np!==cp){ msg.innerHTML='<div class="alert alert-danger">Passwords do not match.</div>'; return; }
   ADMIN_CREDS.password=np;
   await api('PUT','/api/admin/password',{username:ADMIN_CREDS.username,password:np});
-  msg.innerHTML='<div class="alert alert-success">✓ Password updated</div>';
+  msg.innerHTML='<div class="alert alert-success">Password updated</div>';
   const npEl=document.getElementById('new-admin-pass'); if(npEl) npEl.value='';
   const cpEl=document.getElementById('confirm-admin-pass'); if(cpEl) cpEl.value='';
   setTimeout(()=>{ msg.innerHTML=''; },2000);
@@ -6281,7 +6288,7 @@ async function doSaveAdminUsername(){
   if(!newUser){ if(msg) msg.innerHTML='<div class="alert alert-danger">Enter a username.</div>'; return; }
   ADMIN_CREDS.username=newUser;
   await api('PUT','/api/admin/password',{username:newUser,password:ADMIN_CREDS.password});
-  if(msg) msg.innerHTML='<div class="alert alert-success">✓ Username updated</div>';
+  if(msg) msg.innerHTML='<div class="alert alert-success">Username updated</div>';
   setTimeout(()=>{ if(msg) msg.innerHTML=''; },2000);
 }
 
@@ -6337,8 +6344,8 @@ async function doSaveAdminProfile(){
     const npEl=document.getElementById('admin-new-pass'); if(npEl) npEl.value='';
     const cpEl=document.getElementById('admin-confirm-pass'); if(cpEl) cpEl.value='';
   }
-  if(msg) msg.innerHTML='<div class="alert alert-success">✓ Profile saved</div>';
-  showToast('✓ Profile saved');
+  if(msg) msg.innerHTML='<div class="alert alert-success">Profile saved</div>';
+  showToast('Profile saved');
   setTimeout(()=>{ if(msg) msg.innerHTML=''; },2000);
   // Update settings-content avatar display
   applySettingsToUI();
@@ -6360,10 +6367,10 @@ async function testAdminEmail(){
   const email=document.getElementById('notif-email')?.value?.trim();
   const msg=document.getElementById('notif-msg');
   if(!email||!email.includes('@')){ if(msg) msg.innerHTML='<div class="alert alert-danger">Enter an email first.</div>'; return; }
-  if(msg) msg.innerHTML='<div class="alert alert-success">⏳ Sending test...</div>';
+  if(msg) msg.innerHTML='<div class="alert alert-success">Sending test...</div>';
   const result=await api('POST','/api/test-email',{email});
   if(result.ok){
-    if(msg) msg.innerHTML='<div class="alert alert-success">✓ Test email sent to '+email+' — check inbox!</div>';
+    if(msg) msg.innerHTML='<div class="alert alert-success">Test email sent to '+email+' — check inbox!</div>';
   } else {
     if(msg) msg.innerHTML='<div class="alert alert-danger">Failed: '+(result.error||'unknown error')+'</div>';
   }
@@ -6399,7 +6406,7 @@ async function saveNotifSettings(){
     notif_store_complete:SETTINGS.notifStoreComplete,
   });
   if(result && result.ok){
-    msg.innerHTML='<div class="alert alert-success">✓ Email saved! Works on all devices now.</div>';
+    msg.innerHTML='<div class="alert alert-success">Email saved! Works on all devices now.</div>';
   } else {
     msg.innerHTML='<div class="alert alert-danger">Failed to save — please try again.</div>';
   }
@@ -6418,16 +6425,16 @@ function onNotifCheckChange(){
 async function testNotif(){
   const email=document.getElementById('notif-email').value.trim()||'liming6069@gmail.com';
   const msg=document.getElementById('notif-msg');
-  msg.innerHTML='<div class="alert alert-success">⏳ Sending test email...</div>';
+  msg.innerHTML='<div class="alert alert-success">Sending test email...</div>';
   try{
     const result=await api('POST','/api/test-email',{email});
     if(result && result.ok){
-      msg.innerHTML='<div class="alert alert-success">✓ Email sent! Check <strong>liming6069@gmail.com</strong> and qc.eatmeout@gmail.com inbox. Resend ID: '+(result.resend_id||'?')+'</div>';
+      msg.innerHTML='<div class="alert alert-success">Email sent! Check <strong>liming6069@gmail.com</strong> and qc.eatmeout@gmail.com inbox. Resend ID: '+(result.resend_id||'?')+'</div>';
     } else {
-      msg.innerHTML='<div class="alert alert-danger">❌ Failed: '+(result?.error||'Unknown error')+'</div>';
+      msg.innerHTML='<div class="alert alert-danger">Failed: '+(result?.error||'Unknown error')+'</div>';
     }
   }catch(e){
-    msg.innerHTML='<div class="alert alert-danger">❌ Network error: '+e.message+'</div>';
+    msg.innerHTML='<div class="alert alert-danger">Network error: '+e.message+'</div>';
   }
   setTimeout(()=>{ msg.innerHTML=''; },8000);
 }
@@ -6442,7 +6449,7 @@ async function changeAdminUser(){
   ADMIN_CREDS.username=newUser;
   await api('PUT','/api/admin/password',{username:newUser,password:ADMIN_CREDS.password});
   document.getElementById('admin-new-user').value='';
-  msg.innerHTML='<div class="alert alert-success">✓ Username updated to "'+newUser+'"</div>';
+  msg.innerHTML='<div class="alert alert-success">Username updated to "'+newUser+'"</div>';
   setTimeout(()=>{ msg.innerHTML=''; },2500);
 }
 async function changeAdminPass(){
@@ -6453,7 +6460,7 @@ async function changeAdminPass(){
   if(np!==cp){ msg.innerHTML='<div class="alert alert-danger">Passwords do not match.</div>'; return; }
   ADMIN_CREDS.password=np;
   await api('PUT','/api/admin/password',{username:ADMIN_CREDS.username,password:np});
-  msg.innerHTML='<div class="alert alert-success">✓ Password updated!</div>';
+  msg.innerHTML='<div class="alert alert-success">Password updated!</div>';
   document.getElementById('admin-new-pass').value='';
   document.getElementById('admin-confirm-pass').value='';
   setTimeout(()=>{ msg.innerHTML=''; },2500);
@@ -6606,7 +6613,7 @@ function openReportPDF(){
   }
   if(!r){ for(const b of DB.brands){ r=b.reports.find(rep=>rep.id===DB.currentReportId); if(r) break; } }
   if(!r) return;
-  if(!r.fileURL){ showToast('⚠️ PDF not available'); return; }
+  if(!r.fileURL){ showToast('PDF not available'); return; }
   const overlay=document.getElementById('pdf-viewer-overlay');
   const frame=document.getElementById('pdf-viewer-frame');
   const title=document.getElementById('pdf-viewer-title');
@@ -7027,7 +7034,7 @@ async function saveStaffNotif(){
   const email=document.getElementById('sf-notif-email-input').value.trim();
   const msg=document.getElementById('sf-notif-save-msg');
   if(!email||!email.includes('@')){ msg.innerHTML='<div class="alert alert-danger">Please enter a valid email.</div>'; setTimeout(()=>msg.innerHTML='',2500); return; }
-  msg.innerHTML='<div class="alert alert-success">⏳ Saving...</div>';
+  msg.innerHTML='<div class="alert alert-success">Saving...</div>';
   const staff=DB.staffData||{};
   // Gather all notification preferences
   const notifPrefs={
@@ -7051,7 +7058,7 @@ async function saveStaffNotif(){
       localStorage.setItem('fh_session',JSON.stringify(s));
     }
   }catch(e){}
-  msg.innerHTML='<div class="alert alert-success">✓ Settings saved to all devices!</div>';
+  msg.innerHTML='<div class="alert alert-success">Settings saved to all devices!</div>';
   setTimeout(()=>msg.innerHTML='',3000);
 }
 
@@ -7316,7 +7323,7 @@ async function doSaveStaff(){
   if(!username){ msg.innerHTML='<div class="alert alert-danger">Username is required.</div>'; return; }
   if(!_sfEditingId && !password){ msg.innerHTML='<div class="alert alert-danger">Password is required for new staff.</div>'; return; }
 
-  msg.innerHTML='<div class="alert alert-success">⏳ Saving...</div>';
+  msg.innerHTML='<div class="alert alert-success">Saving...</div>';
   const company=document.getElementById('sf-company').value.trim();
   const location=document.getElementById('sf-location').value.trim();
   const notifEmail=document.getElementById('sf-notif-email').value.trim();
@@ -7343,7 +7350,7 @@ async function doSaveStaff(){
 
   await loadStaff();
   renderStaffList();
-  msg.innerHTML='<div class="alert alert-success">✓ Staff account saved!</div>';
+  msg.innerHTML='<div class="alert alert-success">Staff account saved!</div>';
   setTimeout(()=>{ goTo('s-staff-list'); },1000);
 }
 
@@ -7479,9 +7486,9 @@ function buildSortedResponsesHTML(ref, r, b, rid){
 
     // Status label for header
     const statusLabel=isRejectedNow
-      ? `<span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;background:var(--alert-danger-bg);color:var(--danger);display:flex;align-items:center;gap:3px;flex-shrink:0;">✕ ${allRemarks.length} remark${allRemarks.length>1?'s':''}</span>`
+      ? `<span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;background:var(--alert-danger-bg);color:var(--danger);display:flex;align-items:center;gap:3px;flex-shrink:0;">×${allRemarks.length} remark${allRemarks.length>1?'s':''}</span>`
       : hasResponse
-        ? `<span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;background:var(--badge-done-bg);color:var(--success);flex-shrink:0;">✓ Responded</span>`
+        ? `<span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;background:var(--badge-done-bg);color:var(--success);flex-shrink:0;">Responded</span>`
         : `<span style="font-size:11px;padding:2px 8px;border-radius:20px;background:var(--bg3);color:var(--text3);flex-shrink:0;">No response</span>`;
 
     const clickHandler=canAct&&(hasResponse||fb||hasRemarks)
@@ -7678,9 +7685,9 @@ async function saveResponseNote(){
   if(!fb) return;
   if(!fb.adminRemarks) fb.adminRemarks={};
   fb.adminRemarks[refId]=text;
-  msg.innerHTML='<div class="alert alert-success">⏳ Saving...</div>';
+  msg.innerHTML='<div class="alert alert-success">Saving...</div>';
   await api('PUT',`/api/feedbacks/${fbId}`,{text:fb.text,itemFeedbacks:fb.itemFeedbacks,photos:fb.photos||[],adminRemarks:fb.adminRemarks});
-  msg.innerHTML='<div class="alert alert-success">✓ Remark saved!</div>';
+  msg.innerHTML='<div class="alert alert-success">Remark saved!</div>';
   setTimeout(()=>{
     document.getElementById('response-note-overlay').style.display='none';
     viewFeedback(rid);
@@ -7919,7 +7926,7 @@ async function annSave(){
     }
   }
   annClose();
-  showToast('✓ Annotated photo saved!');
+  showToast('Annotated photo saved!');
   // Return to correct screen based on who opened the annotator
   if(_annCtx.fromScreen==='reviewer'){
     // Reviewer: re-render reviewer report and stay on s-reviewer-report
@@ -8009,7 +8016,7 @@ async function evSendCode(){
   const email=document.getElementById('ev-email').value.trim();
   const msg=document.getElementById('ev-step1-msg');
   if(!email||!email.includes('@')){ msg.innerHTML='<div class="alert alert-danger">Please enter a valid email address.</div>'; return; }
-  msg.innerHTML='<div class="alert alert-success">⏳ Sending code...</div>';
+  msg.innerHTML='<div class="alert alert-success">Sending code...</div>';
   const result=await api('POST','/api/send-verify-code',{email});
   if(result&&result.ok){
     document.getElementById('ev-sent-to').textContent=email;
@@ -8034,19 +8041,19 @@ async function evVerifyAndChange(){
   if(code.length!==6){ msg.innerHTML='<div class="alert alert-danger">Please enter the 6-digit code.</div>'; return; }
   if(!newpass||newpass.length<4){ msg.innerHTML='<div class="alert alert-danger">Password must be at least 4 characters.</div>'; return; }
   if(newpass!==confirmpass){ msg.innerHTML='<div class="alert alert-danger">Passwords do not match.</div>'; return; }
-  msg.innerHTML='<div class="alert alert-success">⏳ Verifying...</div>';
+  msg.innerHTML='<div class="alert alert-success">Verifying...</div>';
   // Verify code
   const verify=await api('POST','/api/verify-code',{email, code});
   if(!verify||!verify.ok){ msg.innerHTML=`<div class="alert alert-danger">${verify?.error||'Invalid code. Please try again.'}</div>`; return; }
   // Change password
-  msg.innerHTML='<div class="alert alert-success">⏳ Changing password...</div>';
+  msg.innerHTML='<div class="alert alert-success">Changing password...</div>';
   if(_evMode==='store'){
     const sid=DB.reviewerStoreId;
     const result=await api('POST','/api/store-change-password',{store_id:sid, new_password:newpass});
     if(result&&result.limit_reached){ document.getElementById('email-verify-overlay').style.display='none'; showPasswordLimitReached(); return; }
     if(result&&result.ok){
       try{ const raw=localStorage.getItem('fh_session'); if(raw){ const s=JSON.parse(raw); s.password=newpass; localStorage.setItem('fh_session',JSON.stringify(s)); } }catch(e){}
-      msg.innerHTML='<div class="alert alert-success">✓ Password changed successfully!</div>';
+      msg.innerHTML='<div class="alert alert-success">Password changed successfully!</div>';
       setTimeout(()=>{ document.getElementById('email-verify-overlay').style.display='none'; },1500);
     } else { msg.innerHTML='<div class="alert alert-danger">Failed to change password.</div>'; }
   } else if(_evMode==='staff'){
@@ -8056,7 +8063,7 @@ async function evVerifyAndChange(){
     if(result&&result.ok){
       if(DB.staffData) DB.staffData.password=newpass;
       try{ const raw=localStorage.getItem('fh_session'); if(raw){ const s=JSON.parse(raw); if(s.staffData) s.staffData.password=newpass; localStorage.setItem('fh_session',JSON.stringify(s)); } }catch(e){}
-      msg.innerHTML='<div class="alert alert-success">✓ Password changed successfully!</div>';
+      msg.innerHTML='<div class="alert alert-success">Password changed successfully!</div>';
       setTimeout(()=>{ document.getElementById('email-verify-overlay').style.display='none'; },1500);
     } else { msg.innerHTML='<div class="alert alert-danger">Failed to change password.</div>'; }
   }
@@ -8162,7 +8169,7 @@ async function doExportStaffData(data){
     a.href=url; a.download='feedback-hub-staff-'+dd+'-'+mm+'-'+yyyy+'.txt';
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    showToast('✓ Staff data downloaded!');
+    showToast('Staff data downloaded!');
   }catch(e){ showToast('Export failed: '+e.message); }
 }
 
@@ -8300,7 +8307,7 @@ async function raSaveRemark() {
     } catch(e) {}
 
     closeRespAction();
-    showToast('✓ Remark saved — store notified to resubmit');
+    showToast('Remark saved — store notified to resubmit');
     viewFeedback(rid);
   } finally {
     // Always re-enable the button so the modal works again for the next item
@@ -8332,7 +8339,7 @@ async function inlineAcceptResponse(fbId, refId, storeId, rid) {
   if (!Array.isArray(fb.timeline)) fb.timeline = [];
   fb.timeline.push({ type: 'accepted', date: today, by: authorName });
   await api('PUT', `/api/feedbacks/${fbId}`, { adminRemarks: fb.adminRemarks, timeline: fb.timeline });
-  showToast('✓ Response accepted');
+  showToast('Response accepted');
   renderBrandReports(); renderHome();
   renderBrandReports(); renderHome(); viewFeedback(rid);
   // After accept: keep card CLOSED (collapse it back)
@@ -8386,7 +8393,7 @@ async function inlineSaveRemark(fbId, refId, storeId, rid) {
     const _alerter = getAlerterInfo();
     await api('POST', '/api/feedbacks/delete-notify', { feedback_id: fbId, store_id: storeId, report_id: rid, ref_id: refId, alerter_id: _alerter.id, alerter_role: _alerter.role });
   } catch(e) {}
-  showToast('✓ Remark saved — store notified');
+  showToast('Remark saved — store notified');
   renderBrandReports(); renderHome(); viewFeedback(rid);
   // After save remark: keep card CLOSED
   setTimeout(() => {
@@ -8426,7 +8433,7 @@ async function raAcceptResponse() {
   });
 
   closeRespAction();
-  showToast('✓ Response accepted');
+  showToast('Response accepted');
   renderBrandReports(); renderHome();
   renderBrandReports(); renderHome(); viewFeedback(rid);
   // After accept: close the item card
@@ -8641,7 +8648,7 @@ async function doExportData(adminPass){
     a.href=url; a.download='feedback-hub-stores-'+dd+'-'+mm+'-'+yyyy+'.txt';
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    showToast('✓ Store data downloaded!');
+    showToast('Store data downloaded!');
   }catch(e){ console.error('Export error:',e); showToast('Export failed: '+e.message); }
 }
 
