@@ -3511,7 +3511,7 @@ function addRefPhotos(id,input){
       });
       ref.photos.push(compressed);
       renderRefItems();
-      if(isCam){ const ts=new Date().toISOString().slice(0,19).replace(/[T:]/g,'-'); savePhotoToDevice(compressed,'QC_ref_'+ts+'.jpg'); }
+      // Original saved to Camera Roll by iOS (capture=environment); stamped copy via ↓ button
     } catch(e) { console.error('addRefPhotos error:', e); }
   });
 }
@@ -5158,9 +5158,9 @@ function renderItemPhotoGrid(idx){
   grid.innerHTML=photos.map((p,pi)=>`
     <div style="position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;">
       <img src="${p}" style="width:100%;height:100%;object-fit:cover;cursor:pointer;" onclick="openLightbox('${p}')"/>
-      <div style="position:absolute;top:3px;right:3px;display:flex;gap:3px;">
-        <button onclick="savePhotoToDevice('${p}','QC_photo_${idx}_${pi}.jpg')" title="Save to device" style="width:18px;height:18px;border-radius:50%;background:rgba(0,0,0,.65);color:#fff;font-size:9px;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button>
-        <button onclick="removeItemPhoto(${idx},${pi})" style="width:18px;height:18px;border-radius:50%;background:rgba(0,0,0,.65);color:#fff;font-size:9px;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+      <div style="position:absolute;top:4px;right:4px;display:flex;gap:4px;">
+        <button onclick="savePhotoToDevice('${p}','QC_photo_${idx}_${pi}.jpg')" title="Save to Photos" style="width:24px;height:24px;border-radius:8px;background:rgba(0,0,0,.72);color:#fff;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button>
+        <button onclick="removeItemPhoto(${idx},${pi})" style="width:24px;height:24px;border-radius:8px;background:rgba(0,0,0,.72);color:#fff;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
       </div>
     </div>`).join('');
 }
@@ -5255,16 +5255,31 @@ function getTimestamp(){
 }
 // Auto-save photo to device — triggers a download which iOS/Android saves to Photos/Downloads
 // Called silently after stamping so user has the stamped copy on device
-function savePhotoToDevice(dataUrl, filename){
+async function savePhotoToDevice(dataUrl, filename){
+  const name = filename || ('QC_photo_' + new Date().toISOString().slice(0,19).replace(/[T:]/g,'-') + '.jpg');
   try {
+    // dataUrl can be data: URL or an R2 https:// URL — both work with fetch()
+    const fetchUrl = dataUrl.startsWith('data:') ? dataUrl : dataUrl;
+    const res = await fetch(fetchUrl);
+    const blob = await res.blob();
+    const file = new File([blob], name, { type: blob.type || 'image/jpeg' });
+
+    // iOS Safari: Web Share API → native share sheet → "Save Image" → Photos
+    if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({ files: [file], title: name });
+      return;
+    }
+
+    // Android / desktop: blob URL download
+    const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = dataUrl;
-    a.download = filename || ('photo_' + new Date().toISOString().replace(/[:.]/g,'-') + '.jpg');
-    a.style.display = 'none';
+    a.href = url; a.download = name; a.style.display = 'none';
     document.body.appendChild(a);
     a.click();
-    setTimeout(()=>a.remove(), 500);
-  } catch(e) { /* silent — device may block programmatic download */ }
+    setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 1000);
+  } catch(e) {
+    if (e.name !== 'AbortError') console.warn('Save photo error:', e.message);
+  }
 }
 
 function stampPhoto(dataURL, label){
@@ -5309,11 +5324,8 @@ function addItemPhoto(idx,input){
       DB.itemFeedbacks[idx].photos.push(stamped);
       renderItemPhotoGrid(idx);
       refreshReviewerItemStatus(idx);
-      // Auto-save stamped copy to device when taken with camera
-      if(isCameraInput){
-        const ts = new Date().toISOString().slice(0,19).replace(/[T:]/g,'-');
-        savePhotoToDevice(stamped, `QC_${label}_${ts}.jpg`);
-      }
+      // Stamped copy is saved via the ↓ button on the thumbnail
+      // (iOS auto-saves original to Camera Roll via capture="environment")
     } catch(e) { console.error('addItemPhoto error:', e); }
   });
   input.value='';
@@ -7234,6 +7246,72 @@ function buildStaffCardHTML({name,position,company,phone,location,avatar,initial
       </div>`:''}
     </div>
   </div>`;
+}
+
+async function doSaveStaff(){
+  const msg = document.getElementById('sf-msg');
+  const name = document.getElementById('sf-name').value.trim();
+  const username = document.getElementById('sf-username').value.trim();
+  const password = document.getElementById('sf-password').value;
+  const notifEmail = document.getElementById('sf-notif-email').value.trim();
+  if(!name){ msg.innerHTML='<div class="alert alert-danger">Name is required.</div>'; return; }
+  if(!username){ msg.innerHTML='<div class="alert alert-danger">Username is required.</div>'; return; }
+  if(!_sfEditingId && !password){ msg.innerHTML='<div class="alert alert-danger">Password is required.</div>'; return; }
+  // Enforce email verification if new email entered
+  if(notifEmail && notifEmail !== _sfVerifiedEmail){
+    msg.innerHTML='<div class="alert alert-danger">Please verify the notification email before saving.</div>'; return;
+  }
+  // Check username uniqueness
+  const taken = DB_STAFF.filter(s=>s.id!==_sfEditingId).map(s=>s.username);
+  const storeTaken = DB.brands.flatMap(b=>b.stores.map(s=>s.username));
+  if([...taken,...storeTaken,'admin'].includes(username)){
+    msg.innerHTML='<div class="alert alert-danger">Username already taken.</div>'; return;
+  }
+  const perm = document.querySelector('input[name="sf-perm"]:checked')?.value || 'view';
+  const allBrands = document.getElementById('sf-brand-all')?.checked;
+  const brandIds = allBrands ? [] : Array.from(document.querySelectorAll('.sf-brand-check:checked')).map(el=>el.value);
+  const cardStyle = {
+    coverColor:_sfCoverColor, companyColor:_sfCompanyColor,
+    avatarPos:_sfAvatarPos, gradient:_sfCoverGradient,
+    coverMode:_sfCoverMode, coverPhoto:_sfCoverMode==='photo'?(_sfCoverPhoto||null):null,
+    coverOverlay:_sfCoverOverlay
+  };
+  const payload = {
+    name, username, position:document.getElementById('sf-position').value.trim(),
+    company:document.getElementById('sf-company').value.trim(),
+    phone:document.getElementById('sf-phone').value.trim(),
+    location:document.getElementById('sf-location').value.trim(),
+    permission: perm, brand_ids: brandIds,
+    notif_email: notifEmail||null,
+    card_style: JSON.stringify(cardStyle),
+    avatar: _sfAvatarData||null,
+  };
+  if(password) payload.password = password;
+
+  const btn = document.querySelector('#s-staff-form .btn-primary');
+  if(btn){ btn.disabled=true; btn.textContent='Saving...'; }
+  try{
+    if(_sfEditingId){
+      const existing = DB_STAFF.find(s=>s.id===_sfEditingId)||{};
+      await api('PUT', `/api/staff/${_sfEditingId}`, {...existing, ...payload, brand_ids:brandIds});
+      // Update local DB_STAFF
+      const idx = DB_STAFF.findIndex(s=>s.id===_sfEditingId);
+      if(idx!==-1) DB_STAFF[idx]={...DB_STAFF[idx],...payload,id:_sfEditingId};
+      msg.innerHTML='<div class="alert alert-success">Staff updated!</div>';
+    } else {
+      const result = await api('POST', '/api/staff', {...payload, brand_ids:brandIds});
+      const newId = result?.id || ('sf'+Date.now());
+      DB_STAFF.push({...payload, id:newId, brand_ids:brandIds});
+      msg.innerHTML='<div class="alert alert-success">Staff account created!</div>';
+    }
+    _sfVerifiedEmail='';
+    renderStaffList();
+    setTimeout(()=>{ msg.innerHTML=''; goTo('s-staff-list'); },1200);
+  }catch(e){
+    msg.innerHTML=`<div class="alert alert-danger">Error: ${e.message}</div>`;
+  } finally {
+    if(btn){ btn.disabled=false; btn.textContent='Save'; }
+  }
 }
 
 /* ===== STAFF PERMISSION HELPERS ===== */
