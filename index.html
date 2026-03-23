@@ -221,6 +221,8 @@ label{
 .badge-done{background:var(--badge-done-bg);color:var(--success);border:1px solid rgba(32,192,112,.25);}
 .badge-pending{background:#fff3e0;color:var(--warn);border:1px solid rgba(245,166,35,.25);}
 [data-theme="dark"] .badge-pending{background:#2a1f00;}
+.badge-danger{background:#fcebeb;color:var(--danger);border:1px solid rgba(239,68,68,.25);}
+[data-theme="dark"] .badge-danger{background:#2a0a0a;}
 
 /* ===== TABS ===== */
 .tabs{display:flex;border-bottom:1.5px solid var(--border);margin-bottom:18px;}
@@ -4933,19 +4935,26 @@ function renderReviewerHome(){
       </div>
     </div>`;
 
-  // Stats — Pending + Checking (submitted, waiting admin verify)
+  // Stats — Pending + Checking + Rejected
   const reports=b.reports.filter(r=>isReportVisibleToReviewer(r,s.id));
-  let pendingCount=0, checkingCount=0;
+  let pendingCount=0, checkingCount=0, rejectedStatCount=0;
   reports.forEach(r=>{
     const _fbMap={};
     r.feedbacks.forEach(f=>{ if(!_fbMap[f.storeId]||f.date>=_fbMap[f.storeId].date) _fbMap[f.storeId]=f; });
     const fb=_fbMap[s.id];
-    if(r.verified) return; // complete
+    if(r.verified) return; // complete — skip
     if(!fb){ pendingCount++; return; }
+    // Count rejections
+    let rejCount=0;
+    (r.refs||[]).forEach(ref=>{
+      const hasRemark=!!(fb.adminRemarks?.[ref.id+'_list']?.length||fb.adminRemarks?.[ref.id]);
+      if(hasRemark) rejCount++;
+    });
+    if(rejCount>0){ rejectedStatCount++; return; }
     const _fbByRef={};
     (fb.itemFeedbacks||[]).forEach(it=>{ if(it.refId) _fbByRef[it.refId]=it; });
     const everResponded=Object.values(_fbByRef).filter(it=>it.note||(it.photos&&it.photos.length)).length;
-    if(everResponded>0) checkingCount++; // submitted → checking
+    if(everResponded>0) checkingCount++;
     else pendingCount++;
   });
   document.getElementById('rv-stats-row').innerHTML=`
@@ -4966,7 +4975,17 @@ function renderReviewerHome(){
         <div style="font-size:24px;font-weight:700;color:#ca8a04;line-height:1;">${checkingCount}</div>
         <div style="font-size:12px;color:var(--text2);margin-top:2px;">Checking</div>
       </div>
-    </div>`;
+    </div>
+    ${rejectedStatCount>0?`<div style="background:var(--bg2);border:1px solid rgba(239,68,68,.3);border-radius:var(--rl);padding:13px 14px;display:flex;align-items:center;gap:12px;">
+      <div style="width:40px;height:40px;border-radius:10px;background:#fee2e2;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+      </div>
+      <div>
+        <div style="font-size:24px;font-weight:700;color:var(--danger);line-height:1;">${rejectedStatCount}</div>
+        <div style="font-size:12px;color:var(--text2);margin-top:2px;">Rejected</div>
+      </div>
+    </div>`:''}`;
+
 
   // Report list — sort: pending → checking → complete
   const sorted=[...reports].sort((a,bb)=>{
@@ -5007,12 +5026,14 @@ function renderReviewerHome(){
         const hasRemark=!!(myFb.adminRemarks?.[ref.id+'_list']?.length||myFb.adminRemarks?.[ref.id]);
         const it=fbByRef[ref.id];
         const hasContent=!!(it&&(it.note||(it.photos&&it.photos.length)));
-        if(hasContent){
-          respondedItems++; // has content — counts as responded regardless of remark
-        } else if(hasRemark){
-          rejectedCount++; // remark but no new response — still needs attention
+        if(hasRemark && !hasContent){
+          rejectedCount++; // rejected and store has NOT re-responded yet — needs attention
+        } else if(hasContent && !hasRemark){
+          respondedItems++; // responded and no rejection — counts as done
+        } else if(hasContent && hasRemark){
+          rejectedCount++; // rejected even though has old content — admin wants new response
         }
-        // else: no remark, no content = no response (counted via totalItems-responded-rejected)
+        // else: no remark, no content = no response
       });
     } else if(myFb && totalItems===0){
       respondedItems=(myFb.text||(myFb.itemFeedbacks&&myFb.itemFeedbacks.length))?1:0;
@@ -5040,12 +5061,32 @@ function renderReviewerHome(){
     const everRespondedCount = myFb ? (()=>{
       const fbByRef2={};
       (myFb.itemFeedbacks||[]).forEach(it=>{ if(it.refId) fbByRef2[it.refId]=it; });
-      return Object.values(fbByRef2).filter(it=>it.note||(it.photos&&it.photos.length)).length;
+      return Object.values(fbByRef2).filter(it=>{
+        const hasContent = it.note||(it.photos&&it.photos.length);
+        // Only count as responded if has content AND no rejection remark
+        const refId = it.refId;
+        const hasRemark = !!(myFb.adminRemarks?.[refId+'_list']?.length||myFb.adminRemarks?.[refId]);
+        return hasContent && !hasRemark;
+      }).length;
+    })() : 0;
+    // Also count how many items are currently rejected (need re-response)
+    const currentlyRejected = myFb ? (()=>{
+      const fbByRef3={};
+      (myFb.itemFeedbacks||[]).forEach(it=>{ if(it.refId) fbByRef3[it.refId]=it; });
+      let rej=0;
+      (r.refs||[]).forEach(ref=>{
+        const hasRemark=!!(myFb.adminRemarks?.[ref.id+'_list']?.length||myFb.adminRemarks?.[ref.id]);
+        if(hasRemark) rej++;
+      });
+      return rej;
     })() : 0;
     if(r.verified){
       bc='badge-done'; bt='Complete'; borderStyle='border:2px solid var(--success);';
+    } else if(currentlyRejected>0){
+      // Has rejections needing re-response — show as Rejected
+      bc='badge-danger'; bt=`×${currentlyRejected} Rejected`; borderStyle='border:2px solid var(--danger);';
     } else if(hasEverSubmitted && everRespondedCount>0){
-      // Store has submitted — stays Checking regardless of new items added
+      // Store has submitted with no outstanding rejections — Checking
       bc='badge-pending'; bt='Checking'; borderStyle='border:2px solid var(--warn);';
     } else if(myFb && respondedItems>0){
       bc='badge-partial'; bt='Partial'; borderStyle='border:2px solid var(--accent);';
