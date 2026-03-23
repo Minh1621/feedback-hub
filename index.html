@@ -1980,11 +1980,15 @@ async function downloadReportPDF(rid){  // Close whichever download menu is open
   showToast('Building PDF...');
   const insp=r.inspection||{};
 
-  // Build one section per store that responded
+  // Use getTargetStores to respect visible store edits
+  const _pdfTargetStores=getTargetStores(r,b.stores);
+  const _pdfTargetIds=new Set(_pdfTargetStores.map(s=>s.id));
   const latestFbMap={};
-  (r.feedbacks||[]).forEach(f=>{ if(!latestFbMap[f.storeId]||f.date>=latestFbMap[f.storeId].date) latestFbMap[f.storeId]=f; });
-  const storeIds=Object.keys(latestFbMap);
-  const targetStores=storeIds.length?storeIds.map(sid=>b.stores?.find(s=>s.id===sid)||{id:sid,name:'Store'}):[{id:'',name:storeName||'Store'}];
+  (r.feedbacks||[]).forEach(f=>{
+    if(!_pdfTargetIds.has(f.storeId)) return; // only target stores
+    if(!latestFbMap[f.storeId]||f.date>=latestFbMap[f.storeId].date) latestFbMap[f.storeId]=f;
+  });
+  const targetStores=_pdfTargetStores.length?_pdfTargetStores:[{id:'',name:storeName||'Store'}];
 
   let allStoreHTML='';
   targetStores.forEach(store=>{
@@ -2229,9 +2233,13 @@ async function downloadReportPhotos(rid){
     });
   });
 
-  // 2. All store response photos → /StoreName/
+  // 2. Store response photos — only from currently targeted stores
+  const _dlTargetIds=new Set(getTargetStores(r,b.stores).map(s=>s.id));
   const latestFbMap={};
-  (r.feedbacks||[]).forEach(f=>{ if(!latestFbMap[f.storeId]||f.date>=latestFbMap[f.storeId].date) latestFbMap[f.storeId]=f; });
+  (r.feedbacks||[]).forEach(f=>{
+    if(!_dlTargetIds.has(f.storeId)) return;
+    if(!latestFbMap[f.storeId]||f.date>=latestFbMap[f.storeId].date) latestFbMap[f.storeId]=f;
+  });
   Object.values(latestFbMap).forEach(fb=>{
     const storeName=safeName(b.stores?.find(s=>s.id===fb.storeId)?.name||'Store');
     (r.refs||[]).forEach((ref,i)=>{
@@ -4423,7 +4431,10 @@ function viewFeedback(rid){
     function buildRefCards(filterVal){
       return r.refs.map((ref,i)=>{
         const latestFbMap={};
-        r.feedbacks.forEach(f=>{ if(!latestFbMap[f.storeId]||f.date>=latestFbMap[f.storeId].date) latestFbMap[f.storeId]=f; });
+        r.feedbacks.forEach(f=>{
+          if(!targetStoreIdSet.has(f.storeId)) return; // only target stores
+          if(!latestFbMap[f.storeId]||f.date>=latestFbMap[f.storeId].date) latestFbMap[f.storeId]=f;
+        });
         const latestFbs=Object.values(latestFbMap);
         let respCount=0, rejectCount=0, rejRespCount=0;
         latestFbs.forEach(f=>{
