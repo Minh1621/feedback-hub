@@ -3552,7 +3552,7 @@ async function doAddStore(){
   const newStore={
     id:'s'+Date.now(), name, username:user, password:pass, phone, location,
     logo:_nsLogoData||null, color:_nsColor,
-    notif_email:notifEmail||null, notif_enabled:notifEmail?1:0,
+    notif_email:notifEmail||null, notif_enabled:notifEmail?1:null,
     cover_mode:_nsCoverMode,
     cover_photo:_nsCoverMode==='photo'?(_nsCoverPhoto||null):null,
     cover_overlay:_nsCoverOverlay?1:0,
@@ -3668,7 +3668,7 @@ async function doEditStore(){
     phone:s.phone, location:s.location, logo:s.logo||null,
     color:s.color, email:s.email||null,
     notif_email:notifEmail||s.notif_email||null,
-    notif_enabled:notifEmail?1:0,
+    notif_enabled:(notifEmail||s.notif_email)?1:0,
     cover_mode:s.coverMode, cover_photo:s.coverPhoto||null,
     cover_overlay:s.coverOverlay?1:0, cover_gradient:s.coverGradient?1:0,
   });
