@@ -2831,45 +2831,40 @@ function getTargetStores(r, stores){
   return stores;
 }
 
-// Helper: get report completion status based on item responses
 function getReportStatus(r, stores){
-  // Verified by checker → Complete
   if(r.verified) return 'complete';
-
   const targetStores = getTargetStores(r, stores);
   if(!targetStores.length) return 'pending';
-
+  const targetStoreIdSet = new Set(targetStores.map(s=>s.id));
   const totalItems = r.refs && r.refs.length ? r.refs.length : 0;
-
-  // Build latest feedback per store
+  const validRefIds = new Set((r.refs||[]).map(ref=>ref.id));
+  // Only count feedbacks from currently targeted stores
   const fbMap = {};
-  (r.feedbacks||[]).forEach(f=>{ if(!fbMap[f.storeId]||f.date>=fbMap[f.storeId].date) fbMap[f.storeId]=f; });
-
+  (r.feedbacks||[]).forEach(f=>{
+    if(!targetStoreIdSet.has(f.storeId)) return;
+    if(!fbMap[f.storeId]||f.date>=fbMap[f.storeId].date) fbMap[f.storeId]=f;
+  });
   let storesResponded = 0;
-
   for(const s of targetStores){
     const fb = fbMap[s.id];
-    if(!fb) continue; // no feedback from this store
-
+    if(!fb) continue;
     let responded = 0;
     if(totalItems > 0){
       const refMap = {};
-      (fb.itemFeedbacks||[]).forEach(it=>{ if(it.refId) refMap[it.refId]=it; });
+      (fb.itemFeedbacks||[]).forEach(it=>{ if(it.refId && validRefIds.has(it.refId)) refMap[it.refId]=it; });
       r.refs.forEach(ref=>{
         const it = refMap[ref.id];
-        const hasContent = it && (it.note || (it.photos && it.photos.length));
-        if(hasContent) responded++;
+        if(it && (it.note || (it.photos && it.photos.length))) responded++;
       });
     } else {
       responded = (fb.itemFeedbacks||[]).filter(it=>it.note||(it.photos&&it.photos.length)).length + (fb.text?1:0);
     }
     if(responded > 0) storesResponded++;
   }
-
   const total = targetStores.length;
-  if(storesResponded === 0)     return 'pending';   // no store responded
-  if(storesResponded < total)   return 'partial';   // some stores responded
-  return 'checking';                                 // all responded → wait for checker
+  if(storesResponded === 0)   return 'pending';
+  if(storesResponded < total) return 'partial';
+  return 'checking';
 }
 
 // ── Verify report as complete ─────────────────────────────────────────────────
@@ -3267,20 +3262,26 @@ function renderBrandReports(){
     else                    { bc='badge-done';    bt='Complete'; borderStyle='border:2px solid var(--success);'; }
     const targetStore=getTargetStores(r,b.stores)[0]||null;
     const _targetStoresCard=getTargetStores(r,b.stores);
+    const _targetStoreIds=new Set(_targetStoresCard.map(s=>s.id));
     const _totalItemsCard=r.refs&&r.refs.length?r.refs.length:1;
     const _totalPossCard=_targetStoresCard.length*_totalItemsCard;
-    // Deduplicate feedbacks — keep only latest per store
+    // Only count feedbacks from currently targeted stores (ignore removed stores)
     const _fbMapCard={};
-    r.feedbacks.forEach(f=>{ if(!_fbMapCard[f.storeId]||f.date>=_fbMapCard[f.storeId].date) _fbMapCard[f.storeId]=f; });
+    r.feedbacks.forEach(f=>{
+      if(!_targetStoreIds.has(f.storeId)) return;
+      if(!_fbMapCard[f.storeId]||f.date>=_fbMapCard[f.storeId].date) _fbMapCard[f.storeId]=f;
+    });
     let _totalRespCard=0, _totalRejCard=0;
+    const _validRefIds=new Set((r.refs||[]).map(ref=>ref.id));
     _targetStoresCard.forEach(s=>{
       const fb=_fbMapCard[s.id];
       if(!fb) return;
       (fb.itemFeedbacks||[]).forEach(it=>{
+        if(!_validRefIds.has(it.refId)) return; // skip responses for deleted/old refs
         const hasContent=!!(it.note||(it.photos&&it.photos.length));
         const hasRemark=!!(fb.adminRemarks?.[it.refId+'_list']?.length||fb.adminRemarks?.[it.refId]);
-        if(hasContent) _totalRespCard++;          // responded (even if rejected) = counts
-        else if(hasRemark) _totalRejCard++;       // rejected but no response = pending
+        if(hasContent) _totalRespCard++;
+        else if(hasRemark) _totalRejCard++;
       });
     });
     const _itemPctCard=_totalPossCard?Math.round(_totalRespCard/_totalPossCard*100):0;
@@ -4355,13 +4356,17 @@ function viewFeedback(rid){
 
   const targetStores=getTargetStores(r,b.stores);
   const ts=targetStores.length;
+  const targetStoreIdSet=new Set(targetStores.map(s=>s.id));
   // Calculate item-based progress
   const totalItems=r.refs&&r.refs.length?r.refs.length:1;
   const totalPossible=ts*totalItems;
   let totalResponded=0;
-  // Deduplicate feedbacks — keep only latest per store
+  // Deduplicate feedbacks — only from currently targeted stores
   const _fbMapDetail={};
-  r.feedbacks.forEach(f=>{ if(!_fbMapDetail[f.storeId]||f.date>=_fbMapDetail[f.storeId].date) _fbMapDetail[f.storeId]=f; });
+  r.feedbacks.forEach(f=>{
+    if(!targetStoreIdSet.has(f.storeId)) return; // ignore removed stores
+    if(!_fbMapDetail[f.storeId]||f.date>=_fbMapDetail[f.storeId].date) _fbMapDetail[f.storeId]=f;
+  });
   const storeItemStatus=targetStores.map(s=>{
     const fb=_fbMapDetail[s.id];
     if(!fb) return {store:s,responded:0,rejected:0,total:totalItems,pct:0};
