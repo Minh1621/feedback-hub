@@ -5163,8 +5163,10 @@ function renderReviewerHome(){
         const hasRemark=!!(myFb.adminRemarks?.[ref.id+'_list']?.length||myFb.adminRemarks?.[ref.id]);
         const it=fbByRef[ref.id];
         const hasContent=!!(it&&(it.note||(it.photos&&it.photos.length)));
-        if(hasRemark){
-          rejectedItems++; // rejected by checker → never counts as responded, drop from count
+        if(hasRemark && hasContent){
+          respondedItems++; // store re-responded to rejected item → counts (awaiting checker review)
+        } else if(hasRemark && !hasContent){
+          rejectedItems++;  // rejected, no response yet → not counted
         } else if(hasContent){
           respondedItems++; // responded, no rejection → counts
         }
@@ -5485,12 +5487,13 @@ function openReviewerReport(rid){
       const item=_fbByRefId2[ref.id]||{refId:ref.id,note:'',photos:[]};
       const hasMyContent=!!(item.note||(item.photos&&item.photos.length));
       const isRejectedItem=!!(myFb.adminRemarks?.[ref.id+'_list']?.length||myFb.adminRemarks?.[ref.id]);
+      const isRepondedAfterRejection=isRejectedItem&&hasMyContent; // re-responded but checker hasn't cleared yet
       const isNewItem=!hasMyContent&&!isRejectedItem;
       const remarkList=myFb.adminRemarks?.[ref.id+'_list']||[];
       const remarkText=remarkList.length?remarkList.map(rk=>rk.text).join(' · '):(myFb.adminRemarks?.[ref.id]||'');
-      const cardBorder=isRejectedItem?'1.5px solid var(--danger)':isNewItem?'1.5px solid var(--warn)':'0.5px solid var(--border)';
+      const cardBorder=isRejectedItem&&!isRepondedAfterRejection?'1.5px solid var(--danger)':isNewItem?'1.5px solid var(--warn)':'0.5px solid var(--border)';
       let statusBadge='';
-      if(isRejectedItem) statusBadge=`<span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;background:var(--alert-danger-bg);color:var(--danger);flex-shrink:0;">Needs correction</span>`;
+      if(isRejectedItem&&!isRepondedAfterRejection) statusBadge=`<span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;background:var(--alert-danger-bg);color:var(--danger);flex-shrink:0;">Needs correction</span>`;
       else if(isNewItem) statusBadge=`<span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;background:#fff3e0;color:var(--warn);flex-shrink:0;">New</span>`;
       else if(hasMyContent) statusBadge=`<span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;background:var(--badge-done-bg);color:var(--success);flex-shrink:0;">Responded</span>`;
       else statusBadge=`<span style="font-size:11px;color:var(--text3);flex-shrink:0;">No response</span>`;
@@ -6015,23 +6018,35 @@ async function submitReviewerFeedback(){
     || fbMap[s.id] || null;
 
   if(existing){
-    // UPDATE existing feedback — preserve adminRemarks and resubmit timestamp
-    const _preservedRemarks = DB._resubmitAdminRemarks || existing.adminRemarks || {};
+    // UPDATE existing feedback — clear remarks for items store re-responded to
     const _resubmitAt = new Date().toISOString().slice(0,10)+' '+new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
     if(!Array.isArray(existing.timeline)) existing.timeline=[];
-    // Determine if this is FIRST submission or RESUBMISSION after rejection
     const _alreadySubmitted = existing.timeline.some(t=>t.type==='store_submitted'||t.type==='resubmitted');
     const _timelineType = _alreadySubmitted ? 'resubmitted' : 'store_submitted';
     existing.timeline.push({type:_timelineType, date:_resubmitAt, by: DB.reviewerStoreName||''});
+
+    // Build updated adminRemarks — clear remarks for items that now have content
+    const _baseRemarks = DB._resubmitAdminRemarks || existing.adminRemarks || {};
+    const _updatedRemarks = {..._baseRemarks};
+    uploadedFeedbacks.forEach(it=>{
+      const hasContent=!!(it.note||(it.photos&&it.photos.length));
+      if(hasContent && it.refId){
+        // Store responded to this item → clear its rejection remark
+        delete _updatedRemarks[it.refId+'_list'];
+        delete _updatedRemarks[it.refId];
+        if(_updatedRemarks._authors) delete _updatedRemarks._authors[it.refId];
+      }
+    });
+
     await api('PUT',`/api/feedbacks/${existing.id}`,{
       text:newText, itemFeedbacks:uploadedFeedbacks, photos:[],
-      adminRemarks:_preservedRemarks,
+      adminRemarks:_updatedRemarks,
       resubmit_at:_resubmitAt, timeline:existing.timeline
     });
     existing.itemFeedbacks=uploadedFeedbacks;
     existing.text=newText;
     existing.date=newDate;
-    existing.adminRemarks=_preservedRemarks;
+    existing.adminRemarks=_updatedRemarks;
     existing.resubmitAt=_resubmitAt;
     DB._resubmitAdminRemarks=null;
     // Remove any duplicate feedbacks for this store
