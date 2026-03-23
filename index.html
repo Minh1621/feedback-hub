@@ -3755,7 +3755,7 @@ function goUpload(){
     <input type="checkbox" class="store-check" data-sid="${s.id}" onchange="updateAllStoresCheck()"/>
     <span style="width:9px;height:9px;border-radius:50%;background:${s.color};flex-shrink:0;display:inline-block;"></span>${s.name}
   </label>`).join('');
-  // reset fields safely
+  // Reset fields then try restore draft
   ['r-title','r-desc','r-store-name','r-checked-by','r-score'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
   const dateEl=document.getElementById('r-inspect-date'); if(dateEl) dateEl.value=new Date().toISOString().slice(0,10);
   const lbl=document.getElementById('pdf-lbl'); if(lbl){ lbl.textContent='Tap to select PDF'; lbl.style.color=''; }
@@ -3764,6 +3764,14 @@ function goUpload(){
   renderRefItems();
   document.getElementById('upload-msg').innerHTML='';
   goTo('s-upload');
+  // Attach auto-save listeners then load draft
+  setTimeout(()=>{
+    _attachUploadAutoSave();
+    const hadDraft=loadUploadDraft();
+    if(hadDraft){
+      showToast('Draft restored!');
+    }
+  },100);
 }
 function onPDFPick(input){
   const file=input.files&&input.files[0];
@@ -3791,10 +3799,11 @@ function toggleRefItem(id){
   const ref=DB.pendingRefs.find(r=>r.id===id);
   if(ref){ ref._open=!ref._open; renderRefItems(); }
 }
-function updateRefName(id,val){ const r=DB.pendingRefs.find(r=>r.id===id); if(r) r.name=val; }
+function updateRefName(id,val){ const r=DB.pendingRefs.find(r=>r.id===id); if(r){ r.name=val; saveUploadDraft(); } }
 function removeRefItem(id){
   DB.pendingRefs=DB.pendingRefs.filter(r=>r.id!==id);
   renderRefItems();
+  saveUploadDraft();
 }
 function renderRefItems(){
   const el=document.getElementById('ref-items-list');
@@ -3847,6 +3856,91 @@ function renderRefItems(){
     setTimeout(()=>enableRefPhotoDrop('refphotosgrid_'+ref.id, ref.id), 0);
   });
 }
+
+// ── Upload form auto-save to localStorage ────────────────────────────────
+function _uploadDraftKey(){ return 'fh_upload_draft_'+(DB.currentBrandId||''); }
+
+function saveUploadDraft(){
+  try{
+    const draft={
+      title:document.getElementById('r-title')?.value||'',
+      desc:document.getElementById('r-desc')?.value||'',
+      storeName:document.getElementById('r-store-name')?.value||'',
+      date:document.getElementById('r-inspect-date')?.value||'',
+      checkedBy:document.getElementById('r-checked-by')?.value||'',
+      score:document.getElementById('r-score')?.value||'',
+      storeAll:document.getElementById('r-store-all')?.checked??true,
+      storeIds:Array.from(document.querySelectorAll('.store-check:checked')).map(el=>el.getAttribute('data-sid')),
+      refs:DB.pendingRefs.map(r=>({id:r.id,name:r.name,desc:r.desc,
+        // save photos as base64 (already dataURLs in memory)
+        photos:(r.photos||[]).filter(p=>p&&p.startsWith('data:')).slice(0,3) // max 3 per item to limit size
+      })),
+      savedAt:Date.now()
+    };
+    localStorage.setItem(_uploadDraftKey(), JSON.stringify(draft));
+  }catch(e){}
+}
+
+function loadUploadDraft(){
+  try{
+    const raw=localStorage.getItem(_uploadDraftKey());
+    if(!raw) return false;
+    const draft=JSON.parse(raw);
+    // Ignore drafts older than 7 days
+    if(!draft.savedAt||(Date.now()-draft.savedAt)>7*24*60*60*1000){
+      localStorage.removeItem(_uploadDraftKey()); return false;
+    }
+    // Restore text fields
+    const set=(id,val)=>{ const el=document.getElementById(id); if(el&&val) el.value=val; };
+    set('r-title',draft.title);
+    set('r-desc',draft.desc);
+    set('r-store-name',draft.storeName);
+    set('r-inspect-date',draft.date);
+    set('r-checked-by',draft.checkedBy);
+    set('r-score',draft.score);
+    // Restore store checkboxes
+    if(!draft.storeAll && draft.storeIds?.length){
+      const allCb=document.getElementById('r-store-all');
+      if(allCb){ allCb.checked=false; toggleAllStores(allCb); }
+      draft.storeIds.forEach(sid=>{
+        const cb=document.querySelector(`.store-check[data-sid="${sid}"]`);
+        if(cb){ cb.checked=true; }
+      });
+      updateAllStoresCheck();
+    }
+    // Restore ref items
+    if(draft.refs?.length){
+      DB.pendingRefs=draft.refs.map(r=>({...r,photos:r.photos||[],_open:false}));
+      renderRefItems();
+    }
+    return !!(draft.title||draft.refs?.length);
+  }catch(e){ return false; }
+}
+
+function clearUploadDraft(){
+  try{ localStorage.removeItem(_uploadDraftKey()); }catch(e){}
+}
+
+// Auto-save on any field change — attach to upload form inputs
+function _attachUploadAutoSave(){
+  const ids=['r-title','r-desc','r-store-name','r-inspect-date','r-checked-by','r-score'];
+  ids.forEach(id=>{
+    const el=document.getElementById(id);
+    if(el&&!el._autoSaveAttached){
+      el.addEventListener('input',saveUploadDraft);
+      el.addEventListener('change',saveUploadDraft);
+      el._autoSaveAttached=true;
+    }
+  });
+  // Store checkboxes
+  document.querySelectorAll('.store-check,#r-store-all').forEach(cb=>{
+    if(!cb._autoSaveAttached){
+      cb.addEventListener('change',saveUploadDraft);
+      cb._autoSaveAttached=true;
+    }
+  });
+}
+
 function updateRefDesc(id,val){ const r=DB.pendingRefs.find(r=>r.id===id); if(r) r.desc=val; }
 function addRefPhotos(id,input){
   const ref=DB.pendingRefs.find(r=>r.id===id); if(!ref) return;
@@ -4077,6 +4171,7 @@ async function doUpload(){
   await api('POST','/api/reports',{...newReport, brand_id:b.id, alerter:_uploadAlerter});
 
   DB.pendingUpload=null; DB.pendingUploadURL=null; DB.pendingRefs=[];
+  clearUploadDraft(); // clear saved draft on success
   ['r-title','r-desc','r-store-name','r-checked-by','r-score'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
   const lbl=document.getElementById('pdf-lbl');
   if(lbl){ lbl.textContent='Tap to select PDF'; lbl.style.color=''; }
