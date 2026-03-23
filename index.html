@@ -1965,7 +1965,7 @@ function toggleRvDownloadMenu(e, rid){
   }
 }
 
-async function downloadReportPDF(rid){  // Close whichever download menu is open
+async function downloadReportPDF(rid){
   ['rv-dl-menu','fb-dl-menu','fb-dl-menu-2'].forEach(id=>{ const m=document.getElementById(id); if(m) m.style.display='none'; });
   let b=null, r=null, storeName='';
   if(DB.role==='reviewer'){
@@ -1978,49 +1978,115 @@ async function downloadReportPDF(rid){  // Close whichever download menu is open
   showToast('Building PDF...');
   const insp=r.inspection||{};
 
-  // Only target stores
-  const _pdfTargetStores=getTargetStores(r,b.stores);
-  const _pdfTargetIds=new Set(_pdfTargetStores.map(s=>s.id));
+  // Target stores only
+  const _pts=getTargetStores(r,b.stores);
+  const _ptIds=new Set(_pts.map(s=>s.id));
   const latestFbMap={};
   (r.feedbacks||[]).forEach(f=>{
-    if(!_pdfTargetIds.has(f.storeId)) return;
+    if(!_ptIds.has(f.storeId)) return;
     if(!latestFbMap[f.storeId]||f.date>=latestFbMap[f.storeId].date) latestFbMap[f.storeId]=f;
   });
-  const targetStores=_pdfTargetStores.length?_pdfTargetStores:[{id:'',name:storeName||'Store'}];
+  const targetStores=_pts.length?_pts:[{id:'',name:storeName||'Store'}];
 
-  // Helper — convert image URL to base64 for PDF embedding
-  async function toBase64(url){
+  // Convert image URL → base64
+  async function toB64(url){
     if(!url) return null;
     if(url.startsWith('data:')) return url;
     try{
       const res=await fetch(url);
       const blob=await res.blob();
-      return await new Promise(resolve=>{
-        const rd=new FileReader();
-        rd.onload=()=>resolve(rd.result);
-        rd.onerror=()=>resolve(null);
-        rd.readAsDataURL(blob);
-      });
-    }catch(e){ return null; }
+      return await new Promise(ok=>{const r=new FileReader();r.onload=()=>ok(r.result);r.onerror=()=>ok(null);r.readAsDataURL(blob);});
+    }catch(e){return null;}
   }
 
-  // Build per-store HTML sections with full detail
-  let allStoreHTML='';
+  // Load jsPDF
+  if(typeof window.jspdf==='undefined'){
+    await new Promise((res,rej)=>{
+      const s=document.createElement('script');
+      s.src='https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+      s.onload=res; s.onerror=rej;
+      document.head.appendChild(s);
+    });
+  }
+  const {jsPDF}=window.jspdf;
+  const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  const PW=210, PH=297, ML=12, MR=12, MT=12, MB=14;
+  const CW=PW-ML-MR; // content width
+  let y=MT;
+  let pageNum=1;
+
+  function addPage(){
+    doc.addPage();
+    y=MT;
+    pageNum++;
+    drawFooter();
+  }
+  function checkY(need){
+    if(y+need>PH-MB) addPage();
+  }
+  function drawFooter(){
+    doc.setFontSize(7); doc.setFont('helvetica','normal'); doc.setTextColor(180,180,180);
+    doc.text(`FEEDBACK HUB · ${r.title} · Page ${pageNum}`,PW/2,PH-5,{align:'center'});
+  }
+
+  // ── Header bar ──────────────────────────────────────────────────────────
+  doc.setFillColor(83,74,183);
+  doc.rect(ML,y,CW,18,'F');
+  doc.setTextColor(255,255,255);
+  doc.setFontSize(14); doc.setFont('helvetica','bold');
+  doc.text('Quality Control Report',ML+4,y+7);
+  doc.setFontSize(8); doc.setFont('helvetica','normal');
+  doc.text(`${b.name} · ${r.title}${insp.date?' · '+insp.date:''}`,ML+4,y+14);
+  if(r.verified){
+    doc.setFontSize(7); doc.setFont('helvetica','bold');
+    doc.text('VERIFIED',PW-MR-4,y+8,{align:'right'});
+  }
+  y+=22;
+
+  // ── Meta row ─────────────────────────────────────────────────────────────
+  const metas=[];
+  if(insp.date) metas.push(['Date',insp.date]);
+  if(insp.checkedBy) metas.push(['Checker',insp.checkedBy]);
+  if(insp.score) metas.push(['Score',insp.score]);
+  metas.push(['Items',String((r.refs||[]).length)]);
+  metas.push(['Stores',String(targetStores.length)]);
+  const mw=(CW-(metas.length-1)*2)/metas.length;
+  metas.forEach((m,mi)=>{
+    const mx=ML+mi*(mw+2);
+    doc.setFillColor(245,245,250);
+    doc.rect(mx,y,mw,11,'F');
+    doc.setFontSize(6.5); doc.setFont('helvetica','normal'); doc.setTextColor(140,140,140);
+    doc.text(m[0].toUpperCase(),mx+2,y+4);
+    doc.setFontSize(9); doc.setFont('helvetica','bold'); doc.setTextColor(30,30,30);
+    doc.text(String(m[1]),mx+2,y+9.5);
+  });
+  y+=15;
+  drawFooter();
+
+  // ── Per-store sections ────────────────────────────────────────────────────
   for(let si=0;si<targetStores.length;si++){
     const store=targetStores[si];
     const myFb=latestFbMap[store.id]||null;
+    if(si>0){ addPage(); }
 
-    // Count totals for store summary
-    let storeResponded=0, storeRejected=0;
+    // Store header
+    checkY(12);
+    doc.setFillColor(83,74,183);
+    doc.rect(ML,y,CW,9,'F');
+    doc.setTextColor(255,255,255);
+    doc.setFontSize(9); doc.setFont('helvetica','bold');
+    doc.text(store.name+(myFb?.date?' · '+myFb.date:''),ML+3,y+6);
+    // Response count
+    let sResp=0;
     (r.refs||[]).forEach(ref=>{
-      const it=myFb?.itemFeedbacks?.find(it=>it.refId===ref.id)||null;
-      const hasContent=!!(it?.note||(it?.photos?.length));
-      const hasRemark=!!(myFb?.adminRemarks?.[ref.id+'_list']?.length||myFb?.adminRemarks?.[ref.id]);
-      if(hasContent) storeResponded++;
-      else if(hasRemark) storeRejected++;
+      const it=myFb?.itemFeedbacks?.find(it=>it.refId===ref.id);
+      if(it&&(it.note||(it.photos&&it.photos.length))) sResp++;
     });
+    doc.setFontSize(8); doc.setFont('helvetica','normal');
+    doc.text(`${sResp}/${(r.refs||[]).length} responded`,PW-MR-2,y+6,{align:'right'});
+    y+=13;
 
-    let itemRowsHTML='';
+    // ── Items ─────────────────────────────────────────────────────────────
     for(let i=0;i<(r.refs||[]).length;i++){
       const ref=r.refs[i];
       const it=myFb?.itemFeedbacks?.find(it=>it.refId===ref.id)||null;
@@ -2028,74 +2094,102 @@ async function downloadReportPDF(rid){  // Close whichever download menu is open
       const hasRemark=!!(myFb?.adminRemarks?.[ref.id+'_list']?.length||myFb?.adminRemarks?.[ref.id]);
       const remarkList=(myFb?.adminRemarks?.[ref.id+'_list']||[]);
       const legacyRemark=myFb?.adminRemarks?.[ref.id]||'';
-      const allRemarks=remarkList.length?remarkList:[...(legacyRemark?[{text:legacyRemark,author:'',date:''}]:[])];
-      const statusColor=hasContent?'#0F6E56':hasRemark?'#B91C1C':'#6B7280';
-      const statusBg=hasContent?'#DCFCE7':hasRemark?'#FEE2E2':'#F3F4F6';
+      const allRemarks=remarkList.length?remarkList:(legacyRemark?[{text:legacyRemark,author:'',date:''}]:[]);
+
+      checkY(16);
+
+      // Item number + name
+      doc.setFontSize(8); doc.setFont('helvetica','bold'); doc.setTextColor(83,74,183);
+      doc.text(`${i+1}.`,ML,y+5);
+      doc.setTextColor(20,20,20);
+      const nameLines=doc.splitTextToSize(ref.name||`Item ${i+1}`,CW-30);
+      doc.text(nameLines,ML+6,y+5);
+
+      // Status badge
       const statusLabel=hasContent?'Responded':hasRemark?'Needs correction':'No response';
-      const rowBorder=hasRemark&&!hasContent?'border-left:3px solid #EF4444;':'border-left:3px solid #E5E7EB;';
+      const sColor=hasContent?[15,110,86]:hasRemark?[185,28,28]:[100,100,100];
+      const sBg=hasContent?[220,252,231]:hasRemark?[254,226,226]:[243,244,246];
+      doc.setFillColor(...sBg);
+      const sw=doc.getTextWidth(statusLabel)+6;
+      doc.rect(PW-MR-sw,y+1,sw,5,'F');
+      doc.setFontSize(6.5); doc.setFont('helvetica','bold'); doc.setTextColor(...sColor);
+      doc.text(statusLabel,PW-MR-sw+3,y+5);
+      y+=nameLines.length*4+3;
 
-      // Embed ref photos as base64
-      let refPhotosHTML='';
-      for(const p of (ref.photos||[])){
-        const b64=await toBase64(p);
-        if(b64) refPhotosHTML+=`<img src="${b64}" style="width:72px;height:72px;object-fit:cover;border-radius:6px;border:1px solid #E5E7EB;flex-shrink:0;"/>`;
+      // Ref description
+      if(ref.desc){
+        checkY(6);
+        doc.setFontSize(7.5); doc.setFont('helvetica','italic'); doc.setTextColor(100,100,100);
+        const descLines=doc.splitTextToSize(ref.desc,CW-8);
+        doc.text(descLines,ML+6,y);
+        y+=descLines.length*3.5+2;
       }
 
-      // Embed response photos as base64
-      let respPhotosHTML='';
-      for(const p of (it?.photos||[])){
-        const b64=await toBase64(p);
-        if(b64) respPhotosHTML+=`<img src="${b64}" style="width:72px;height:72px;object-fit:cover;border-radius:6px;border:1px solid #D1FAE5;flex-shrink:0;"/>`;
+      // Ref photos
+      if(ref.photos&&ref.photos.length){
+        checkY(26);
+        doc.setFontSize(7); doc.setFont('helvetica','bold'); doc.setTextColor(100,100,100);
+        doc.text('REFERENCE PHOTOS',ML+6,y);
+        y+=3;
+        let px=ML+6;
+        for(const p of ref.photos){
+          if(px+22>PW-MR){ px=ML+6; y+=22; checkY(22); }
+          const b64=await toB64(p);
+          if(b64){
+            try{ doc.addImage(b64,'JPEG',px,y,20,20); }catch(e){}
+          }
+          px+=22;
+        }
+        y+=22;
       }
 
-      itemRowsHTML+=`
-      <div style="padding:12px 14px;margin-bottom:8px;background:#fff;border-radius:8px;border:1px solid #E5E7EB;${rowBorder}page-break-inside:avoid;">
-        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px;">
-          <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;">
-            <span style="font-size:11px;font-weight:700;color:#534AB7;background:#EEF2FF;border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;">${i+1}</span>
-            <div>
-              <div style="font-size:13px;font-weight:700;color:#111;">${ref.name||'Item '+(i+1)}</div>
-              ${ref.desc?`<div style="font-size:11px;color:#6B7280;margin-top:2px;">${ref.desc}</div>`:''}
-            </div>
-          </div>
-          <span style="font-size:10px;font-weight:700;color:${statusColor};background:${statusBg};padding:3px 10px;border-radius:20px;white-space:nowrap;flex-shrink:0;">${statusLabel}</span>
-        </div>
-        ${refPhotosHTML?`
-        <div style="margin-bottom:8px;">
-          <div style="font-size:10px;font-weight:600;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px;">Reference photos</div>
-          <div style="display:flex;flex-wrap:wrap;gap:5px;">${refPhotosHTML}</div>
-        </div>`:''}
-        ${allRemarks.length?`
-        <div style="background:#FEF2F2;border:1px solid #FECACA;border-radius:6px;padding:8px 10px;margin-bottom:8px;">
-          <div style="font-size:10px;font-weight:700;color:#991B1B;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Rejection remarks</div>
-          ${allRemarks.map(rk=>`
-            <div style="font-size:12px;color:#7F1D1D;margin-bottom:3px;">${rk.text||''}${rk.author?`<span style="color:#9CA3AF;font-size:10px;"> — ${rk.author}${rk.date?' · '+rk.date:''}</span>`:''}</div>
-          `).join('')}
-        </div>`:''}
-        ${(it?.note||respPhotosHTML)?`
-        <div style="background:#F0FDF4;border:1px solid #BBF7D0;border-radius:6px;padding:8px 10px;">
-          <div style="font-size:10px;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Store response</div>
-          ${it?.note?`<div style="font-size:12px;color:#14532D;margin-bottom:${respPhotosHTML?'6px':'0'};">${it.note}</div>`:''}
-          ${respPhotosHTML?`<div style="display:flex;flex-wrap:wrap;gap:5px;">${respPhotosHTML}</div>`:''}
-        </div>`:''}
-      </div>`;
+      // Rejection remarks
+      if(allRemarks.length){
+        checkY(10);
+        doc.setFillColor(254,242,242);
+        const remarkTexts=allRemarks.map(rk=>rk.text+(rk.author?' — '+rk.author:'')).join(' | ');
+        const rLines=doc.splitTextToSize('Rejection: '+remarkTexts,CW-10);
+        doc.rect(ML+6,y-1,CW-6,rLines.length*4+3,'F');
+        doc.setFontSize(7.5); doc.setFont('helvetica','normal'); doc.setTextColor(185,28,28);
+        doc.text(rLines,ML+8,y+3);
+        y+=rLines.length*4+5;
+      }
+
+      // Response note
+      if(it?.note){
+        checkY(10);
+        doc.setFillColor(240,253,244);
+        const nLines=doc.splitTextToSize(it.note,CW-10);
+        doc.rect(ML+6,y-1,CW-6,nLines.length*4+3,'F');
+        doc.setFontSize(8); doc.setFont('helvetica','normal'); doc.setTextColor(20,83,45);
+        doc.text(nLines,ML+8,y+3);
+        y+=nLines.length*4+5;
+      }
+
+      // Response photos
+      if(it?.photos&&it.photos.length){
+        checkY(26);
+        doc.setFontSize(7); doc.setFont('helvetica','bold'); doc.setTextColor(22,101,52);
+        doc.text('RESPONSE PHOTOS',ML+6,y);
+        y+=3;
+        let px=ML+6;
+        for(const p of it.photos){
+          if(px+22>PW-MR){ px=ML+6; y+=22; checkY(22); }
+          const b64=await toB64(p);
+          if(b64){
+            try{ doc.addImage(b64,'JPEG',px,y,20,20); }catch(e){}
+          }
+          px+=22;
+        }
+        y+=22;
+      }
+
+      // Divider
+      checkY(3);
+      doc.setDrawColor(229,231,235); doc.setLineWidth(0.2);
+      doc.line(ML,y,PW-MR,y);
+      y+=4;
     }
-
-    allStoreHTML+=`
-    <div style="page-break-before:${si>0?'always':'avoid'};">
-      <div style="background:linear-gradient(135deg,#534AB7,#7C6FFF);color:#fff;border-radius:8px;padding:10px 14px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;">
-        <div>
-          <div style="font-size:14px;font-weight:700;">${store.name}</div>
-          ${myFb?.date?`<div style="font-size:11px;opacity:.8;margin-top:2px;">Submitted: ${myFb.date}</div>`:'<div style="font-size:11px;opacity:.8;margin-top:2px;">No response yet</div>'}
-        </div>
-        <div style="text-align:right;">
-          <div style="font-size:18px;font-weight:800;">${storeResponded}/${(r.refs||[]).length}</div>
-          <div style="font-size:10px;opacity:.8;">items responded</div>
-          ${storeRejected>0?`<div style="font-size:10px;color:#FCA5A5;margin-top:2px;">×${storeRejected} need correction</div>`:''}
-        </div>
-      </div>
-      ${itemRowsHTML}
-    </div>`;
   }
 
   const today=new Date();
@@ -2103,84 +2197,8 @@ async function downloadReportPDF(rid){  // Close whichever download menu is open
   const mm2=String(today.getMonth()+1).padStart(2,'0');
   const yyyy=today.getFullYear();
   const safeTitle=(r.title||'report').replace(/[^a-z0-9]/gi,'_').slice(0,30);
-  const filename=`QC_Report_${safeTitle}_${dd}-${mm2}-${yyyy}`;
-
-  const metaBoxes=[
-    insp.date?`<div class="mbox"><div class="ml">Date</div><div class="mv">${insp.date}</div></div>`:'',
-    insp.checkedBy?`<div class="mbox"><div class="ml">Checker</div><div class="mv">${insp.checkedBy}</div></div>`:'',
-    insp.score?`<div class="mbox"><div class="ml">Score</div><div class="mv">${insp.score}</div></div>`:'',
-    `<div class="mbox"><div class="ml">Items</div><div class="mv">${(r.refs||[]).length}</div></div>`,
-    `<div class="mbox"><div class="ml">Stores</div><div class="mv">${targetStores.length}</div></div>`,
-  ].filter(Boolean).join('');
-
-  // Generate real PDF using html2pdf.js
-  try {
-    if(typeof html2pdf === 'undefined'){
-      await new Promise((res,rej)=>{
-        const s=document.createElement('script');
-        s.src='https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
-        s.onload=res; s.onerror=rej;
-        document.head.appendChild(s);
-      });
-    }
-
-    // Build inner HTML content
-    const innerHTML=`
-    <div style="padding:20px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;font-size:13px;color:#111;background:#F9FAFB;">
-      <div style="background:linear-gradient(135deg,#534AB7 0%,#7C6FFF 100%);color:#fff;padding:16px 20px;border-radius:10px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:flex-start;">
-        <div>
-          <div style="margin:0 0 3px;font-size:18px;font-weight:800;">Quality Control Report</div>
-          <div style="margin:0;font-size:11px;opacity:.85;">${b.name} · ${r.title}${insp.date?' · '+insp.date:''}</div>
-        </div>
-        ${r.verified?'<span style="font-size:11px;font-weight:700;background:rgba(255,255,255,.25);padding:4px 12px;border-radius:20px;">Verified</span>':''}
-      </div>
-      <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">${metaBoxes}</div>
-      ${allStoreHTML}
-      <div style="margin-top:20px;font-size:9px;color:#9CA3AF;text-align:center;border-top:1px solid #E5E7EB;padding-top:10px;">
-        FEEDBACK HUB · QC Report · Generated ${new Date().toLocaleString()}
-      </div>
-    </div>`;
-
-    // Container must be in DOM and visible for html2canvas
-    const container=document.createElement('div');
-    container.style.cssText=`
-      position:fixed;top:0;left:0;width:100%;height:100%;
-      z-index:99999;overflow-y:auto;background:#F9FAFB;`;
-    container.innerHTML=`
-      <div style="display:flex;align-items:center;justify-content:center;padding:20px 0;background:rgba(0,0,0,.5);min-height:100%;">
-        <div style="background:#fff;border-radius:12px;overflow:hidden;max-width:794px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.3);">
-          <div id="_pdf_inner" style="width:794px;">${innerHTML}</div>
-        </div>
-      </div>`;
-    document.body.appendChild(container);
-    showToast('Generating PDF...');
-
-    // Wait for images to load
-    await new Promise(r=>setTimeout(r,500));
-
-    const pdfEl=container.querySelector('#_pdf_inner');
-    const opt={
-      margin:0,
-      filename:`${filename}.pdf`,
-      image:{type:'jpeg',quality:0.92},
-      html2canvas:{
-        scale:1.5,
-        useCORS:true,
-        allowTaint:true,
-        backgroundColor:'#ffffff',
-        width:794,
-        windowWidth:794
-      },
-      jsPDF:{unit:'px',format:[794,1123],orientation:'portrait'},
-      pagebreak:{mode:'avoid-all'}
-    };
-    await html2pdf().set(opt).from(pdfEl).save();
-    document.body.removeChild(container);
-    showToast('PDF downloaded!');
-  } catch(err){
-    console.error('PDF error:',err);
-    showToast('PDF failed: '+err.message);
-  }
+  doc.save(`QC_Report_${safeTitle}_${dd}-${mm2}-${yyyy}.pdf`);
+  showToast('PDF downloaded!');
 }
 
 async function downloadReportPhotos(rid){
