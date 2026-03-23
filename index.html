@@ -2147,11 +2147,17 @@ async function downloadReportPDF(rid){  // Close whichever download menu is open
     <script>window.onload=function(){setTimeout(function(){window.print();},800);};<\/script>
   </body></html>`;
 
-  // Open in new window for print → Save as PDF
-  const printWin=window.open('','_blank');
-  if(!printWin){ showToast('Please allow popups to download PDF'); return; }
-  printWin.document.write(htmlContent);
-  printWin.document.close();
+  // Open in new tab using blob URL — avoids popup blocker
+  const blob=new Blob([htmlContent],{type:'text/html;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  a.target='_blank';
+  a.rel='noopener';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url),10000);
   showToast('PDF ready — use Save as PDF in print dialog');
 }
 
