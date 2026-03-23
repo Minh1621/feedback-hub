@@ -1950,8 +1950,10 @@ function scoreHTML(s, size){
 /* ===== THEME ===== */
 function toggleRvDownloadMenu(e, rid){
   e.stopPropagation();
-  // Handle both store (rv-dl-menu) and checker (fb-dl-menu) menus
-  const menu=document.getElementById('fb-dl-menu')||document.getElementById('rv-dl-menu');
+  // Handle store (rv-dl-menu), checker variant 1 (fb-dl-menu), checker variant 2 (fb-dl-menu-2)
+  const menu=document.getElementById('fb-dl-menu')
+    ||document.getElementById('fb-dl-menu-2')
+    ||document.getElementById('rv-dl-menu');
   if(!menu) return;
   const isOpen=menu.style.display!=='none';
   menu.style.display=isOpen?'none':'';
@@ -1962,7 +1964,7 @@ function toggleRvDownloadMenu(e, rid){
 }
 
 async function downloadReportPDF(rid){  // Close whichever download menu is open
-  ['rv-dl-menu','fb-dl-menu'].forEach(id=>{ const m=document.getElementById(id); if(m) m.style.display='none'; });
+  ['rv-dl-menu','fb-dl-menu','fb-dl-menu-2'].forEach(id=>{ const m=document.getElementById(id); if(m) m.style.display='none'; });
   // Works for all roles — get report from any context
   let b=null, r=null, storeName='';
   if(DB.role==='reviewer'){
@@ -2003,7 +2005,7 @@ async function downloadReportPDF(rid){  // Close whichever download menu is open
           <div style="font-weight:700;font-size:13px;color:#111;margin-bottom:3px;">${ref.name||'Item '+(i+1)}</div>
           ${ref.desc?`<div style="font-size:11px;color:#777;margin-bottom:5px;">${ref.desc}</div>`:''}
           ${refPhotosHTML?`<div style="margin-bottom:5px;">${refPhotosHTML}</div>`:''}
-          ${hasRemark?`<div style="font-size:11px;color:#A32D2D;background:#FCEBEB;padding:5px 8px;border-radius:4px;border-left:3px solid #E24B4A;margin-bottom:5px;">⚑ Remark: ${remarkText}</div>`:''}
+          ${hasRemark?`<div style="font-size:11px;color:#A32D2D;background:#FCEBEB;padding:5px 8px;border-radius:4px;border-left:3px solid #E24B4A;margin-bottom:5px;">Remark: ${remarkText}</div>`:''}
           ${it?.note?`<div style="font-size:12px;color:#222;background:#f8f8f8;padding:6px 8px;border-radius:4px;border-left:3px solid #bbb;margin-bottom:5px;">${it.note}</div>`:''}
           ${respPhotosHTML?`<div>${respPhotosHTML}</div>`:''}
         </td>
@@ -2044,7 +2046,7 @@ async function downloadReportPDF(rid){  // Close whichever download menu is open
         <h1>Quality Control Report</h1>
         <p>${b.name} · ${r.title}${insp.date?' · '+insp.date:''}</p>
       </div>
-      ${r.verified?'<span class="badge">Verified ✓</span>':''}
+      ${r.verified?'<span class="badge">Verified</span>':''}
     </div>
     <div class="meta">
       ${insp.date?`<div class="mbox"><div class="ml">Date</div><div class="mv">${insp.date}</div></div>`:''}
@@ -2196,7 +2198,7 @@ async function downloadReportPDF(rid){  // Close whichever download menu is open
 }
 
 async function downloadReportPhotos(rid){
-  ['rv-dl-menu','fb-dl-menu'].forEach(id=>{ const m=document.getElementById(id); if(m) m.style.display='none'; });
+  ['rv-dl-menu','fb-dl-menu','fb-dl-menu-2'].forEach(id=>{ const m=document.getElementById(id); if(m) m.style.display='none'; });
   // All roles — find report
   let b=null, r=null;
   if(DB.role==='reviewer'){
@@ -3173,7 +3175,7 @@ function openBrand(id){
     const addStoreBtn=document.getElementById('brand-add-store-btn');
     if(addStoreBtn) addStoreBtn.style.display=(DB.role==='admin')?'':'none';
     const brandEditBtn=document.getElementById('brand-edit-btn');
-    if(brandEditBtn) brandEditBtn.style.display=(DB.role==='admin')?'':'none';
+    if(brandEditBtn) brandEditBtn.style.display=(DB.role==='admin')?'':'none'; // admin only
     renderBrandHero(); brandTab('reports'); goTo('s-brand');
   } catch(e){
     showToast('Error: '+e.message);
@@ -3211,7 +3213,7 @@ function brandTab(tab){
     ['reports','stores'].forEach(t=>{ const e=document.getElementById('btab-'+t); if(e) e.classList.toggle('active',t===tab); const p=document.getElementById('bpane-'+t); if(p) p.style.display=t===tab?'':'none'; });
     // Enforce role-based visibility every time brand page renders
     const _bEditBtn=document.getElementById('brand-edit-btn');
-    if(_bEditBtn) _bEditBtn.style.display=(DB.role==='admin')?'':'none';
+    if(_bEditBtn) _bEditBtn.style.display=(DB.role==='admin')?'':'none'; // admin only
     const _bAddStore=document.getElementById('brand-add-store-btn');
     if(_bAddStore) _bAddStore.style.display=(DB.role==='admin')?'':'none';
     if(tab==='reports') renderBrandReports(); else renderBrandStores();
@@ -3859,7 +3861,6 @@ function addRefPhotos(id,input){
       ref.photos.push(compressed);
       renderRefItems();
       // Original saved to Camera Roll by iOS (capture=environment); also save compressed copy
-      if(isCam) await autoSavePhotoToDevice(compressed, 'ref');
     } catch(e) { console.error('addRefPhotos error:', e); }
   });
 }
@@ -4314,7 +4315,7 @@ function viewFeedback(rid){
             <button onclick="toggleRvDownloadMenu(event,'${rid}')" style="width:28px;height:28px;border-radius:7px;border:0.5px solid var(--border2);background:var(--bg3);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text2);padding:0;">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
             </button>
-            <div id="fb-dl-menu" style="display:none;position:absolute;top:32px;right:0;background:var(--bg2);border:0.5px solid var(--border2);border-radius:10px;overflow:hidden;z-index:50;min-width:190px;box-shadow:0 4px 16px rgba(0,0,0,.12);">
+            <div id="fb-dl-menu-2" style="display:none;position:absolute;top:32px;right:0;background:var(--bg2);border:0.5px solid var(--border2);border-radius:10px;overflow:hidden;z-index:50;min-width:190px;box-shadow:0 4px 16px rgba(0,0,0,.12);">
               <div onclick="downloadReportPDF('${rid}')" style="display:flex;align-items:center;gap:10px;padding:11px 14px;font-size:13px;color:var(--text);cursor:pointer;border-bottom:0.5px solid var(--border);" onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background=''">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
                 Download report (PDF)
@@ -5745,7 +5746,6 @@ function addItemPhoto(idx,input){
       renderItemPhotoGrid(idx);
       refreshReviewerItemStatus(idx);
       // Auto-save stamped copy to device when taken with camera button
-      if(isCameraInput) await autoSavePhotoToDevice(stamped, label);
     } catch(e) { console.error('addItemPhoto error:', e); }
   });
   input.value='';
@@ -5761,10 +5761,31 @@ async function saveReviewerDraft(){
   if(!hasAny){ msg.innerHTML='<div class="alert alert-danger">Please add at least one response first.</div>'; setTimeout(()=>msg.innerHTML='',2500); return; }
   const b=reviewerBrand(), s=reviewerStore();
   const r=b.reports.find(r=>r.id===DB.reviewerReportId);
+  msg.innerHTML='<div class="alert alert-success">Uploading photos...</div>';
+
+  // Pre-upload base64 photos to R2 before saving to avoid D1 size limits
+  const uploadedFeedbacks = await Promise.all(DB.itemFeedbacks.map(async (it)=>{
+    const uploadedPhotos = await Promise.all((it.photos||[]).map(async (p,pi)=>{
+      if(p && p.startsWith('data:')){
+        try{
+          const res=await api('POST','/api/upload',{
+            fileName:`draft_${s.id}_item_${it.refId||pi}_${Date.now()}.jpg`,
+            fileData:p
+          });
+          return res?.url||p;
+        }catch(e){ return p; }
+      }
+      return p;
+    }));
+    return {...it, photos:uploadedPhotos};
+  }));
+  // Update in-memory photos to R2 URLs so future saves don't re-upload
+  DB.itemFeedbacks = DB.itemFeedbacks.map((it,i)=>({...it, photos:uploadedFeedbacks[i].photos}));
+
   const feedbackObj={
     storeId:s.id,
-    text:DB.itemFeedbacks.map((it,i)=>it.note?`Item ${i+1}: ${it.note}`:'').filter(Boolean).join(' | '),
-    itemFeedbacks:DB.itemFeedbacks.map(it=>({...it,photos:[...it.photos]})),
+    text:uploadedFeedbacks.map((it,i)=>it.note?`Item ${i+1}: ${it.note}`:'').filter(Boolean).join(' | '),
+    itemFeedbacks:uploadedFeedbacks.map(it=>({...it,photos:[...it.photos]})),
     photos:[],
     date:new Date().toISOString().slice(0,10)+' '+new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}),
     draft:true
@@ -5826,8 +5847,27 @@ async function submitReviewerFeedback(){
   }
   const b=reviewerBrand(), s=reviewerStore();
   const r=b.reports.find(r=>r.id===DB.reviewerReportId);
-  const newText=DB.itemFeedbacks.map((it,i)=>it.note?`Item ${i+1}: ${it.note}`:'').filter(Boolean).join(' | ');
-  const newItems=DB.itemFeedbacks.map(it=>{ const {_rejected,_adminRemark,_prevNote,_prevPhotos,_allRemarks,...clean}=it; return {...clean,photos:[...it.photos]}; });
+  msg.innerHTML='<div class="alert alert-success">Uploading photos...</div>';
+
+  // Pre-upload any base64 photos to R2 before saving to avoid D1 size limits
+  const uploadedFeedbacks = await Promise.all(DB.itemFeedbacks.map(async (it)=>{
+    const {_rejected,_adminRemark,_prevNote,_prevPhotos,_allRemarks,...clean}=it;
+    const uploadedPhotos = await Promise.all((it.photos||[]).map(async (p,pi)=>{
+      if(p && p.startsWith('data:')){
+        try{
+          const res=await api('POST','/api/upload',{
+            fileName:`feedback_${s.id}_item_${it.refId||pi}_${Date.now()}.jpg`,
+            fileData:p
+          });
+          return res?.url||p;
+        }catch(e){ return p; }
+      }
+      return p;
+    }));
+    return {...clean, photos:uploadedPhotos};
+  }));
+
+  const newText=uploadedFeedbacks.map((it,i)=>it.note?`Item ${i+1}: ${it.note}`:'').filter(Boolean).join(' | ');
   const newDate=new Date().toISOString().slice(0,10);
   msg.innerHTML='<div class="alert alert-success">Submitting...</div>';
 
@@ -5846,11 +5886,11 @@ async function submitReviewerFeedback(){
     const _timelineType = _alreadySubmitted ? 'resubmitted' : 'store_submitted';
     existing.timeline.push({type:_timelineType, date:_resubmitAt, by: DB.reviewerStoreName||''});
     await api('PUT',`/api/feedbacks/${existing.id}`,{
-      text:newText, itemFeedbacks:newItems, photos:[],
+      text:newText, itemFeedbacks:uploadedFeedbacks, photos:[],
       adminRemarks:_preservedRemarks,
       resubmit_at:_resubmitAt, timeline:existing.timeline
     });
-    existing.itemFeedbacks=newItems;
+    existing.itemFeedbacks=uploadedFeedbacks;
     existing.text=newText;
     existing.date=newDate;
     existing.adminRemarks=_preservedRemarks;
@@ -5864,7 +5904,7 @@ async function submitReviewerFeedback(){
   } else {
     // New submission
     const _subTime=new Date().toISOString().slice(0,10)+' '+new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
-    const feedbackObj={storeId:s.id, text:newText, itemFeedbacks:newItems, photos:[], date:newDate,
+    const feedbackObj={storeId:s.id, text:newText, itemFeedbacks:uploadedFeedbacks, photos:[], date:newDate,
       timeline:[
         {type:'store_submitted',date:_subTime,by:DB.reviewerStoreName||''}
       ]};
@@ -5879,6 +5919,7 @@ async function submitReviewerFeedback(){
   try { await loadAllData(DB.reviewerStoreId||null); } catch(e){}
   setTimeout(()=>{ renderReviewerHome(); goTo('s-reviewer-home'); },1200);
 }
+
 
 function openReviewerPDF(){
   const b=reviewerBrand();
@@ -6419,7 +6460,6 @@ function erAddRefPhoto(i, input){
       const data=await convertToJpeg(f);
       if(!data) return;
       _erRefs[idx].photos.push(data);
-      if(isCam) autoSavePhotoToDevice(data, 'ref');
       erRebuildPhotoGrid(idx);
     }catch(e){ console.error('erAddRefPhoto:',e); }
   });
@@ -7525,7 +7565,6 @@ function addRefPhotosInline(refId, rid, input){
       const dataUrl=await convertToJpeg(f);
       ref.photos.push(dataUrl);
       rebuildRefPhotoGrid(refId, rid);
-      if(isCam) await autoSavePhotoToDevice(dataUrl, 'ref');
     }catch(e){ console.error('addRefPhotosInline error:',e); }
   });
 }
@@ -7881,9 +7920,9 @@ function applyStaffPermissions(){
   const uploadBrandBtn=document.querySelector('#s-brand .btn-primary');
   if(uploadBrandBtn) uploadBrandBtn.style.display=upload?'':'none';
 
-  // ── Brand page: Edit brand button (top right) — view & upload cannot edit brand
+  // ── Brand page: Edit brand button — admin ONLY, never staff regardless of permission
   const brandEditBtn=document.getElementById('brand-edit-btn');
-  if(brandEditBtn) brandEditBtn.style.display=edit?'':'none';
+  if(brandEditBtn) brandEditBtn.style.display='none';
 
   // ── Brand page: Delete brand button — only admin
   const brandDeleteBtn=document.getElementById('brand-delete-btn');
