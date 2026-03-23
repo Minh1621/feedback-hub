@@ -2123,51 +2123,63 @@ async function downloadReportPDF(rid){  // Close whichever download menu is open
         document.head.appendChild(s);
       });
     }
-    // Create hidden container to render HTML
-    const container=document.createElement('div');
-    container.style.cssText='position:fixed;left:-9999px;top:0;width:794px;background:#F9FAFB;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Arial,sans-serif;';
-    container.innerHTML=`<style>
-      *{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
-      body{margin:0;padding:20px;color:#111;font-size:13px;background:#F9FAFB;}
-      .header{background:linear-gradient(135deg,#534AB7 0%,#7C6FFF 100%);color:#fff;padding:16px 20px;border-radius:10px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:flex-start;}
-      .header h1{margin:0 0 3px;font-size:18px;font-weight:800;}
-      .header p{margin:0;font-size:11px;opacity:.85;}
-      .badge{font-size:11px;font-weight:700;background:rgba(255,255,255,.25);padding:4px 12px;border-radius:20px;}
-      .meta{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;}
-      .mbox{background:#fff;border:1px solid #E5E7EB;border-radius:8px;padding:8px 12px;flex:1;min-width:80px;}
-      .ml{font-size:9px;color:#9CA3AF;text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px;}
-      .mv{font-size:14px;font-weight:700;color:#111;}
-      img{max-width:100%;display:inline-block;}
-    </style>
-    <div class="header">
-      <div>
-        <h1>Quality Control Report</h1>
-        <p>${b.name} · ${r.title}${insp.date?' · '+insp.date:''}</p>
-      </div>
-      ${r.verified?'<span class="badge">Verified</span>':''}
-    </div>
-    <div class="meta">${metaBoxes}</div>
-    ${allStoreHTML}
-    <div style="margin-top:20px;font-size:9px;color:#9CA3AF;text-align:center;border-top:1px solid #E5E7EB;padding-top:10px;">
-      FEEDBACK HUB · QC Report · Generated ${new Date().toLocaleString()}
-    </div>`;
-    document.body.appendChild(container);
 
+    // Build inner HTML content
+    const innerHTML=`
+    <div style="padding:20px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;font-size:13px;color:#111;background:#F9FAFB;">
+      <div style="background:linear-gradient(135deg,#534AB7 0%,#7C6FFF 100%);color:#fff;padding:16px 20px;border-radius:10px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:flex-start;">
+        <div>
+          <div style="margin:0 0 3px;font-size:18px;font-weight:800;">Quality Control Report</div>
+          <div style="margin:0;font-size:11px;opacity:.85;">${b.name} · ${r.title}${insp.date?' · '+insp.date:''}</div>
+        </div>
+        ${r.verified?'<span style="font-size:11px;font-weight:700;background:rgba(255,255,255,.25);padding:4px 12px;border-radius:20px;">Verified</span>':''}
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">${metaBoxes}</div>
+      ${allStoreHTML}
+      <div style="margin-top:20px;font-size:9px;color:#9CA3AF;text-align:center;border-top:1px solid #E5E7EB;padding-top:10px;">
+        FEEDBACK HUB · QC Report · Generated ${new Date().toLocaleString()}
+      </div>
+    </div>`;
+
+    // Container must be in DOM and visible for html2canvas
+    const container=document.createElement('div');
+    container.style.cssText=`
+      position:fixed;top:0;left:0;width:100%;height:100%;
+      z-index:99999;overflow-y:auto;background:#F9FAFB;`;
+    container.innerHTML=`
+      <div style="display:flex;align-items:center;justify-content:center;padding:20px 0;background:rgba(0,0,0,.5);min-height:100%;">
+        <div style="background:#fff;border-radius:12px;overflow:hidden;max-width:794px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.3);">
+          <div id="_pdf_inner" style="width:794px;">${innerHTML}</div>
+        </div>
+      </div>`;
+    document.body.appendChild(container);
     showToast('Generating PDF...');
+
+    // Wait for images to load
+    await new Promise(r=>setTimeout(r,500));
+
+    const pdfEl=container.querySelector('#_pdf_inner');
     const opt={
-      margin:[10,10,10,10],
+      margin:0,
       filename:`${filename}.pdf`,
-      image:{type:'jpeg',quality:0.95},
-      html2canvas:{scale:2,useCORS:true,allowTaint:true,backgroundColor:'#F9FAFB'},
-      jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},
-      pagebreak:{mode:['avoid-all','css','legacy']}
+      image:{type:'jpeg',quality:0.92},
+      html2canvas:{
+        scale:1.5,
+        useCORS:true,
+        allowTaint:true,
+        backgroundColor:'#ffffff',
+        width:794,
+        windowWidth:794
+      },
+      jsPDF:{unit:'px',format:[794,1123],orientation:'portrait'},
+      pagebreak:{mode:'avoid-all'}
     };
-    await html2pdf().set(opt).from(container).save();
+    await html2pdf().set(opt).from(pdfEl).save();
     document.body.removeChild(container);
     showToast('PDF downloaded!');
   } catch(err){
     console.error('PDF error:',err);
-    showToast('PDF generation failed: '+err.message);
+    showToast('PDF failed: '+err.message);
   }
 }
 
