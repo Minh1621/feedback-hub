@@ -2113,13 +2113,22 @@ async function downloadReportPDF(rid){  // Close whichever download menu is open
     `<div class="mbox"><div class="ml">Stores</div><div class="mv">${targetStores.length}</div></div>`,
   ].filter(Boolean).join('');
 
-  const htmlContent=`<!DOCTYPE html><html><head><meta charset="utf-8"/>
-    <title>QC Report — ${r.title}</title>
-    <style>
+  // Generate real PDF using html2pdf.js
+  try {
+    if(typeof html2pdf === 'undefined'){
+      await new Promise((res,rej)=>{
+        const s=document.createElement('script');
+        s.src='https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
+        s.onload=res; s.onerror=rej;
+        document.head.appendChild(s);
+      });
+    }
+    // Create hidden container to render HTML
+    const container=document.createElement('div');
+    container.style.cssText='position:fixed;left:-9999px;top:0;width:794px;background:#F9FAFB;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Arial,sans-serif;';
+    container.innerHTML=`<style>
       *{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
-      body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;margin:0;padding:20px;color:#111;font-size:13px;background:#F9FAFB;}
-      @page{margin:14mm 12mm;size:A4;}
-      @media print{body{padding:0;background:#fff;} .no-print{display:none;}}
+      body{margin:0;padding:20px;color:#111;font-size:13px;background:#F9FAFB;}
       .header{background:linear-gradient(135deg,#534AB7 0%,#7C6FFF 100%);color:#fff;padding:16px 20px;border-radius:10px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:flex-start;}
       .header h1{margin:0 0 3px;font-size:18px;font-weight:800;}
       .header p{margin:0;font-size:11px;opacity:.85;}
@@ -2128,9 +2137,8 @@ async function downloadReportPDF(rid){  // Close whichever download menu is open
       .mbox{background:#fff;border:1px solid #E5E7EB;border-radius:8px;padding:8px 12px;flex:1;min-width:80px;}
       .ml{font-size:9px;color:#9CA3AF;text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px;}
       .mv{font-size:14px;font-weight:700;color:#111;}
-      .print-btn{position:fixed;bottom:20px;right:20px;background:#534AB7;color:#fff;border:none;border-radius:10px;padding:12px 24px;font-size:14px;font-weight:700;cursor:pointer;box-shadow:0 4px 14px rgba(83,74,183,.4);}
+      img{max-width:100%;display:inline-block;}
     </style>
-  </head><body>
     <div class="header">
       <div>
         <h1>Quality Control Report</h1>
@@ -2142,23 +2150,25 @@ async function downloadReportPDF(rid){  // Close whichever download menu is open
     ${allStoreHTML}
     <div style="margin-top:20px;font-size:9px;color:#9CA3AF;text-align:center;border-top:1px solid #E5E7EB;padding-top:10px;">
       FEEDBACK HUB · QC Report · Generated ${new Date().toLocaleString()}
-    </div>
-    <button class="print-btn no-print" onclick="window.print()">Save as PDF</button>
-    <script>window.onload=function(){setTimeout(function(){window.print();},800);};<\/script>
-  </body></html>`;
+    </div>`;
+    document.body.appendChild(container);
 
-  // Open in new tab using blob URL — avoids popup blocker
-  const blob=new Blob([htmlContent],{type:'text/html;charset=utf-8'});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement('a');
-  a.href=url;
-  a.target='_blank';
-  a.rel='noopener';
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  setTimeout(()=>URL.revokeObjectURL(url),10000);
-  showToast('PDF ready — use Save as PDF in print dialog');
+    showToast('Generating PDF...');
+    const opt={
+      margin:[10,10,10,10],
+      filename:`${filename}.pdf`,
+      image:{type:'jpeg',quality:0.95},
+      html2canvas:{scale:2,useCORS:true,allowTaint:true,backgroundColor:'#F9FAFB'},
+      jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},
+      pagebreak:{mode:['avoid-all','css','legacy']}
+    };
+    await html2pdf().set(opt).from(container).save();
+    document.body.removeChild(container);
+    showToast('PDF downloaded!');
+  } catch(err){
+    console.error('PDF error:',err);
+    showToast('PDF generation failed: '+err.message);
+  }
 }
 
 async function downloadReportPhotos(rid){
