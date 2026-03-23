@@ -1967,104 +1967,137 @@ function toggleRvDownloadMenu(e, rid){
 
 async function downloadReportPDF(rid){  // Close whichever download menu is open
   ['rv-dl-menu','fb-dl-menu','fb-dl-menu-2'].forEach(id=>{ const m=document.getElementById(id); if(m) m.style.display='none'; });
-  // Works for all roles — get report from any context
   let b=null, r=null, storeName='';
   if(DB.role==='reviewer'){
     b=reviewerBrand(); r=b?.reports?.find(rep=>rep.id===rid);
     storeName=reviewerStore()?.name||'';
   } else {
     for(const br of DB.brands){ r=br.reports.find(rep=>rep.id===rid); if(r){b=br;break;} }
-    storeName=r?.storeId?b?.stores?.find(s=>s.id===r.storeId)?.name||'':'';
   }
   if(!r||!b){ showToast('Report not found'); return; }
   showToast('Building PDF...');
   const insp=r.inspection||{};
 
-  // Use getTargetStores to respect visible store edits
+  // Only target stores
   const _pdfTargetStores=getTargetStores(r,b.stores);
   const _pdfTargetIds=new Set(_pdfTargetStores.map(s=>s.id));
   const latestFbMap={};
   (r.feedbacks||[]).forEach(f=>{
-    if(!_pdfTargetIds.has(f.storeId)) return; // only target stores
+    if(!_pdfTargetIds.has(f.storeId)) return;
     if(!latestFbMap[f.storeId]||f.date>=latestFbMap[f.storeId].date) latestFbMap[f.storeId]=f;
   });
   const targetStores=_pdfTargetStores.length?_pdfTargetStores:[{id:'',name:storeName||'Store'}];
 
+  // Helper — convert image URL to base64 for PDF embedding
+  async function toBase64(url){
+    if(!url) return null;
+    if(url.startsWith('data:')) return url;
+    try{
+      const res=await fetch(url);
+      const blob=await res.blob();
+      return await new Promise(resolve=>{
+        const rd=new FileReader();
+        rd.onload=()=>resolve(rd.result);
+        rd.onerror=()=>resolve(null);
+        rd.readAsDataURL(blob);
+      });
+    }catch(e){ return null; }
+  }
+
+  // Build per-store HTML sections with full detail
   let allStoreHTML='';
-  targetStores.forEach(store=>{
+  for(let si=0;si<targetStores.length;si++){
+    const store=targetStores[si];
     const myFb=latestFbMap[store.id]||null;
-    const rows=(r.refs||[]).map((ref,i)=>{
+
+    // Count totals for store summary
+    let storeResponded=0, storeRejected=0;
+    (r.refs||[]).forEach(ref=>{
       const it=myFb?.itemFeedbacks?.find(it=>it.refId===ref.id)||null;
       const hasContent=!!(it?.note||(it?.photos?.length));
       const hasRemark=!!(myFb?.adminRemarks?.[ref.id+'_list']?.length||myFb?.adminRemarks?.[ref.id]);
-      const remarkText=(myFb?.adminRemarks?.[ref.id+'_list']||[]).map(rk=>rk.text).join(' · ')||(myFb?.adminRemarks?.[ref.id]||'');
-      const statusColor=hasContent?'#0F6E56':hasRemark?'#A32D2D':'#888';
-      const statusBg=hasContent?'#E1F5EE':hasRemark?'#FCEBEB':'#f0f0f0';
-      const statusLabel=hasContent?'Responded':hasRemark?'Needs correction':'No response';
-      // Admin ref photos
-      const refPhotosHTML=(ref.photos||[]).map(p=>`<img src="${p}" style="width:60px;height:60px;object-fit:cover;border-radius:5px;margin:2px;border:1px solid #ddd;"/>`).join('');
-      // Store response photos
-      const respPhotosHTML=(it?.photos||[]).map(p=>`<img src="${p}" style="width:60px;height:60px;object-fit:cover;border-radius:5px;margin:2px;"/>`).join('');
-      return `<tr>
-        <td style="padding:10px 8px;vertical-align:top;font-weight:700;color:#534AB7;width:24px;font-size:13px;">${i+1}</td>
-        <td style="padding:10px 8px;vertical-align:top;border-bottom:1px solid #eee;">
-          <div style="font-weight:700;font-size:13px;color:#111;margin-bottom:3px;">${ref.name||'Item '+(i+1)}</div>
-          ${ref.desc?`<div style="font-size:11px;color:#777;margin-bottom:5px;">${ref.desc}</div>`:''}
-          ${refPhotosHTML?`<div style="margin-bottom:5px;">${refPhotosHTML}</div>`:''}
-          ${hasRemark?`<div style="font-size:11px;color:#A32D2D;background:#FCEBEB;padding:5px 8px;border-radius:4px;border-left:3px solid #E24B4A;margin-bottom:5px;">Remark: ${remarkText}</div>`:''}
-          ${it?.note?`<div style="font-size:12px;color:#222;background:#f8f8f8;padding:6px 8px;border-radius:4px;border-left:3px solid #bbb;margin-bottom:5px;">${it.note}</div>`:''}
-          ${respPhotosHTML?`<div>${respPhotosHTML}</div>`:''}
-        </td>
-        <td style="padding:10px 8px;vertical-align:top;text-align:right;white-space:nowrap;">
-          <span style="font-size:10px;font-weight:700;color:${statusColor};background:${statusBg};padding:3px 8px;border-radius:20px;">${statusLabel}</span>
-        </td>
-      </tr>`;
-    }).join('');
-    allStoreHTML+=`<div style="page-break-before:${allStoreHTML?'always':'avoid'};margin-bottom:24px;">
-      <div style="font-size:13px;font-weight:700;color:#534AB7;padding:8px 12px;background:#EEEDFE;border-radius:6px;margin-bottom:10px;">
-        ${store.name}${myFb?.date?' · '+myFb.date:''}
-      </div>
-      <table style="width:100%;border-collapse:collapse;">${rows}</table>
-    </div>`;
-  });
+      if(hasContent) storeResponded++;
+      else if(hasRemark) storeRejected++;
+    });
 
-  const htmlContent=`<!DOCTYPE html><html><head><meta charset="utf-8"/>
-    <title>QC Report - ${r.title}</title>
-    <style>
-      *{box-sizing:border-box}
-      body{font-family:Arial,sans-serif;margin:0;padding:20px;color:#111;font-size:13px;}
-      @page{margin:18mm 14mm}
-      @media print{body{padding:0}}
-      .header{background:#534AB7;color:#fff;padding:14px 18px;border-radius:8px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:flex-start;}
-      .header h1{margin:0 0 3px;font-size:16px;}
-      .header p{margin:0;font-size:11px;opacity:.85;}
-      .badge{font-size:11px;font-weight:700;background:rgba(255,255,255,.25);padding:3px 10px;border-radius:20px;white-space:nowrap;}
-      .meta{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px;}
-      .mbox{background:#f5f5f5;border-radius:6px;padding:8px 10px;}
-      .ml{font-size:9px;color:#888;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px;}
-      .mv{font-size:13px;font-weight:700;color:#111;}
-      table{width:100%;border-collapse:collapse;}
-      img{display:inline-block;vertical-align:middle;}
-      h2{font-size:13px;font-weight:700;color:#534AB7;padding:6px 10px;background:#EEEDFE;border-radius:5px;margin:14px 0 8px;}
-    </style></head><body>
-    <div class="header">
-      <div>
-        <h1>Quality Control Report</h1>
-        <p>${b.name} · ${r.title}${insp.date?' · '+insp.date:''}</p>
+    let itemRowsHTML='';
+    for(let i=0;i<(r.refs||[]).length;i++){
+      const ref=r.refs[i];
+      const it=myFb?.itemFeedbacks?.find(it=>it.refId===ref.id)||null;
+      const hasContent=!!(it?.note||(it?.photos?.length));
+      const hasRemark=!!(myFb?.adminRemarks?.[ref.id+'_list']?.length||myFb?.adminRemarks?.[ref.id]);
+      const remarkList=(myFb?.adminRemarks?.[ref.id+'_list']||[]);
+      const legacyRemark=myFb?.adminRemarks?.[ref.id]||'';
+      const allRemarks=remarkList.length?remarkList:[...(legacyRemark?[{text:legacyRemark,author:'',date:''}]:[])];
+      const statusColor=hasContent?'#0F6E56':hasRemark?'#B91C1C':'#6B7280';
+      const statusBg=hasContent?'#DCFCE7':hasRemark?'#FEE2E2':'#F3F4F6';
+      const statusLabel=hasContent?'Responded':hasRemark?'Needs correction':'No response';
+      const rowBorder=hasRemark&&!hasContent?'border-left:3px solid #EF4444;':'border-left:3px solid #E5E7EB;';
+
+      // Embed ref photos as base64
+      let refPhotosHTML='';
+      for(const p of (ref.photos||[])){
+        const b64=await toBase64(p);
+        if(b64) refPhotosHTML+=`<img src="${b64}" style="width:72px;height:72px;object-fit:cover;border-radius:6px;border:1px solid #E5E7EB;flex-shrink:0;"/>`;
+      }
+
+      // Embed response photos as base64
+      let respPhotosHTML='';
+      for(const p of (it?.photos||[])){
+        const b64=await toBase64(p);
+        if(b64) respPhotosHTML+=`<img src="${b64}" style="width:72px;height:72px;object-fit:cover;border-radius:6px;border:1px solid #D1FAE5;flex-shrink:0;"/>`;
+      }
+
+      itemRowsHTML+=`
+      <div style="padding:12px 14px;margin-bottom:8px;background:#fff;border-radius:8px;border:1px solid #E5E7EB;${rowBorder}page-break-inside:avoid;">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px;">
+          <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;">
+            <span style="font-size:11px;font-weight:700;color:#534AB7;background:#EEF2FF;border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;">${i+1}</span>
+            <div>
+              <div style="font-size:13px;font-weight:700;color:#111;">${ref.name||'Item '+(i+1)}</div>
+              ${ref.desc?`<div style="font-size:11px;color:#6B7280;margin-top:2px;">${ref.desc}</div>`:''}
+            </div>
+          </div>
+          <span style="font-size:10px;font-weight:700;color:${statusColor};background:${statusBg};padding:3px 10px;border-radius:20px;white-space:nowrap;flex-shrink:0;">${statusLabel}</span>
+        </div>
+        ${refPhotosHTML?`
+        <div style="margin-bottom:8px;">
+          <div style="font-size:10px;font-weight:600;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px;">Reference photos</div>
+          <div style="display:flex;flex-wrap:wrap;gap:5px;">${refPhotosHTML}</div>
+        </div>`:''}
+        ${allRemarks.length?`
+        <div style="background:#FEF2F2;border:1px solid #FECACA;border-radius:6px;padding:8px 10px;margin-bottom:8px;">
+          <div style="font-size:10px;font-weight:700;color:#991B1B;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Rejection remarks</div>
+          ${allRemarks.map(rk=>`
+            <div style="font-size:12px;color:#7F1D1D;margin-bottom:3px;">${rk.text||''}${rk.author?`<span style="color:#9CA3AF;font-size:10px;"> — ${rk.author}${rk.date?' · '+rk.date:''}</span>`:''}</div>
+          `).join('')}
+        </div>`:''}
+        ${(it?.note||respPhotosHTML)?`
+        <div style="background:#F0FDF4;border:1px solid #BBF7D0;border-radius:6px;padding:8px 10px;">
+          <div style="font-size:10px;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Store response</div>
+          ${it?.note?`<div style="font-size:12px;color:#14532D;margin-bottom:${respPhotosHTML?'6px':'0'};">${it.note}</div>`:''}
+          ${respPhotosHTML?`<div style="display:flex;flex-wrap:wrap;gap:5px;">${respPhotosHTML}</div>`:''}
+        </div>`:''}
+      </div>`;
+    }
+
+    allStoreHTML+=`
+    <div style="page-break-before:${si>0?'always':'avoid'};">
+      <div style="background:linear-gradient(135deg,#534AB7,#7C6FFF);color:#fff;border-radius:8px;padding:10px 14px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;">
+        <div>
+          <div style="font-size:14px;font-weight:700;">${store.name}</div>
+          ${myFb?.date?`<div style="font-size:11px;opacity:.8;margin-top:2px;">Submitted: ${myFb.date}</div>`:'<div style="font-size:11px;opacity:.8;margin-top:2px;">No response yet</div>'}
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:18px;font-weight:800;">${storeResponded}/${(r.refs||[]).length}</div>
+          <div style="font-size:10px;opacity:.8;">items responded</div>
+          ${storeRejected>0?`<div style="font-size:10px;color:#FCA5A5;margin-top:2px;">×${storeRejected} need correction</div>`:''}
+        </div>
       </div>
-      ${r.verified?'<span class="badge">Verified</span>':''}
-    </div>
-    <div class="meta">
-      ${insp.date?`<div class="mbox"><div class="ml">Date</div><div class="mv">${insp.date}</div></div>`:''}
-      ${insp.checkedBy?`<div class="mbox"><div class="ml">Checker</div><div class="mv">${insp.checkedBy}</div></div>`:''}
-      ${insp.score?`<div class="mbox"><div class="ml">Score</div><div class="mv">${insp.score}</div></div>`:''}
-      <div class="mbox"><div class="ml">Items</div><div class="mv">${(r.refs||[]).length}</div></div>
-    </div>
-    ${allStoreHTML}
-    <div style="margin-top:16px;font-size:9px;color:#bbb;text-align:center;border-top:1px solid #eee;padding-top:8px;">
-      Feedback Hub · Generated ${new Date().toLocaleString()}
-    </div>
-  </body></html>`;
+      ${itemRowsHTML}
+    </div>`;
+  }
+
   const today=new Date();
   const dd=String(today.getDate()).padStart(2,'0');
   const mm2=String(today.getMonth()+1).padStart(2,'0');
@@ -2072,135 +2105,54 @@ async function downloadReportPDF(rid){  // Close whichever download menu is open
   const safeTitle=(r.title||'report').replace(/[^a-z0-9]/gi,'_').slice(0,30);
   const filename=`QC_Report_${safeTitle}_${dd}-${mm2}-${yyyy}`;
 
-  // Use jsPDF to generate real PDF
-  try{
-    if(typeof window.jspdf==='undefined'){
-      await new Promise((res,rej)=>{
-        const s=document.createElement('script');
-        s.src='https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
-        s.onload=res; s.onerror=rej;
-        document.head.appendChild(s);
-      });
-    }
-    const {jsPDF}=window.jspdf;
-    const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
-    const pw=doc.internal.pageSize.getWidth();
-    const ph=doc.internal.pageSize.getHeight();
-    const lm=14, rm=14, tm=14;
-    let y=tm;
+  const metaBoxes=[
+    insp.date?`<div class="mbox"><div class="ml">Date</div><div class="mv">${insp.date}</div></div>`:'',
+    insp.checkedBy?`<div class="mbox"><div class="ml">Checker</div><div class="mv">${insp.checkedBy}</div></div>`:'',
+    insp.score?`<div class="mbox"><div class="ml">Score</div><div class="mv">${insp.score}</div></div>`:'',
+    `<div class="mbox"><div class="ml">Items</div><div class="mv">${(r.refs||[]).length}</div></div>`,
+    `<div class="mbox"><div class="ml">Stores</div><div class="mv">${targetStores.length}</div></div>`,
+  ].filter(Boolean).join('');
 
-    // ── Header ──────────────────────────────────────────────────────
-    doc.setFillColor(83,74,183);
-    doc.roundedRect(lm,y,pw-lm-rm,22,3,3,'F');
-    doc.setTextColor(255,255,255);
-    doc.setFontSize(13); doc.setFont('helvetica','bold');
-    doc.text('Quality Control Report',lm+5,y+8);
-    doc.setFontSize(9); doc.setFont('helvetica','normal');
-    doc.text(`${b.name} · ${r.title}${insp.date?' · '+insp.date:''}${r.verified?' · Verified':''}`,lm+5,y+16);
-    y+=26;
+  const htmlContent=`<!DOCTYPE html><html><head><meta charset="utf-8"/>
+    <title>QC Report — ${r.title}</title>
+    <style>
+      *{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+      body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;margin:0;padding:20px;color:#111;font-size:13px;background:#F9FAFB;}
+      @page{margin:14mm 12mm;size:A4;}
+      @media print{body{padding:0;background:#fff;} .no-print{display:none;}}
+      .header{background:linear-gradient(135deg,#534AB7 0%,#7C6FFF 100%);color:#fff;padding:16px 20px;border-radius:10px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:flex-start;}
+      .header h1{margin:0 0 3px;font-size:18px;font-weight:800;}
+      .header p{margin:0;font-size:11px;opacity:.85;}
+      .badge{font-size:11px;font-weight:700;background:rgba(255,255,255,.25);padding:4px 12px;border-radius:20px;}
+      .meta{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;}
+      .mbox{background:#fff;border:1px solid #E5E7EB;border-radius:8px;padding:8px 12px;flex:1;min-width:80px;}
+      .ml{font-size:9px;color:#9CA3AF;text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px;}
+      .mv{font-size:14px;font-weight:700;color:#111;}
+      .print-btn{position:fixed;bottom:20px;right:20px;background:#534AB7;color:#fff;border:none;border-radius:10px;padding:12px 24px;font-size:14px;font-weight:700;cursor:pointer;box-shadow:0 4px 14px rgba(83,74,183,.4);}
+    </style>
+  </head><body>
+    <div class="header">
+      <div>
+        <h1>Quality Control Report</h1>
+        <p>${b.name} · ${r.title}${insp.date?' · '+insp.date:''}</p>
+      </div>
+      ${r.verified?'<span class="badge">Verified</span>':''}
+    </div>
+    <div class="meta">${metaBoxes}</div>
+    ${allStoreHTML}
+    <div style="margin-top:20px;font-size:9px;color:#9CA3AF;text-align:center;border-top:1px solid #E5E7EB;padding-top:10px;">
+      FEEDBACK HUB · QC Report · Generated ${new Date().toLocaleString()}
+    </div>
+    <button class="print-btn no-print" onclick="window.print()">Save as PDF</button>
+    <script>window.onload=function(){setTimeout(function(){window.print();},800);};<\/script>
+  </body></html>`;
 
-    // ── Meta boxes ──────────────────────────────────────────────────
-    doc.setTextColor(80,80,80);
-    const metaItems=[
-      insp.date?['Date',insp.date]:null,
-      insp.checkedBy?['Checker',insp.checkedBy]:null,
-      insp.score?['Score',insp.score]:null,
-      ['Items',String((r.refs||[]).length)]
-    ].filter(Boolean);
-    const bw=(pw-lm-rm-(metaItems.length-1)*3)/metaItems.length;
-    metaItems.forEach((m,mi)=>{
-      const bx=lm+mi*(bw+3);
-      doc.setFillColor(245,245,245);
-      doc.roundedRect(bx,y,bw,14,2,2,'F');
-      doc.setFontSize(7); doc.setFont('helvetica','normal'); doc.setTextColor(130,130,130);
-      doc.text(m[0].toUpperCase(),bx+3,y+5);
-      doc.setFontSize(10); doc.setFont('helvetica','bold'); doc.setTextColor(30,30,30);
-      doc.text(String(m[1]),bx+3,y+11);
-    });
-    y+=18;
-
-    // ── Per-store sections ────────────────────────────────────────────
-    targetStores.forEach((store,si)=>{
-      if(si>0){ doc.addPage(); y=tm; }
-      const myFb=latestFbMap[store.id]||null;
-
-      // Store label
-      doc.setFillColor(238,237,254);
-      doc.roundedRect(lm,y,pw-lm-rm,9,2,2,'F');
-      doc.setFontSize(9); doc.setFont('helvetica','bold'); doc.setTextColor(83,74,183);
-      doc.text(`${store.name}${myFb?.date?' · '+myFb.date:''}`,lm+3,y+6);
-      y+=13;
-
-      // Items
-      (r.refs||[]).forEach((ref,i)=>{
-        if(y>ph-30){ doc.addPage(); y=tm; }
-        const it=myFb?.itemFeedbacks?.find(it=>it.refId===ref.id)||null;
-        const hasContent=!!(it?.note||(it?.photos?.length));
-        const hasRemark=!!(myFb?.adminRemarks?.[ref.id+'_list']?.length||myFb?.adminRemarks?.[ref.id]);
-        const remarkText=(myFb?.adminRemarks?.[ref.id+'_list']||[]).map(rk=>rk.text).join(' · ')||(myFb?.adminRemarks?.[ref.id]||'');
-        const statusLabel=hasContent?'Responded':hasRemark?'Needs correction':'No response';
-        const statusR=hasContent?[15,110,86]:hasRemark?[163,45,45]:[130,130,130];
-
-        // Number + name row
-        doc.setFontSize(8); doc.setFont('helvetica','bold'); doc.setTextColor(83,74,183);
-        doc.text(`${i+1}.`,lm,y+4);
-        doc.setTextColor(20,20,20);
-        doc.text(ref.name||`Item ${i+1}`,lm+6,y+4);
-        // Status badge
-        doc.setFontSize(7); doc.setFont('helvetica','bold'); doc.setTextColor(...statusR);
-        doc.text(statusLabel,pw-rm,y+4,{align:'right'});
-        y+=6;
-
-        // Remark
-        if(hasRemark && remarkText){
-          doc.setFontSize(7.5); doc.setFont('helvetica','normal'); doc.setTextColor(163,45,45);
-          const remarkLines=doc.splitTextToSize(`Remark: ${remarkText}`,pw-lm-rm-6);
-          doc.text(remarkLines,lm+6,y);
-          y+=remarkLines.length*4+2;
-        }
-        // Response note
-        if(it?.note){
-          doc.setFontSize(8); doc.setFont('helvetica','normal'); doc.setTextColor(50,50,50);
-          const noteLines=doc.splitTextToSize(it.note,pw-lm-rm-6);
-          doc.text(noteLines,lm+6,y);
-          y+=noteLines.length*4+2;
-        }
-        // Photo count
-        const pCount=(it?.photos||[]).length+(ref.photos||[]).length;
-        if(pCount>0){
-          doc.setFontSize(7); doc.setFont('helvetica','italic'); doc.setTextColor(100,100,100);
-          doc.text(`${pCount} photo${pCount>1?'s':''} attached`,lm+6,y);
-          y+=4;
-        }
-
-        // Divider
-        doc.setDrawColor(220,220,220); doc.setLineWidth(0.3);
-        doc.line(lm,y,pw-rm,y);
-        y+=4;
-      });
-    });
-
-    // Footer on each page
-    const totalPages=doc.internal.getNumberOfPages();
-    for(let p=1;p<=totalPages;p++){
-      doc.setPage(p);
-      doc.setFontSize(7); doc.setFont('helvetica','normal'); doc.setTextColor(180,180,180);
-      doc.text(`Feedback Hub · Generated ${new Date().toLocaleString()} · Page ${p}/${totalPages}`,pw/2,ph-6,{align:'center'});
-    }
-
-    doc.save(`${filename}.pdf`);
-    showToast('PDF downloaded!');
-  }catch(err){
-    console.error('PDF error:',err);
-    showToast('PDF failed — trying HTML fallback...');
-    // Fallback: HTML download
-    const blob=new Blob([allStoreHTML],{type:'text/html;charset=utf-8'});
-    const url=URL.createObjectURL(blob);
-    const a=document.createElement('a');
-    a.href=url; a.download=`${filename}.html`;
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  }
+  // Open in new window for print → Save as PDF
+  const printWin=window.open('','_blank');
+  if(!printWin){ showToast('Please allow popups to download PDF'); return; }
+  printWin.document.write(htmlContent);
+  printWin.document.close();
+  showToast('PDF ready — use Save as PDF in print dialog');
 }
 
 async function downloadReportPhotos(rid){
@@ -4657,9 +4609,9 @@ function viewFeedback(rid){
   // Apply permissions to all buttons on report detail
   const rEditBtn=document.getElementById('report-edit-btn');
   if(rEditBtn) rEditBtn.style.display=canEdit()?'':'none';
-  // Alert buttons — visible for upload + edit + admin (not view-only)
+  // Alert buttons — visible for ALL staff roles (view, upload, edit) and admin
   if(DB.role==='staff'){
-    const canSendAlert=canUpload(); // upload & edit permission can alert
+    const canSendAlert=true; // all staff can send reminders regardless of permission
     document.querySelectorAll('[onclick*="alertStores"],[onclick*="alertOneStore"]').forEach(btn=>{
       btn.style.display=canSendAlert?'':'none';
     });
