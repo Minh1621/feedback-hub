@@ -2860,6 +2860,8 @@ function getReportStatus(r, stores){
       (fb.itemFeedbacks||[]).forEach(it=>{ if(it.refId && validRefIds.has(it.refId)) refMap[it.refId]=it; });
       r.refs.forEach(ref=>{
         const it = refMap[ref.id];
+        const hasRemark = !!(fb.adminRemarks?.[ref.id+'_list']?.length || fb.adminRemarks?.[ref.id]);
+        if(hasRemark) return; // rejected — not counted as responded for checker status
         if(it && (it.note || (it.photos && it.photos.length))) responded++;
       });
     } else {
@@ -3286,8 +3288,11 @@ function renderBrandReports(){
         if(!_validRefIds.has(it.refId)) return; // skip responses for deleted/old refs
         const hasContent=!!(it.note||(it.photos&&it.photos.length));
         const hasRemark=!!(fb.adminRemarks?.[it.refId+'_list']?.length||fb.adminRemarks?.[it.refId]);
-        if(hasContent) _totalRespCard++;
-        else if(hasRemark) _totalRejCard++;
+        if(hasRemark){
+          _totalRejCard++; // rejected — not counted as responded
+        } else if(hasContent){
+          _totalRespCard++; // responded, no rejection
+        }
       });
     });
     const _itemPctCard=_totalPossCard?Math.round(_totalRespCard/_totalPossCard*100):0;
@@ -4473,12 +4478,16 @@ function viewFeedback(rid){
     if(!fb) return {store:s,responded:0,rejected:0,total:totalItems,pct:0};
     let responded=0, rejected=0;
     const _validRefIds=new Set((r.refs||[]).map(ref=>ref.id));
-    (fb.itemFeedbacks||[]).forEach(it=>{
-      if(!_validRefIds.has(it.refId)) return; // skip responses for deleted/old refs
-      const hasContent=!!(it.note||(it.photos&&it.photos.length));
-      const hasRemark=!!(fb.adminRemarks?.[it.refId+'_list']?.length || fb.adminRemarks?.[it.refId]);
-      if(hasContent) responded++;               // responded (even if rejected) = counts
-      else if(hasRemark) rejected++;            // rejected, no response yet = pending
+    (r.refs||[]).forEach(ref=>{
+      if(!_validRefIds.has(ref.id)) return;
+      const it=(fb.itemFeedbacks||[]).find(it=>it.refId===ref.id);
+      const hasContent=!!(it&&(it.note||(it.photos&&it.photos.length)));
+      const hasRemark=!!(fb.adminRemarks?.[ref.id+'_list']?.length || fb.adminRemarks?.[ref.id]);
+      if(hasRemark){
+        rejected++; // rejected — does NOT count as responded regardless of content
+      } else if(hasContent){
+        responded++; // responded with no rejection — counts
+      }
     });
     totalResponded+=responded;
     return {store:s,responded,rejected,total:totalItems,pct:totalItems?Math.round(responded/totalItems*100):0};
