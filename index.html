@@ -5163,11 +5163,14 @@ function renderReviewerHome(){
         const hasRemark=!!(myFb.adminRemarks?.[ref.id+'_list']?.length||myFb.adminRemarks?.[ref.id]);
         const it=fbByRef[ref.id];
         const hasContent=!!(it&&(it.note||(it.photos&&it.photos.length)));
-        if(hasContent){
-          respondedItems++; // has content = counts regardless of remark state
-        } else if(hasRemark){
-          rejectedItems++;  // rejected with no content = not counted, shown as rejected
+        if(hasRemark && hasContent){
+          respondedItems++; // rejected BUT store re-responded → counts back as responded
+        } else if(hasRemark && !hasContent){
+          rejectedItems++;  // rejected, store has NOT responded yet → not counted
+        } else if(hasContent){
+          respondedItems++; // responded with no rejection → counts
         }
+        // else: no content, no remark → no response
       });
     } else if(myFb && totalItems===0){
       respondedItems=(myFb.text||(myFb.itemFeedbacks&&myFb.itemFeedbacks.length))?1:0;
