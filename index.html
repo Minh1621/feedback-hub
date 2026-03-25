@@ -2585,6 +2585,9 @@ async function doLogin(){
     await loadAllData(result.role==='reviewer' ? result.store_id : null);
     DB.role=result.role;
     if(result.role==='admin'){
+      // ✅ Store password for api() helper - sessionStorage clears when tab closes
+      ADMIN_CREDS.password = p;
+      saveAdminPassToSession(p);
       saveSession('admin', null, null);
       await loadAdminSettingsFromDB();
       renderHome(); renderHomeAppLogo(); goTo('s-home');
@@ -2717,6 +2720,9 @@ function saveSession(role, brandId, storeId, staffData){
     }));
   }catch(e){}
 }
+// ✅ Store admin password in sessionStorage (cleared when tab closes, never in localStorage)
+function saveAdminPassToSession(pass){ try{ sessionStorage.setItem('fh_ap', pass); }catch(e){} }
+function loadAdminPassFromSession(){ try{ return sessionStorage.getItem('fh_ap')||''; }catch(e){ return ''; } }
 
 // Auto-restore session on page load
 async function restoreSession(){
@@ -2795,6 +2801,9 @@ async function restoreSession(){
     }
     if(session.role==='admin'){
       DB.role='admin';
+      // ✅ Restore admin password from sessionStorage on page reload
+      const savedPass = loadAdminPassFromSession();
+      if(savedPass) ADMIN_CREDS.password = savedPass;
       await loadAdminSettingsFromDB();
       renderHome(); renderHomeAppLogo();
       goTo('s-home');
@@ -4140,13 +4149,14 @@ async function doUpload(){
   const titleEl=document.getElementById('r-title');
   const descEl=document.getElementById('r-desc');
   const msg=document.getElementById('upload-msg');
+  const btn=document.getElementById('upload-submit-btn');
   const title=(titleEl||{}).value?.trim()||'';
   const desc=(descEl||{}).value?.trim()||'';
   if(!title){ msg.innerHTML='<div class="alert alert-danger">Please enter a title.</div>'; return; }
   if(!DB.pendingUpload){ msg.innerHTML='<div class="alert alert-danger">Please select a PDF file.</div>'; return; }
-
+  if(btn){ btn.disabled=true; btn.textContent='Uploading...'; }
   const reportId = 'r'+Date.now();
-
+  try {
   // Step 1: Upload PDF + ref photos in parallel
   const totalPhotos = DB.pendingRefs.reduce((n,r)=>n+(r.photos?.filter(p=>p?.startsWith('data:')).length||0),0);
   msg.innerHTML=`<div class="alert alert-success">Uploading PDF${totalPhotos?` and ${totalPhotos} photo${totalPhotos>1?'s':''}...`:'...'}</div>`;
@@ -4158,6 +4168,9 @@ async function doUpload(){
       msg.innerHTML=`<div class="alert alert-success">Uploading photos… ${done}/${total}</div>`;
     })
   ]);
+
+  // ✅ Check if PDF upload failed
+  if(uploadResult.error){ msg.innerHTML=`<div class="alert alert-danger">Upload failed: ${uploadResult.error}</div>`; if(btn){ btn.disabled=false; btn.textContent='Upload'; } return; }
 
   let fileURL = DB.pendingUploadURL||null;
   let fileName = DB.pendingUpload.name;
@@ -4187,7 +4200,8 @@ async function doUpload(){
   b.reports.unshift(newReport);
   const _uploadAlerter = getAlerterInfo();
   // Step 2: POST report — photos are already R2 URLs so worker skips re-upload
-  await api('POST','/api/reports',{...newReport, brand_id:b.id, alerter:_uploadAlerter});
+  const saveResult = await api('POST','/api/reports',{...newReport, brand_id:b.id, alerter:_uploadAlerter});
+  if(saveResult && saveResult.error){ throw new Error(saveResult.error); }
 
   DB.pendingUpload=null; DB.pendingUploadURL=null; DB.pendingRefs=[];
   clearUploadDraft(); // clear saved draft on success
@@ -4198,12 +4212,18 @@ async function doUpload(){
   if(dateEl) dateEl.value=new Date().toISOString().slice(0,10);
   renderRefItems();
   closeConfirm();
+  if(btn){ btn.disabled=false; btn.textContent='Upload'; }
   // Navigate immediately — report already in local DB
   renderHome();
   renderBrandHero();
   brandTab('reports');
   goTo('s-brand');
   showToast('Report uploaded!');
+  } catch(e) {
+    msg.innerHTML=`<div class="alert alert-danger">Failed: ${e.message}</div>`;
+    if(btn){ btn.disabled=false; btn.textContent='Upload'; }
+    console.error('Upload error:', e);
+  }
   // Reload in background to sync server state
   loadAllData().then(()=>{ renderHome(); renderBrandReports(); }).catch(()=>{});
 }
@@ -7113,6 +7133,7 @@ async function doChangeAdminPass(){
   const result2=await api('PUT','/api/admin/password',{username:ADMIN_CREDS.username,password:np,current_password:ADMIN_CREDS.password});
   if(result2?.error==='Unauthorized'||result2?.error?.includes('401')){ msg.innerHTML='<div class="alert alert-danger">Incorrect current password.</div>'; return; }
   ADMIN_CREDS.password=np;
+  saveAdminPassToSession(np);
   msg.innerHTML='<div class="alert alert-success">Password updated</div>';
   const npEl=document.getElementById('admin-new-pass'); if(npEl) npEl.value='';
   const cpEl=document.getElementById('admin-confirm-pass'); if(cpEl) cpEl.value='';
@@ -7390,6 +7411,7 @@ async function doSaveAdminProfile(){
     const resultPass=await api('PUT','/api/admin/password',{username:ADMIN_CREDS.username,password:np,current_password:ADMIN_CREDS.password});
     if(resultPass?.error==='Unauthorized'||resultPass?.error?.includes('401')){ if(msg) msg.innerHTML='<div class="alert alert-danger">Incorrect current password.</div>'; return; }
     ADMIN_CREDS.password=np;
+    saveAdminPassToSession(np);
     const npEl=document.getElementById('admin-new-pass'); if(npEl) npEl.value='';
     const cpEl=document.getElementById('admin-confirm-pass'); if(cpEl) cpEl.value='';
   }
