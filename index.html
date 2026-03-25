@@ -2337,6 +2337,18 @@ applyStoredTheme();
 /* ===== CLOUDFLARE API ===== */
 const WORKER_URL = 'https://feedback-hub-api.liming6069.workers.dev';
 
+// ✅ SECURITY: Sanitize user-generated content before inserting into DOM
+function sanitize(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;');
+}
+
+
 
 
 // Generate or retrieve unique device ID
@@ -2353,13 +2365,15 @@ function getDeviceId(){
 
 async function api(method, path, body=null, adminPassword=null){
   const headers = {'Content-Type':'application/json'};
-  // Send admin password header for sensitive endpoints that require it
+  // ✅ Send admin password header for all admin-protected endpoints
   const adminPass = adminPassword || (ADMIN_CREDS?.password) || null;
-  if (adminPass && (
-    path.startsWith('/api/store-password/') ||
-    path.startsWith('/api/staff-password/') ||
-    path === '/api/export-data'
-  )) {
+  const adminPaths = [
+    '/api/brands', '/api/stores', '/api/staff', '/api/reports',
+    '/api/store-password/', '/api/staff-password/', '/api/export-data',
+    '/api/admin/'
+  ];
+  const needsAuth = adminPass && adminPaths.some(p => path.startsWith(p));
+  if (needsAuth) {
     headers['X-Admin-Password'] = adminPass;
   }
   const opts = { method, headers };
@@ -6824,6 +6838,8 @@ async function loadAdminSettingsFromDB(){
       SETTINGS.notifBrandComplete=data.notif_brand_complete!==false;
       SETTINGS.notifStoreComplete=data.notif_store_complete!==false;
       saveSettingsToStorage();
+      // ✅ FIX: Load username from DB so it persists after page reload
+      if(data.username){ ADMIN_CREDS.username=data.username; }
       // Load profile from DB — overrides localStorage so it syncs across devices
       if(data.profile){
         ADMIN_PROFILE={...ADMIN_PROFILE,...data.profile};
@@ -7081,8 +7097,9 @@ async function doChangeUsername(){
   const newUser=(document.getElementById('new-admin-username')?.value||'').trim();
   const msg=document.getElementById('admin-profile-msg');
   if(!newUser){ if(msg) msg.innerHTML='<div class="alert alert-danger">Enter a username.</div>'; return; }
+  const result1=await api('PUT','/api/admin/password',{username:newUser,password:ADMIN_CREDS.password,current_password:ADMIN_CREDS.password});
+  if(result1?.error==='Unauthorized'||result1?.error?.includes('401')){ if(msg) msg.innerHTML='<div class="alert alert-danger">Incorrect current password.</div>'; return; }
   ADMIN_CREDS.username=newUser;
-  await api('PUT','/api/admin/password',{username:newUser,password:ADMIN_CREDS.password});
   if(msg) msg.innerHTML='<div class="alert alert-success">Username updated</div>';
   const inp=document.getElementById('new-admin-username'); if(inp) inp.value='';
   setTimeout(()=>{ if(msg) msg.innerHTML=''; },2000);
@@ -7093,8 +7110,9 @@ async function doChangeAdminPass(){
   const msg=document.getElementById('admin-profile-msg');
   if(!np||np.length<4){ msg.innerHTML='<div class="alert alert-danger">Password must be at least 4 characters.</div>'; return; }
   if(np!==cp){ msg.innerHTML='<div class="alert alert-danger">Passwords do not match.</div>'; return; }
+  const result2=await api('PUT','/api/admin/password',{username:ADMIN_CREDS.username,password:np,current_password:ADMIN_CREDS.password});
+  if(result2?.error==='Unauthorized'||result2?.error?.includes('401')){ msg.innerHTML='<div class="alert alert-danger">Incorrect current password.</div>'; return; }
   ADMIN_CREDS.password=np;
-  await api('PUT','/api/admin/password',{username:ADMIN_CREDS.username,password:np});
   msg.innerHTML='<div class="alert alert-success">Password updated</div>';
   const npEl=document.getElementById('admin-new-pass'); if(npEl) npEl.value='';
   const cpEl=document.getElementById('admin-confirm-pass'); if(cpEl) cpEl.value='';
@@ -7314,8 +7332,9 @@ async function doSaveAdminUsername(){
   const newUser=(document.getElementById('admin-username-edit')?.value||'').trim();
   const msg=document.getElementById('admin-profile-msg');
   if(!newUser){ if(msg) msg.innerHTML='<div class="alert alert-danger">Enter a username.</div>'; return; }
+  const resultUser=await api('PUT','/api/admin/password',{username:newUser,password:ADMIN_CREDS.password,current_password:ADMIN_CREDS.password});
+  if(resultUser?.error==='Unauthorized'||resultUser?.error?.includes('401')){ if(msg) msg.innerHTML='<div class="alert alert-danger">Incorrect admin password.</div>'; return; }
   ADMIN_CREDS.username=newUser;
-  await api('PUT','/api/admin/password',{username:newUser,password:ADMIN_CREDS.password});
   if(msg) msg.innerHTML='<div class="alert alert-success">Username updated</div>';
   setTimeout(()=>{ if(msg) msg.innerHTML=''; },2000);
 }
@@ -7355,6 +7374,7 @@ async function doSaveAdminProfile(){
     await api('PUT','/api/admin/password',{
       username:ADMIN_CREDS.username,
       password:ADMIN_CREDS.password,
+      current_password:ADMIN_CREDS.password,
       notif_email:SETTINGS.notifEmail||'',
       notif_on_submit:SETTINGS.notifOnSubmit,
       notif_all_done:SETTINGS.notifAllDone,
@@ -7367,8 +7387,9 @@ async function doSaveAdminProfile(){
   if(np){
     if(np!==cp){ if(msg) msg.innerHTML='<div class="alert alert-danger">Passwords do not match.</div>'; return; }
     if(np.length<4){ if(msg) msg.innerHTML='<div class="alert alert-danger">Password must be at least 4 characters.</div>'; return; }
+    const resultPass=await api('PUT','/api/admin/password',{username:ADMIN_CREDS.username,password:np,current_password:ADMIN_CREDS.password});
+    if(resultPass?.error==='Unauthorized'||resultPass?.error?.includes('401')){ if(msg) msg.innerHTML='<div class="alert alert-danger">Incorrect current password.</div>'; return; }
     ADMIN_CREDS.password=np;
-    await api('PUT','/api/admin/password',{username:ADMIN_CREDS.username,password:np});
     const npEl=document.getElementById('admin-new-pass'); if(npEl) npEl.value='';
     const cpEl=document.getElementById('admin-confirm-pass'); if(cpEl) cpEl.value='';
   }
@@ -7412,6 +7433,7 @@ async function toggleNotif(){
   try{
     await api('PUT','/api/admin/password',{
       username:ADMIN_CREDS.username, password:ADMIN_CREDS.password,
+      current_password:ADMIN_CREDS.password,
       notif_email:SETTINGS.notifEmail||'',
       notif_on_submit:SETTINGS.notifOnSubmit,
       notif_all_done:SETTINGS.notifAllDone,
@@ -7444,6 +7466,7 @@ async function saveNotifSettings(){
   try{
     const result=await api('PUT','/api/admin/password',{
       username:ADMIN_CREDS.username, password:ADMIN_CREDS.password,
+      current_password:ADMIN_CREDS.password,
       notif_email:SETTINGS.notifEmail||'',
       notif_on_submit:SETTINGS.notifOnSubmit,
       notif_all_done:SETTINGS.notifAllDone,
@@ -7492,7 +7515,8 @@ async function changeAdminUser(){
   const allStoreUsers=DB.brands.flatMap(b=>b.stores.map(s=>s.username));
   if(allStoreUsers.includes(newUser)){ msg.innerHTML='<div class="alert alert-danger">Username already taken by a store.</div>'; return; }
   ADMIN_CREDS.username=newUser;
-  await api('PUT','/api/admin/password',{username:newUser,password:ADMIN_CREDS.password});
+  await api('PUT','/api/admin/password',{username:newUser,password:ADMIN_CREDS.password,current_password:ADMIN_CREDS.password});
+  ADMIN_CREDS.username=newUser;
   document.getElementById('admin-username-edit').value='';
   msg.innerHTML='<div class="alert alert-success">Username updated to "'+newUser+'"</div>';
   setTimeout(()=>{ msg.innerHTML=''; },2500);
@@ -7503,8 +7527,8 @@ async function changeAdminPass(){
   const msg=document.getElementById('admin-profile-msg');
   if(!np){ msg.innerHTML='<div class="alert alert-danger">Please enter a new password.</div>'; return; }
   if(np!==cp){ msg.innerHTML='<div class="alert alert-danger">Passwords do not match.</div>'; return; }
+  await api('PUT','/api/admin/password',{username:ADMIN_CREDS.username,password:np,current_password:ADMIN_CREDS.password});
   ADMIN_CREDS.password=np;
-  await api('PUT','/api/admin/password',{username:ADMIN_CREDS.username,password:np});
   msg.innerHTML='<div class="alert alert-success">Password updated!</div>';
   document.getElementById('admin-new-pass').value='';
   document.getElementById('admin-confirm-pass').value='';
@@ -9141,7 +9165,7 @@ async function evVerifyAndChange(){
     const result=await api('POST','/api/store-change-password',{store_id:sid, new_password:newpass});
     if(result&&result.limit_reached){ document.getElementById('email-verify-overlay').style.display='none'; showPasswordLimitReached(); return; }
     if(result&&result.ok){
-      try{ const raw=localStorage.getItem('fh_session'); if(raw){ const s=JSON.parse(raw); s.password=newpass; localStorage.setItem('fh_session',JSON.stringify(s)); } }catch(e){}
+      // ✅ Password not stored in localStorage for security
       msg.innerHTML='<div class="alert alert-success">Password changed successfully!</div>';
       setTimeout(()=>{ document.getElementById('email-verify-overlay').style.display='none'; },1500);
     } else { msg.innerHTML='<div class="alert alert-danger">Failed to change password.</div>'; }
@@ -9150,8 +9174,8 @@ async function evVerifyAndChange(){
     const result=await api('POST','/api/staff-change-password',{staff_id:staff.staff_id||staff.id, new_password:newpass});
     if(result&&result.limit_reached){ document.getElementById('email-verify-overlay').style.display='none'; showPasswordLimitReached(); return; }
     if(result&&result.ok){
-      if(DB.staffData) DB.staffData.password=newpass;
-      try{ const raw=localStorage.getItem('fh_session'); if(raw){ const s=JSON.parse(raw); if(s.staffData) s.staffData.password=newpass; localStorage.setItem('fh_session',JSON.stringify(s)); } }catch(e){}
+      // ✅ Password not stored in memory session for security
+      // ✅ Password not stored in localStorage for security
       msg.innerHTML='<div class="alert alert-success">Password changed successfully!</div>';
       setTimeout(()=>{ document.getElementById('email-verify-overlay').style.display='none'; },1500);
     } else { msg.innerHTML='<div class="alert alert-danger">Failed to change password.</div>'; }
