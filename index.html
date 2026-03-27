@@ -414,7 +414,7 @@ label{
     </div>
     <div id="login-err" class="alert alert-danger" style="display:none;"></div>
     <div class="field"><label>Email or Username</label><input type="email" id="login-u" placeholder="e.g. store@company.com or admin" autocomplete="email"/></div>
-    <div class="field"><label>Password</label><input type="password" id="login-p" placeholder="••••••••" autocomplete="current-password"/></div>
+    <div class="field"><label>Password</label><input type="password" id="login-p" placeholder="••••" autocomplete="current-password"/></div>
     <button class="btn btn-primary btn-full" onclick="doLogin()">Sign in →</button>
 
   </div>
@@ -1138,12 +1138,12 @@ label{
     <div style="font-size:13px;color:var(--text2);margin-bottom:18px;" id="verify-subtitle">Enter admin password to continue.</div>
     <div class="field">
       <label>Admin password</label>
-      <input type="password" id="verify-admin-pass" placeholder="Enter admin password" onkeydown="if(event.key==='Enter')doVerifyAdmin()"/>
+      <input type="password" id="verify-admin-pass" placeholder="Enter admin password" onkeydown="if(event.key==='Enter'){ const btn=document.getElementById('verify-admin-btn'); if(btn&&!btn.disabled) doVerifyAdmin(); }"/>
     </div>
     <div id="verify-msg" style="margin-bottom:10px;"></div>
     <div style="display:flex;gap:10px;">
       <button class="btn btn-full" style="flex:1;" onclick="closePassVerify()">Cancel</button>
-      <button class="btn btn-primary btn-full" style="flex:1;" onclick="doVerifyAdmin()">Verify</button>
+      <button id="verify-admin-btn" class="btn btn-primary btn-full" style="flex:1;" onclick="this.disabled=true;this.textContent='Verifying…';doVerifyAdmin().finally(()=>{const b=document.getElementById('verify-admin-btn');if(b){b.disabled=false;b.textContent='Verify';}})">Verify</button>
     </div>
   </div>
 </div>
@@ -2337,6 +2337,14 @@ applyStoredTheme();
 /* ===== CLOUDFLARE API ===== */
 const WORKER_URL = 'https://feedback-hub-api.liming6069.workers.dev';
 
+// ✅ FIX D: HTML escape helper — always use esc() when inserting user-supplied text
+// into innerHTML to prevent XSS (e.g. a store name containing <script>).
+function esc(str){ 
+  const d=document.createElement('div'); 
+  d.textContent=str==null?'':String(str); 
+  return d.innerHTML; 
+}
+
 // ✅ SECURITY: Sanitize user-generated content before inserting into DOM
 function sanitize(str) {
   if (str === null || str === undefined) return '';
@@ -2372,7 +2380,7 @@ async function api(method, path, body=null, adminPassword=null){
   const adminPaths = [
     '/api/brands', '/api/stores', '/api/staff', '/api/reports',
     '/api/store-password/', '/api/staff-password/', '/api/export-data',
-    '/api/admin/'
+    '/api/admin/', '/api/upload', '/api/upload-photos',
   ];
   // Send auth header whenever we have a password AND the path needs it
   const needsAuth = adminPass && adminPaths.some(p => path.startsWith(p));
@@ -2757,40 +2765,16 @@ async function restoreSession(){
     }
     await loadAllData(session.role==='reviewer' && session.storeId ? session.storeId : null);
     if(session.role==='staff'){
-      // Always re-fetch fresh staff data from server (avatar/profile may have changed)
+      // ✅ FIX B: Staff users don't have admin credentials, so calling GET /api/staff
+      // (an admin-only endpoint) always returns 401 for them. Use saved session data directly.
+      // Profile updates are picked up next time the staff user explicitly logs in fresh.
       try{
-        // staff_id could be stored as staff_id or id in session
         const staffId=session.staffData?.staff_id||session.staffData?.id||null;
-        if(staffId){
-          const freshStaff=await api('GET','/api/staff');
-          const found=Array.isArray(freshStaff)?freshStaff.find(s=>s.id===staffId):null;
-          if(found){
-            DB.staffData={
-              ...session.staffData,
-              staff_id:found.id,
-              name:found.name,
-              position:found.position,
-              company:found.company||'',
-              phone:found.phone,
-              location:found.location||'',
-              avatar:found.avatar||null,
-              permission:found.permission,
-              brand_ids:Array.isArray(found.brand_ids)?found.brand_ids:JSON.parse(found.brand_ids||'[]'),
-              notif_email:found.notif_email||'',
-              card_style:found.card_style||null,
-            };
-            // Update localStorage with fresh data so next reload is fast too
-            try{
-              const raw=localStorage.getItem('fh_session');
-              if(raw){
-                const sess=JSON.parse(raw);
-                sess.staffData=DB.staffData;
-                localStorage.setItem('fh_session',JSON.stringify(sess));
-              }
-            }catch(e){}
-          } else {
-            DB.staffData=session.staffData||{};
-          }
+        if(staffId && session.staffData){
+          DB.staffData={
+            ...session.staffData,
+            staff_id: staffId,
+          };
         } else {
           DB.staffData=session.staffData||{};
         }
@@ -3416,21 +3400,21 @@ function openStoreDetail(sid, fromScreen){
     <div style="background:${s.color}14;border-radius:var(--rl);border:1px solid ${s.color}30;overflow:hidden;">
       <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;">
         <div style="width:46px;height:46px;border-radius:50%;background:${s.color}30;border:1px solid ${s.color}60;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;">
-          ${s.logo?`<img src="${s.logo}" style="width:100%;height:100%;object-fit:cover;"/>`:`<span style="font-size:16px;font-weight:700;color:${s.color};">${s.name.split(/\s+/).map(w=>w[0]).filter(Boolean).slice(0,2).join('').toUpperCase()}</span>`}
+          ${s.logo?`<img src="${esc(s.logo)}" style="width:100%;height:100%;object-fit:cover;"/>`:`<span style="font-size:16px;font-weight:700;color:${s.color};">${esc(s.name.split(/\s+/).map(w=>w[0]).filter(Boolean).slice(0,2).join('').toUpperCase())}</span>`}
         </div>
         <div>
-          <div style="font-size:17px;font-weight:700;">${s.name}</div>
-          <div style="font-size:12px;color:var(--text2);font-family:'DM Mono',monospace;margin-top:2px;">${s.username}</div>
+          <div style="font-size:17px;font-weight:700;">${esc(s.name)}</div>
+          <div style="font-size:12px;color:var(--text2);font-family:'DM Mono',monospace;margin-top:2px;">${esc(s.username)}</div>
         </div>
       </div>
       <div style="border-top:1px solid ${s.color}25;padding:12px 16px;display:flex;flex-direction:column;gap:10px;">
         <div style="display:flex;align-items:center;gap:10px;">
           <span style="font-size:15px;width:22px;text-align:center;flex-shrink:0;"><span style="width:20px;display:flex;align-items:center;flex-shrink:0;color:var(--text2);"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13.5 19.79 19.79 0 0 1 1.72 4.9 2 2 0 0 1 3.71 2.72h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 10.36a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg></span></span>
-          <span style="font-size:13px;color:${s.phone?'var(--text)':'var(--text3)'};">${s.phone||'No phone number added'}</span>
+          <span style="font-size:13px;color:${s.phone?'var(--text)':'var(--text3)'};">${esc(s.phone||'No phone number added')}</span>
         </div>
         <div style="display:flex;align-items:flex-start;gap:10px;">
           <span style="font-size:15px;width:22px;text-align:center;flex-shrink:0;margin-top:1px;"><span style="width:20px;display:flex;align-items:center;flex-shrink:0;color:var(--text2);"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></span></span>
-          <span style="font-size:13px;color:${s.location?'var(--text)':'var(--text3)'};">${s.location||'No location added'}</span>
+          <span style="font-size:13px;color:${s.location?'var(--text)':'var(--text3)'};">${esc(s.location||'No location added')}</span>
         </div>
       </div>
     </div>`;
@@ -7567,8 +7551,9 @@ async function changeAdminUser(){
   if(!newUser){ msg.innerHTML='<div class="alert alert-danger">Please enter a new username.</div>'; return; }
   const allStoreUsers=DB.brands.flatMap(b=>b.stores.map(s=>s.username));
   if(allStoreUsers.includes(newUser)){ msg.innerHTML='<div class="alert alert-danger">Username already taken by a store.</div>'; return; }
-  ADMIN_CREDS.username=newUser;
-  await api('PUT','/api/admin/password',{username:newUser,password:ADMIN_CREDS.password,current_password:ADMIN_CREDS.password});
+  // ✅ FIX H: Only update in-memory state AFTER server confirms success
+  const result=await api('PUT','/api/admin/password',{username:newUser,password:ADMIN_CREDS.password,current_password:ADMIN_CREDS.password});
+  if(result && result.error){ msg.innerHTML='<div class="alert alert-danger">Failed: '+result.error+'</div>'; return; }
   ADMIN_CREDS.username=newUser;
   document.getElementById('admin-username-edit').value='';
   msg.innerHTML='<div class="alert alert-success">Username updated to "'+newUser+'"</div>';
@@ -7580,8 +7565,11 @@ async function changeAdminPass(){
   const msg=document.getElementById('admin-profile-msg');
   if(!np){ msg.innerHTML='<div class="alert alert-danger">Please enter a new password.</div>'; return; }
   if(np!==cp){ msg.innerHTML='<div class="alert alert-danger">Passwords do not match.</div>'; return; }
-  await api('PUT','/api/admin/password',{username:ADMIN_CREDS.username,password:np,current_password:ADMIN_CREDS.password});
+  // ✅ FIX H: Only update in-memory password AFTER server confirms success
+  const result=await api('PUT','/api/admin/password',{username:ADMIN_CREDS.username,password:np,current_password:ADMIN_CREDS.password});
+  if(result && result.error){ msg.innerHTML='<div class="alert alert-danger">Failed: '+result.error+'</div>'; return; }
   ADMIN_CREDS.password=np;
+  saveAdminPassToSession(np);
   msg.innerHTML='<div class="alert alert-success">Password updated!</div>';
   document.getElementById('admin-new-pass').value='';
   document.getElementById('admin-confirm-pass').value='';
@@ -8300,7 +8288,22 @@ let _sfAvatarData=null, _sfEditingId=null;
 let DB_STAFF=[];
 
 async function loadStaff(){
-  try{ DB_STAFF=await api('GET','/api/staff')||[]; }catch(e){ DB_STAFF=[]; }
+  try{
+    const result = await api('GET','/api/staff');
+    // ✅ FIX F: If result is an error object (e.g. 401), show a toast instead of silently
+    // showing an empty list — makes auth/network failures visible to the admin.
+    if(result && result.error){
+      console.error('loadStaff error:', result.error);
+      showToast('Could not load staff: ' + result.error);
+      DB_STAFF = [];
+    } else {
+      DB_STAFF = result || [];
+    }
+  }catch(e){
+    console.error('loadStaff exception:', e);
+    showToast('Could not load staff accounts — check your connection.');
+    DB_STAFF=[];
+  }
 }
 
 async function goTo_StaffList(){
@@ -8332,18 +8335,18 @@ function renderStaffList(){
   const permColor={view:'var(--text3)', upload:'var(--accent)', edit:'var(--success)'};
 
   el.innerHTML=DB_STAFF.map(s=>`
-    <div class="card card-click" style="margin-bottom:10px;" onclick="openEditStaff('${s.id}')">
+    <div class="card card-click" style="margin-bottom:10px;" onclick="openEditStaff('${esc(s.id)}')">
       <div style="display:flex;align-items:center;gap:12px;">
         <div style="width:46px;height:46px;border-radius:50%;overflow:hidden;flex-shrink:0;background:var(--accent);display:flex;align-items:center;justify-content:center;">
-          ${s.avatar?`<img src="${s.avatar}" style="width:100%;height:100%;object-fit:cover;"/>`:
-            `<span style="font-size:16px;font-weight:700;color:#fff;">${(s.name||'?').split(' ').map(w=>w[0]).filter(Boolean).slice(0,2).join('').toUpperCase()}</span>`}
+          ${s.avatar?`<img src="${esc(s.avatar)}" style="width:100%;height:100%;object-fit:cover;"/>`:
+            `<span style="font-size:16px;font-weight:700;color:#fff;">${esc((s.name||'?').split(' ').map(w=>w[0]).filter(Boolean).slice(0,2).join('').toUpperCase())}</span>`}
         </div>
         <div style="flex:1;min-width:0;">
-          <div style="font-size:14px;font-weight:700;">${s.name||'Unnamed'}</div>
-          <div style="font-size:12px;color:var(--text2);">${s.position||''}${s.company?` · ${s.company}`:''}</div>
+          <div style="font-size:14px;font-weight:700;">${esc(s.name||'Unnamed')}</div>
+          <div style="font-size:12px;color:var(--text2);">${esc(s.position||'')}${s.company?` · ${esc(s.company)}`:''}</div>
           <div style="display:flex;align-items:center;gap:6px;margin-top:4px;">
-            <span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;background:var(--bg3);color:${permColor[s.permission]||'var(--text3)'};">${permLabel[s.permission]||s.permission}</span>
-            ${s.phone?`<span style="font-size:11px;color:var(--text3);">${s.phone}</span>`:''}
+            <span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;background:var(--bg3);color:${permColor[s.permission]||'var(--text3)'};">${esc(permLabel[s.permission]||s.permission)}</span>
+            ${s.phone?`<span style="font-size:11px;color:var(--text3);">${esc(s.phone)}</span>`:''}
           </div>
         </div>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
