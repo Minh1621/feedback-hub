@@ -2365,13 +2365,16 @@ function getDeviceId(){
 
 async function api(method, path, body=null, adminPassword=null){
   const headers = {'Content-Type':'application/json'};
-  // ✅ Send admin password header for all admin-protected endpoints
-  const adminPass = adminPassword || (ADMIN_CREDS?.password) || null;
+  // ✅ Resolve admin password: explicit arg > in-memory > sessionStorage fallback
+  // Always check sessionStorage so password survives page reloads even if ADMIN_CREDS
+  // hasn't been populated yet (e.g. goTo_StaffList called before session restore completes).
+  const adminPass = adminPassword || ADMIN_CREDS?.password || loadAdminPassFromSession() || null;
   const adminPaths = [
     '/api/brands', '/api/stores', '/api/staff', '/api/reports',
     '/api/store-password/', '/api/staff-password/', '/api/export-data',
     '/api/admin/'
   ];
+  // Send auth header whenever we have a password AND the path needs it
   const needsAuth = adminPass && adminPaths.some(p => path.startsWith(p));
   if (needsAuth) {
     headers['X-Admin-Password'] = adminPass;
@@ -2390,8 +2393,11 @@ async function api(method, path, body=null, adminPassword=null){
 async function uploadFile(file){
   const form = new FormData();
   form.append('file', file);
+  // ✅ /api/upload now requires admin auth — include password header
+  const pass = ADMIN_CREDS?.password || loadAdminPassFromSession() || '';
+  const headers = pass ? { 'X-Admin-Password': pass } : {};
   try {
-    const res = await fetch(WORKER_URL + '/api/upload', { method:'POST', body: form });
+    const res = await fetch(WORKER_URL + '/api/upload', { method:'POST', body: form, headers });
     return await res.json();
   } catch(e) { return { error: e.message }; }
 }
@@ -2433,7 +2439,10 @@ async function preUploadRefPhotos(refs, reportId, onProgress){
       form.append(job.key, blob, job.key + '.jpg');
     }
     try {
-      const r = await fetch(WORKER_URL + '/api/upload-photos', { method: 'POST', body: form });
+      // ✅ /api/upload-photos now requires admin auth — include password header
+      const upPass = ADMIN_CREDS?.password || loadAdminPassFromSession() || '';
+      const upHeaders = upPass ? { 'X-Admin-Password': upPass } : {};
+      const r = await fetch(WORKER_URL + '/api/upload-photos', { method: 'POST', body: form, headers: upHeaders });
       const result = await r.json();
       if(result.ok && result.urls) Object.assign(urlMap, result.urls);
     } catch(e) { console.warn('Batch upload failed, worker will handle:', e.message); }
