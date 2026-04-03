@@ -4631,8 +4631,9 @@ function viewFeedback(rid){
         if(filterVal==='responded'&&itemState!=='responded') return '';
         if(filterVal==='rejected'&&itemState!=='rejected') return '';
         if(filterVal==='needs_review'&&itemState!=='needs_review') return '';
-        const _itemBorder=rejRespCount>0?'1.5px solid var(--danger)':rejectCount>0?'1.5px solid var(--warn)':'0.5px solid var(--border)';
-        return `<div style="background:var(--bg2);border:${_itemBorder};border-radius:var(--rl);margin-bottom:10px;overflow:hidden;" data-ref-id="${ref.id}">
+        const _itemBorder=rejRespCount>0?'2.5px solid var(--danger)':rejectCount>0?'2px solid var(--warn)':respCount>0?'1px solid var(--success)':'0.5px solid var(--border)';
+        const _itemBg=rejRespCount>0?'var(--alert-danger-bg)':rejectCount>0?'var(--alert-warn-bg, var(--bg2))':'var(--bg2)';
+        return `<div style="background:${_itemBg};border:${_itemBorder};border-radius:var(--rl);margin-bottom:10px;overflow:hidden;" data-ref-id="${ref.id}">
         <div onclick="toggleAdminItem('ai_${ref.id}')" style="display:flex;align-items:center;gap:10px;padding:13px 14px;cursor:pointer;user-select:none;">
           <div style="width:28px;height:28px;border-radius:8px;background:var(--bg3);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
             <span style="font-size:13px;font-weight:600;color:var(--text2);">${i+1}</span>
@@ -4642,8 +4643,8 @@ function viewFeedback(rid){
             ${ref.desc?`<div style="font-size:12px;color:var(--text2);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${ref.desc}</div>`:''}
           </div>
           <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
-            ${(respCount+rejRespCount)>0?`<span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;background:var(--badge-done-bg);color:var(--success);">${respCount+rejRespCount} response${(respCount+rejRespCount)>1?'s':''}</span>`:''}
-            ${rejRespCount?`<span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;background:var(--alert-danger-bg);color:var(--danger);">${rejRespCount} needs review</span>`:''}
+            ${respCount>0&&!rejRespCount?`<span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;background:var(--badge-done-bg);color:var(--success);">${respCount} response${respCount>1?'s':''}</span>`:''}
+            ${rejRespCount?`<span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:var(--danger);color:#fff;display:inline-flex;align-items:center;gap:5px;"><span style="width:6px;height:6px;border-radius:50%;background:#fff;display:inline-block;flex-shrink:0;"></span>${rejRespCount} needs review</span>`:''}
             ${rejectCount?`<span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;background:#fff3e0;color:var(--warn);">×${rejectCount} rejected</span>`:''}
             ${!respCount&&!rejectCount&&!rejRespCount?`<span style="font-size:11px;color:var(--text3);">No responses</span>`:''}
             <div id="ai_arrow_${ref.id}" style="font-size:11px;color:var(--text3);transition:transform .2s;">▼</div>
@@ -8719,9 +8720,9 @@ function buildSortedResponsesHTML(ref, r, b, rid){
 
 
     // Status label for header
-    // rejected+responded = show green "Responded" but store row gets red border
+    // rejected+responded = "Needs review" so admin/staff knows to act
     const statusLabel=(isRejectedNow&&hasResponse)
-      ? `<span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;background:var(--badge-done-bg);color:var(--success);flex-shrink:0;">Responded</span>`
+      ? `<span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;background:var(--danger);color:#fff;display:inline-flex;align-items:center;gap:4px;flex-shrink:0;"><span style="width:5px;height:5px;border-radius:50%;background:#fff;display:inline-block;flex-shrink:0;"></span>Needs review</span>`
       : isRejectedNow
         ? `<span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;background:var(--alert-danger-bg);color:var(--danger);display:flex;align-items:center;gap:3px;flex-shrink:0;">×${allRemarks.length} remark${allRemarks.length>1?'s':''}</span>`
         : hasResponse
