@@ -5594,9 +5594,11 @@ function openReviewerReport(rid){
       const isNewItem=!hasMyContent&&!isRejectedItem;
       const remarkList=myFb.adminRemarks?.[ref.id+'_list']||[];
       const remarkText=remarkList.length?remarkList.map(rk=>rk.text).join(' · '):(myFb.adminRemarks?.[ref.id]||'');
-      const cardBorder=isRejectedItem&&!isRepondedAfterRejection?'1.5px solid var(--danger)':isNewItem?'1.5px solid var(--warn)':'0.5px solid var(--border)';
+      const cardBorder=isRejectedItem&&!isRepondedAfterRejection?'1.5px solid var(--danger)':isRepondedAfterRejection?'1.5px solid var(--accent)':isNewItem?'1.5px solid var(--warn)':'0.5px solid var(--border)';
+      const cardBg=isRejectedItem&&!isRepondedAfterRejection?'var(--alert-danger-bg)':isRepondedAfterRejection?'var(--badge-partial-bg,var(--bg2))':'var(--bg2)';
       let statusBadge='';
       if(isRejectedItem&&!isRepondedAfterRejection) statusBadge=`<span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;background:var(--alert-danger-bg);color:var(--danger);flex-shrink:0;">Needs correction</span>`;
+      else if(isRepondedAfterRejection) statusBadge=`<span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;background:var(--badge-partial-bg,#e8f4ff);color:var(--accent);flex-shrink:0;">Pending review</span>`;
       else if(isNewItem) statusBadge=`<span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;background:#fff3e0;color:var(--warn);flex-shrink:0;">New</span>`;
       else if(hasMyContent) statusBadge=`<span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;background:var(--badge-done-bg);color:var(--success);flex-shrink:0;">Responded</span>`;
       else statusBadge=`<span style="font-size:11px;color:var(--text3);flex-shrink:0;">No response</span>`;
@@ -5607,7 +5609,7 @@ function openReviewerReport(rid){
           : item.photos&&item.photos.length
             ? `<div style="font-size:11px;color:var(--text2);margin-top:3px;">${item.photos.length} photo${item.photos.length>1?'s':''}</div>`
             : '';
-      return `<div style="background:var(--bg2);border:${cardBorder};border-radius:var(--rl);margin-bottom:8px;padding:12px 14px;display:flex;align-items:center;gap:10px;">
+      return `<div style="background:${cardBg};border:${cardBorder};border-radius:var(--rl);margin-bottom:8px;padding:12px 14px;display:flex;align-items:center;gap:10px;">
         <div style="width:28px;height:28px;border-radius:8px;background:var(--bg3);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
           <span style="font-size:13px;font-weight:600;color:var(--text2);">${idx+1}</span>
         </div>
