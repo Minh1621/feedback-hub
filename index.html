@@ -1162,7 +1162,8 @@ label{
     <div style="font-size:13px;color:var(--text2);margin-bottom:18px;" id="verify-subtitle">Enter admin password to continue.</div>
     <div class="field">
       <label>Admin password</label>
-      <input type="password" id="verify-admin-pass" placeholder="Enter admin password" onkeydown="if(event.key==='Enter'){ const btn=document.getElementById('verify-admin-btn'); if(btn&&!btn.disabled) doVerifyAdmin(); }"/>
+      <!-- Password input removed: admin identity proven by JWT token -->
+      <p style="font-size:13px;color:var(--text2);margin:0 0 12px;">Click confirm to proceed. Your admin session is already verified.</p>
     </div>
     <div id="verify-msg" style="margin-bottom:10px;"></div>
     <div style="display:flex;gap:10px;">
@@ -2392,48 +2393,32 @@ function getDeviceId(){
   } catch(e){ return 'dev_unknown'; }
 }
 
-async function api(method, path, body=null, adminPassword=null){
+async function api(method, path, body=null){
   const headers = {'Content-Type':'application/json'};
-  const adminPass = adminPassword || ADMIN_CREDS?.password || loadAdminPassFromSession() || null;
-  const adminPaths = [
-    '/api/brands', '/api/stores', '/api/staff', '/api/reports',
-    '/api/store-password/', '/api/staff-password/', '/api/export-data',
-    '/api/admin/', '/api/upload', '/api/upload-photos',
-  ];
-  // Send auth header whenever we have a password AND the path needs it
-  const needsAuth = adminPass && adminPaths.some(p => path.startsWith(p));
-  if (needsAuth) {
-    headers['X-Admin-Password'] = adminPass;
-  }
-  // For staff users without admin password, send X-Staff-Id for all protected paths
-  if (!needsAuth && DB?.role === 'staff' && DB?.staffData?.staff_id) {
-    if (adminPaths.some(p => path.startsWith(p))) {
-      headers['X-Staff-Id'] = DB.staffData.staff_id;
-    }
-  }
+  // Send JWT token from memory (never from localStorage or sessionStorage)
+  const token = _authToken || null;
+  if (token) headers['Authorization'] = 'Bearer ' + token;
   const opts = { method, headers };
-  if(body) opts.body = JSON.stringify(body);
+  if (body) opts.body = JSON.stringify(body);
   try {
     const res = await fetch(WORKER_URL + path, opts);
+    if (res.status === 401) { doLogout(); return { error: 'Session expired. Please log in again.' }; }
     return await res.json();
   } catch(e) {
-    console.error('API error:', e);
-    return { error: e.message };
+    console.error('API error:', e.message);
+    return { error: 'Network error. Please check your connection.' };
   }
 }
 
 async function uploadFile(file){
   const form = new FormData();
   form.append('file', file);
-  // Send admin password OR staff ID depending on who is logged in
-  const pass = ADMIN_CREDS?.password || loadAdminPassFromSession() || '';
-  const staffId = DB?.staffData?.staff_id || '';
-  const headers = pass ? { 'X-Admin-Password': pass }
-                : staffId ? { 'X-Staff-Id': staffId } : {};
+  const headers = _authToken ? { 'Authorization': 'Bearer ' + _authToken } : {};
   try {
     const res = await fetch(WORKER_URL + '/api/upload', { method:'POST', body: form, headers });
+    if (res.status === 401) { doLogout(); return { error: 'Session expired' }; }
     return await res.json();
-  } catch(e) { return { error: e.message }; }
+  } catch(e) { return { error: 'Upload failed. Please try again.' }; }
 }
 
 // Convert base64 dataURL to Blob without using fetch() — works in all browsers
@@ -2474,10 +2459,7 @@ async function preUploadRefPhotos(refs, reportId, onProgress){
     }
     try {
       // Send admin password OR staff ID depending on who is logged in
-      const upPass = ADMIN_CREDS?.password || loadAdminPassFromSession() || '';
-      const upStaffId = DB?.staffData?.staff_id || '';
-      const upHeaders = upPass ? { 'X-Admin-Password': upPass }
-                      : upStaffId ? { 'X-Staff-Id': upStaffId } : {};
+      const upHeaders = _authToken ? { 'Authorization': 'Bearer ' + _authToken } : {};
       const r = await fetch(WORKER_URL + '/api/upload-photos', { method: 'POST', body: form, headers: upHeaders });
       const result = await r.json();
       if(result.ok && result.urls) Object.assign(urlMap, result.urls);
@@ -2648,13 +2630,14 @@ async function doLogin(){
     // ✅ FIX: set role + credentials BEFORE loadAllData so auth header is sent correctly
     DB.role=result.role;
     if(result.role==='admin'){
-      ADMIN_CREDS.password = p;
-      saveAdminPassToSession(p);
+      _authToken = result.token || null;
       saveSession('admin', null, null);
-    } else if(result.role==='staff'){
+    } else if(result.token) _authToken = result.token;
+    if(result.role==='staff'){
       DB.staffData=result;
       saveSession('staff', null, null, result);
-    } else if(result.role==='reviewer'){
+    } else if(result.token) _authToken = result.token;
+    if(result.role==='reviewer'){
       DB.reviewerBrandId=result.brand_id;
       DB.reviewerStoreId=result.store_id;
       saveSession('reviewer', result.brand_id, result.store_id);
@@ -2711,6 +2694,7 @@ function doLogout(){
   DB.currentBrandId=null;
   const adminHomeCard=document.getElementById('admin-home-card');
   if(adminHomeCard) adminHomeCard.remove();
+  _authToken = null;
   try{ localStorage.removeItem('fh_session'); }catch(e){}
 
   // ── Reset all screens to default state ───────────────────────────────────
@@ -2784,8 +2768,8 @@ function saveSession(role, brandId, storeId, staffData){
   }catch(e){}
 }
 // ✅ Store admin password in sessionStorage (cleared when tab closes, never in localStorage)
-function saveAdminPassToSession(pass){ try{ sessionStorage.setItem('fh_ap', pass); }catch(e){} }
-function loadAdminPassFromSession(){ try{ return sessionStorage.getItem('fh_ap')||''; }catch(e){ return ''; } }
+// saveAdminPassToSession removed — passwords never stored in browser storage
+// loadAdminPassFromSession removed — use JWT token instead
 
 // Auto-restore session on page load
 async function restoreSession(){
@@ -2812,8 +2796,7 @@ async function restoreSession(){
     // ✅ FIX: set role + credentials BEFORE loadAllData so auth header is sent correctly
     DB.role = session.role;
     if(session.role==='admin'){
-      const savedPass = loadAdminPassFromSession();
-      if(savedPass) ADMIN_CREDS.password = savedPass;
+      // JWT token lives in _authToken (memory only) — admin re-logs in after refresh by design
     } else if(session.role==='staff'){
       try{
         const staffId=session.staffData?.staff_id||session.staffData?.id||null;
@@ -2882,8 +2865,7 @@ window.addEventListener('load', async ()=>{
   loadSettingsFromStorage();
   // ✅ FIX: restore admin password from sessionStorage immediately on load
   // so it is available before restoreSession calls loadAllData
-  const _earlyPass = loadAdminPassFromSession();
-  if(_earlyPass) ADMIN_CREDS.password = _earlyPass;
+  // _authToken is session-only in memory — not persisted to storage
   const restored = await restoreSession();
   if(!restored){
     goTo('s-login');
@@ -3128,8 +3110,8 @@ function renderHome(_brandsOverride){
         return `<div class="card card-click" style="margin-bottom:10px;" onclick="DB.currentBrandId='${b.id}';openBrand('${b.id}');setTimeout(()=>viewFeedback('${r.id}'),120);" data-brand-id="${b.id}" data-report-id="${r.id}">
           <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
             <div>
-              <div style="font-size:11px;color:var(--text3);margin-bottom:3px;">${b.name}</div>
-              <div style="font-size:14px;font-weight:600;">${r.title}</div>
+              <div style="font-size:11px;color:var(--text3);margin-bottom:3px;">${esc(b.name)}</div>
+              <div style="font-size:14px;font-weight:600;">${esc(r.title)}</div>
             </div>
             <span class="badge ${bc}" style="flex-shrink:0;">${bt}</span>
           </div>
@@ -3159,7 +3141,7 @@ function renderHome(_brandsOverride){
         <div class="brand-header">
           <div class="brand-logo" style="background:${b.color}22;border:1px solid ${b.color}44;">${logoEl}</div>
           <div style="flex:1;min-width:0;">
-            <div style="font-size:15px;font-weight:600;">${b.name}</div>
+            <div style="font-size:15px;font-weight:600;">${esc(b.name)}</div>
             <div style="font-size:12px;color:var(--text2);margin-top:2px;">${b.stores.length} store${b.stores.length!==1?'s':''} &bull; ${b.reports.length} report${b.reports.length!==1?'s':''}</div>
           </div>
           <div style="width:11px;height:11px;border-radius:50%;background:${b.color};flex-shrink:0;"></div>
@@ -3206,7 +3188,7 @@ function renderHome(_brandsOverride){
           <div style="width:10px;height:10px;border-radius:50%;background:${s.color||b.color};flex-shrink:0;"></div>
           <div style="flex:1;min-width:0;">
             <div style="font-size:14px;font-weight:600;">${s.name}</div>
-            <div style="font-size:12px;color:var(--text3);margin-top:1px;">${b.name}${s.location?' · '+s.location:''}</div>
+            <div style="font-size:12px;color:var(--text3);margin-top:1px;">${esc(b.name)}${s.location?' · '+esc(s.location):''}</div>
           </div>
           <div style="text-align:right;flex-shrink:0;">
             ${nInc?`<div style="font-size:11px;font-weight:600;color:var(--danger);">${nInc} incomplete</div>`:''}
@@ -3270,7 +3252,7 @@ function renderBrandHero(){
     <div style="display:flex;align-items:center;gap:14px;padding:14px;background:${b.color}14;border-radius:var(--rl);border:1px solid ${b.color}30;">
       <div style="width:50px;height:50px;border-radius:12px;background:${b.color}25;border:1px solid ${b.color}50;display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;">${logoEl}</div>
       <div>
-        <div style="font-size:17px;font-weight:700;">${b.name}</div>
+        <div style="font-size:17px;font-weight:700;">${esc(b.name)}</div>
         <div style="font-size:12px;color:var(--text2);margin-top:2px;">${b.stores.length} stores &bull; ${b.reports.length} reports</div>
       </div>
     </div>`;
@@ -3363,14 +3345,14 @@ function renderBrandReports(){
     return `<div class="card card-click" style="margin-bottom:10px;${borderStyle}" onclick="DB.fbPrevScreen='s-brand';viewFeedback('${r.id}')">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
         <div style="display:flex;align-items:center;gap:6px;flex:1;min-width:0;">
-          <div style="font-size:14px;font-weight:600;flex:1;">${r.title}</div>
+          <div style="font-size:14px;font-weight:600;flex:1;">${esc(r.title)}</div>
           ${r.verified?`<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`:''}
         </div>
         <span class="badge ${bc}">${bt}</span>
       </div>
       <div style="font-size:12px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:4px;">${r.file}</div>
       ${targetStore?`<div style="font-size:12px;color:var(--text2);margin-top:6px;display:flex;align-items:center;gap:5px;"><span class="dot" style="background:${targetStore.color}"></span>${targetStore.name} only</div>`:''}
-      ${r.desc?`<div style="font-size:13px;color:var(--text2);margin-top:5px;">${r.desc}</div>`:''}
+      ${r.desc?`<div style="font-size:13px;color:var(--text2);margin-top:5px;">${esc(r.desc)}</div>`:''}
       ${r.refs&&r.refs.length?`<div style="font-size:12px;color:var(--accent);margin-top:6px;display:flex;align-items:center;gap:5px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>${r.refs.length} reference item${r.refs.length>1?'s':''}</div>`:''}
       <div style="margin-top:10px;padding:10px 12px;background:var(--bg3);border-radius:10px;">
         <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">
@@ -3553,7 +3535,7 @@ function renderStoreDetailReports(b,s){
     return `<div class="card card-click" style="margin-bottom:10px;${borderStyle}" onclick="DB.fbPrevScreen='s-store-detail';viewFeedback('${r.id}')">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
         <div style="display:flex;align-items:center;gap:6px;flex:1;min-width:0;">
-          <div style="font-size:14px;font-weight:600;flex:1;">${r.title}</div>
+          <div style="font-size:14px;font-weight:600;flex:1;">${esc(r.title)}</div>
           ${r.verified?`<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`:''}
         </div>
         <span class="badge ${bc}">${bt}</span>
@@ -3561,7 +3543,7 @@ function renderStoreDetailReports(b,s){
       <div style="font-size:12px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:4px;">${r.file}</div>
       <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;">
         ${isExclusive?`<span style="font-size:11px;padding:2px 8px;border-radius:20px;background:${s.color}18;color:${s.color};font-weight:600;display:inline-flex;align-items:center;gap:4px;"><span style="width:6px;height:6px;border-radius:50%;background:${s.color};"></span>${s.name} only</span>`:''}
-        ${r.desc?`<div style="font-size:13px;color:var(--text2);margin-top:4px;width:100%;">${r.desc}</div>`:''}
+        ${r.desc?`<div style="font-size:13px;color:var(--text2);margin-top:4px;width:100%;">${esc(r.desc)}</div>`:''}
         ${r.refs&&r.refs.length?`<div style="font-size:12px;color:var(--accent);margin-top:4px;display:flex;align-items:center;gap:4px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>${r.refs.length} reference item${r.refs.length>1?'s':''}</div>`:''}
       </div>
       ${insp.score||totalItems?`
@@ -4284,7 +4266,7 @@ function confirmUpload(){
   const refCount=DB.pendingRefs.length;
 
   document.getElementById('upload-confirm-body').innerHTML=`
-    <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:var(--text2);">Brand</span><strong>${b.name}</strong></div>
+    <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:var(--text2);">Brand</span><strong>${esc(b.name)}</strong></div>
     <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:var(--text2);">Report</span><strong>${title}</strong></div>
     <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:var(--text2);">File</span><strong style="word-break:break-all;max-width:60%;text-align:right;">${DB.pendingUpload.name}</strong></div>
     <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="color:var(--text2);">Send to</span><strong>${targetStoreNames}</strong></div>
@@ -5121,7 +5103,7 @@ function renderReviewerHome(){
       </div>
       <div style="background:var(--bg2);border:1px solid var(--border);border-top:none;padding:34px 16px 16px;border-radius:0 0 14px 14px;">
         <div style="font-size:17px;font-weight:800;line-height:1.2;">${s.name}</div>
-        <div style="font-size:13px;font-weight:600;color:var(--text2);margin-top:2px;">${b.name}</div>
+        <div style="font-size:13px;font-weight:600;color:var(--text2);margin-top:2px;">${esc(b.name)}</div>
         ${s.location?`<div style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text2);margin-top:7px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>${s.location}</div>`:''}
         ${s.phone?`<div style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text2);margin-top:6px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13.5 19.79 19.79 0 0 1 1.72 4.9 2 2 0 0 1 3.71 2.72h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 10.36a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>${s.phone}</div>`:''}
       </div>
@@ -5294,7 +5276,7 @@ function renderReviewerHome(){
     return `<div class="card card-click" onclick="openReviewerReport('${r.id}')" style="margin-bottom:10px;${borderStyle}">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
         <div style="display:flex;align-items:center;gap:6px;flex:1;min-width:0;">
-          <div style="font-size:14px;font-weight:600;flex:1;line-height:1.3;">${r.title}</div>
+          <div style="font-size:14px;font-weight:600;flex:1;line-height:1.3;">${esc(r.title)}</div>
         </div>
         <span class="badge ${bc}" style="flex-shrink:0;">${bt}</span>
       </div>
@@ -5356,7 +5338,7 @@ function toggleArchivedReports(){
     const scoreColor=scoreNum>=99?'var(--success)':scoreNum>=88?'var(--success)':scoreNum>=85?'var(--warn)':scoreNum>0?'var(--danger)':'var(--text)';
     return `<div class="card" style="margin-bottom:8px;opacity:.7;">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
-        <div style="font-size:14px;font-weight:600;flex:1;">${r.title}</div>
+        <div style="font-size:14px;font-weight:600;flex:1;">${esc(r.title)}</div>
         <span style="font-size:10px;padding:2px 7px;border-radius:20px;background:var(--bg3);color:var(--text3);flex-shrink:0;">Archived</span>
       </div>
       <div style="font-size:12px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:3px;">${r.file}</div>
@@ -6460,7 +6442,7 @@ async function saveRvNotif(){
 function adminViewStorePass(){
   // 2-step: verify admin password first
   _pendingAdminAction='view_store_pass';
-  document.getElementById('verify-admin-pass').value='';
+  // verify-admin-pass removed
   document.getElementById('verify-msg').innerHTML='';
   document.getElementById('verify-title').textContent='View store password';
   document.getElementById('verify-subtitle').textContent='Enter admin password to view the store current password.';
@@ -6492,7 +6474,7 @@ function openRvSettings(){
 let _pendingAdminAction = 'view';
 function requestAdminAction(action){
   _pendingAdminAction = action;
-  document.getElementById('verify-admin-pass').value='';
+  // verify-admin-pass removed
   document.getElementById('verify-msg').innerHTML='';
   const titles = { view:'View password', change:'Change password' };
   const subs = { view:'Enter admin password to view store credentials.', change:'Enter admin password to change the store password.' };
@@ -6508,27 +6490,28 @@ function closePassVerify(){
 function doDeleteStaff(){
   // 2-step: show password verify overlay, then delete on confirm
   _pendingAdminAction='delete_staff';
-  document.getElementById('verify-admin-pass').value='';
+  // verify-admin-pass removed
   document.getElementById('verify-msg').innerHTML='';
   document.getElementById('pass-verify-overlay').style.display='flex';
 }
 
 async function doVerifyAdmin(){
-  const entered=document.getElementById('verify-admin-pass').value;
+  // With JWT auth, admin identity is already proven by the token.
+  // The verify-admin dialog is shown as a UX confirmation step only.
+  // We verify the token is still valid by calling a protected endpoint.
   const msg=document.getElementById('verify-msg');
-  if(!entered){ msg.innerHTML='<div class="alert alert-danger">Please enter your admin password.</div>'; return; }
-  // We probe a protected endpoint with the entered password as the X-Admin-Password header.
+  if (!_authToken) {
+    msg.innerHTML='<div class="alert alert-danger">Session expired. Please log in again.</div>';
+    setTimeout(doLogout, 1500);
+    return;
+  }
   try {
-    const res = await fetch(WORKER_URL+'/api/admin/settings', {
-      headers: { 'X-Admin-Password': entered }
-    });
-    if (!res.ok) {
-      msg.innerHTML='<div class="alert alert-danger">Incorrect admin password.</div>';
+    const res = await api('GET', '/api/admin/settings');
+    if (res.error) {
+      msg.innerHTML='<div class="alert alert-danger">Session invalid. Please log in again.</div>';
+      setTimeout(doLogout, 1500);
       return;
     }
-    // Password is correct — update in-memory creds so subsequent api() calls work
-    ADMIN_CREDS.password = entered;
-    saveAdminPassToSession(entered);
   } catch(e) {
     msg.innerHTML='<div class="alert alert-danger">Network error — please try again.</div>';
     return;
@@ -7201,7 +7184,7 @@ async function doChangeUsername(){
   const newUser=(document.getElementById('new-admin-username')?.value||'').trim();
   const msg=document.getElementById('admin-profile-msg');
   if(!newUser){ if(msg) msg.innerHTML='<div class="alert alert-danger">Enter a username.</div>'; return; }
-  const result1=await api('PUT','/api/admin/password',{username:newUser,password:ADMIN_CREDS.password,current_password:ADMIN_CREDS.password});
+  const result1=await api('PUT','/api/admin/password',{username:newUser});
   if(result1?.error==='Unauthorized'||result1?.error?.includes('401')){ if(msg) msg.innerHTML='<div class="alert alert-danger">Incorrect current password.</div>'; return; }
   ADMIN_CREDS.username=newUser;
   if(msg) msg.innerHTML='<div class="alert alert-success">Username updated</div>';
@@ -7214,9 +7197,9 @@ async function doChangeAdminPass(){
   const msg=document.getElementById('admin-profile-msg');
   if(!np||np.length<4){ msg.innerHTML='<div class="alert alert-danger">Password must be at least 4 characters.</div>'; return; }
   if(np!==cp){ msg.innerHTML='<div class="alert alert-danger">Passwords do not match.</div>'; return; }
-  const result2=await api('PUT','/api/admin/password',{username:ADMIN_CREDS.username,password:np,current_password:ADMIN_CREDS.password});
+  const result2=await api('PUT','/api/admin/password',{username:ADMIN_CREDS.username,password:np,current_password:_currentAdminPassInput||''});
   if(result2?.error==='Unauthorized'||result2?.error?.includes('401')){ msg.innerHTML='<div class="alert alert-danger">Incorrect current password.</div>'; return; }
-  ADMIN_CREDS.password=np;
+  // password stored server-side only; token remains valid
   saveAdminPassToSession(np);
   msg.innerHTML='<div class="alert alert-success">Password updated</div>';
   const npEl=document.getElementById('admin-new-pass'); if(npEl) npEl.value='';
@@ -7437,7 +7420,7 @@ async function doSaveAdminUsername(){
   const newUser=(document.getElementById('admin-username-edit')?.value||'').trim();
   const msg=document.getElementById('admin-profile-msg');
   if(!newUser){ if(msg) msg.innerHTML='<div class="alert alert-danger">Enter a username.</div>'; return; }
-  const resultUser=await api('PUT','/api/admin/password',{username:newUser,password:ADMIN_CREDS.password,current_password:ADMIN_CREDS.password});
+  const resultUser=await api('PUT','/api/admin/password',{username:newUser});
   if(resultUser?.error==='Unauthorized'||resultUser?.error?.includes('401')){ if(msg) msg.innerHTML='<div class="alert alert-danger">Incorrect admin password.</div>'; return; }
   ADMIN_CREDS.username=newUser;
   if(msg) msg.innerHTML='<div class="alert alert-success">Username updated</div>';
@@ -7478,8 +7461,6 @@ async function doSaveAdminProfile(){
     };
     await api('PUT','/api/admin/password',{
       username:ADMIN_CREDS.username,
-      password:ADMIN_CREDS.password,
-      current_password:ADMIN_CREDS.password,
       notif_email:SETTINGS.notifEmail||'',
       notif_on_submit:SETTINGS.notifOnSubmit,
       notif_all_done:SETTINGS.notifAllDone,
@@ -7492,9 +7473,9 @@ async function doSaveAdminProfile(){
   if(np){
     if(np!==cp){ if(msg) msg.innerHTML='<div class="alert alert-danger">Passwords do not match.</div>'; return; }
     if(np.length<4){ if(msg) msg.innerHTML='<div class="alert alert-danger">Password must be at least 4 characters.</div>'; return; }
-    const resultPass=await api('PUT','/api/admin/password',{username:ADMIN_CREDS.username,password:np,current_password:ADMIN_CREDS.password});
+    const resultPass=await api('PUT','/api/admin/password',{username:ADMIN_CREDS.username,password:np,});
     if(resultPass?.error==='Unauthorized'||resultPass?.error?.includes('401')){ if(msg) msg.innerHTML='<div class="alert alert-danger">Incorrect current password.</div>'; return; }
-    ADMIN_CREDS.password=np;
+    // password stored server-side only; token remains valid
     saveAdminPassToSession(np);
     const npEl=document.getElementById('admin-new-pass'); if(npEl) npEl.value='';
     const cpEl=document.getElementById('admin-confirm-pass'); if(cpEl) cpEl.value='';
@@ -7509,7 +7490,7 @@ async function doSaveAdminProfile(){
 function exportStaffCredentials(){ openStaffExportVerify(); }
 function adminViewStorePass(){
   _pendingAdminAction='view_store_pass';
-  document.getElementById('verify-admin-pass').value='';
+  // verify-admin-pass removed
   document.getElementById('verify-msg').innerHTML='';
   document.getElementById('verify-title').textContent='Admin verification';
   document.getElementById('verify-subtitle').textContent='Enter admin password to view store password.';
@@ -7538,8 +7519,7 @@ async function toggleNotif(){
   // Persist to DB so it survives restart
   try{
     await api('PUT','/api/admin/password',{
-      username:ADMIN_CREDS.username, password:ADMIN_CREDS.password,
-      current_password:ADMIN_CREDS.password,
+      username:ADMIN_CREDS.username,
       notif_email:SETTINGS.notifEmail||'',
       notif_on_submit:SETTINGS.notifOnSubmit,
       notif_all_done:SETTINGS.notifAllDone,
@@ -7571,8 +7551,7 @@ async function saveNotifSettings(){
   // Save to DB (persists across all devices and restarts)
   try{
     const result=await api('PUT','/api/admin/password',{
-      username:ADMIN_CREDS.username, password:ADMIN_CREDS.password,
-      current_password:ADMIN_CREDS.password,
+      username:ADMIN_CREDS.username,
       notif_email:SETTINGS.notifEmail||'',
       notif_on_submit:SETTINGS.notifOnSubmit,
       notif_all_done:SETTINGS.notifAllDone,
@@ -7612,7 +7591,8 @@ async function testNotif(){
   }
   setTimeout(()=>{ msg.innerHTML=''; },8000);
 }
-let ADMIN_CREDS = { username: 'admin', password: '' };
+let ADMIN_CREDS = { username: 'admin' };  // password NEVER stored
+let _authToken = null;  // JWT held only in memory — cleared on logout/refresh
 
 async function changeAdminUser(){
   const newUser=document.getElementById('admin-username-edit').value.trim();
@@ -7620,7 +7600,7 @@ async function changeAdminUser(){
   if(!newUser){ msg.innerHTML='<div class="alert alert-danger">Please enter a new username.</div>'; return; }
   const allStoreUsers=DB.brands.flatMap(b=>b.stores.map(s=>s.username));
   if(allStoreUsers.includes(newUser)){ msg.innerHTML='<div class="alert alert-danger">Username already taken by a store.</div>'; return; }
-  const result=await api('PUT','/api/admin/password',{username:newUser,password:ADMIN_CREDS.password,current_password:ADMIN_CREDS.password});
+  const result=await api('PUT','/api/admin/password',{username:newUser});
   if(result && result.error){ msg.innerHTML='<div class="alert alert-danger">Failed: '+result.error+'</div>'; return; }
   ADMIN_CREDS.username=newUser;
   document.getElementById('admin-username-edit').value='';
@@ -7633,9 +7613,9 @@ async function changeAdminPass(){
   const msg=document.getElementById('admin-profile-msg');
   if(!np){ msg.innerHTML='<div class="alert alert-danger">Please enter a new password.</div>'; return; }
   if(np!==cp){ msg.innerHTML='<div class="alert alert-danger">Passwords do not match.</div>'; return; }
-  const result=await api('PUT','/api/admin/password',{username:ADMIN_CREDS.username,password:np,current_password:ADMIN_CREDS.password});
+  const result=await api('PUT','/api/admin/password',{username:ADMIN_CREDS.username,password:np,});
   if(result && result.error){ msg.innerHTML='<div class="alert alert-danger">Failed: '+result.error+'</div>'; return; }
-  ADMIN_CREDS.password=np;
+  // password stored server-side only; token remains valid
   saveAdminPassToSession(np);
   msg.innerHTML='<div class="alert alert-success">Password updated!</div>';
   document.getElementById('admin-new-pass').value='';
@@ -8537,7 +8517,7 @@ function sfRenderBrandList(selectedIds){
     <label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:6px 0;">
       <input type="checkbox" class="sf-brand-check" data-bid="${b.id}" ${selectedIds.includes(b.id)||selectedIds.length===0?'checked':''} style="width:16px;height:16px;"/>
       <div style="width:14px;height:14px;border-radius:4px;background:${b.color};flex-shrink:0;"></div>
-      <span style="font-size:13px;">${b.name}</span>
+      <span style="font-size:13px;">${esc(b.name)}</span>
     </label>`).join('');
 }
 
@@ -8555,7 +8535,7 @@ function adminViewStaffPass(){
   // 2-step admin verify to show staff current password
   if(!_sfEditingId){ sfTogglePass(); return; }
   _pendingAdminAction='view_staff_pass';
-  document.getElementById('verify-admin-pass').value='';
+  // verify-admin-pass removed
   document.getElementById('verify-msg').innerHTML='';
   document.getElementById('verify-title').textContent='View staff password';
   document.getElementById('verify-subtitle').textContent='Enter admin password to view this staff account password.';
@@ -9268,6 +9248,14 @@ async function evSendCode(){
 }
 
 async function evVerifyAndChange(){
+  const newPwEl = document.getElementById('ev-new-password');
+  if (newPwEl) {
+    const pwVal = newPwEl.value || '';
+    if (pwVal.length < 8 || !/[A-Z]/.test(pwVal) || !/[a-z]/.test(pwVal) || !/[0-9]/.test(pwVal) || !/[^A-Za-z0-9]/.test(pwVal)) {
+      showToast('Password must be 8+ chars with uppercase, lowercase, number, and symbol');
+      return;
+    }
+  }
   const code=document.getElementById('ev-code').value.trim();
   const newpass=document.getElementById('ev-newpass').value;
   const confirmpass=document.getElementById('ev-confirmpass').value;
@@ -9466,7 +9454,7 @@ function nsUpdatePreview() {
       <div style="background:var(--bg);padding:12px 14px 14px;">
         <div style="width:52px;height:52px;border-radius:50%;background:${color};border:3px solid var(--bg);margin-top:-30px;margin-bottom:8px;display:flex;align-items:center;justify-content:center;overflow:hidden;">${logoHTML}</div>
         <div style="font-size:16px;font-weight:700;">${name}</div>
-        ${b?.name ? `<div style="font-size:12px;color:var(--text2);margin-top:2px;">${b.name}</div>` : ''}
+        ${b?.name ? `<div style="font-size:12px;color:var(--text2);margin-top:2px;">${esc(b.name)}</div>` : ''}
         ${location ? `<div style="font-size:12px;color:var(--text3);margin-top:4px;display:flex;align-items:center;gap:4px;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>${location}</div>` : ''}
         ${phone ? `<div style="font-size:12px;color:var(--text3);margin-top:2px;display:flex;align-items:center;gap:4px;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13.5 19.79 19.79 0 0 1 1.72 4.9 2 2 0 0 1 3.71 2.72h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 10.36a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>${phone}</div>` : ''}
       </div>
@@ -9498,31 +9486,22 @@ function showPasswordLimitReached(){
 
 /* ===== STAFF EXPORT ===== */
 function openStaffExportVerify(){
-  document.getElementById('staff-export-pass').value='';
-  document.getElementById('staff-export-msg').innerHTML='';
-  document.getElementById('staff-export-overlay').style.display='flex';
-  setTimeout(()=>document.getElementById('staff-export-pass').focus(),100);
+  // JWT token proves admin identity — no password prompt needed
+  doStaffExportVerify();
 }
 
 async function doStaffExportVerify(){
-  const pass=document.getElementById('staff-export-pass').value;
   const msg=document.getElementById('staff-export-msg');
-  if(!pass){ msg.innerHTML='<div class="alert alert-danger">Enter admin password.</div>'; return; }
   const btn=document.querySelector('#staff-export-overlay .btn-primary');
   if(btn){ btn.textContent='Downloading...'; btn.disabled=true; }
   try{
-    const res=await fetch(WORKER_URL+'/api/export-data',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({admin_password:pass})
-    });
-    const data=await res.json();
-    if(!res.ok||data.error){ msg.innerHTML='<div class="alert alert-danger">Incorrect password.</div>'; if(btn){btn.textContent='Download';btn.disabled=false;} return; }
+    const data=await api('POST','/api/export-data',{});
+    if(!data||data.error){ msg.innerHTML='<div class="alert alert-danger">Export failed. Please try again.</div>'; if(btn){btn.textContent='Download';btn.disabled=false;} return; }
     document.getElementById('staff-export-overlay').style.display='none';
     if(btn){btn.textContent='Download';btn.disabled=false;}
     await doExportStaffData(data);
   }catch(e){
-    msg.innerHTML='<div class="alert alert-danger">Export failed: '+e.message+'</div>';
+    msg.innerHTML='<div class="alert alert-danger">Export failed. Please try again.</div>';
     if(btn){btn.textContent='Download';btn.disabled=false;}
   }
 }
@@ -9978,17 +9957,12 @@ function doExportVerify(){
   closeExportVerify();
   doExportData(pass).finally(()=>{ if(btn){btn.textContent='Verify & Download';btn.disabled=false;} });
 }
-async function doExportData(adminPass){
+async function doExportData(){
   showToast('Fetching data...');
   var nl='\n'; var data;
   try{
-    const res=await fetch(WORKER_URL+'/api/export-data',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({admin_password:adminPass||ADMIN_CREDS.password})
-    });
-    data=await res.json();
-    if(!res.ok||data.error) throw new Error(data?.error||'Incorrect password');
+    data=await api('POST','/api/export-data',{});
+    if(!data||data.error) throw new Error(data?.error||'Export failed');
   }catch(e){ showToast('Export failed: '+e.message); return; }
   try{
     var now=new Date();
