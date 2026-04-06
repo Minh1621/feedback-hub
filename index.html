@@ -2378,47 +2378,234 @@ function sanitize(str) {
     .replace(/'/g, '&#x27;');
 }
 
+/* ─── Lazy image loading via IntersectionObserver (200px pre-load margin) ─── */
+const _lazyObserver = typeof IntersectionObserver!=='undefined'
+  ? new IntersectionObserver(function(entries,obs){
+      entries.forEach(function(entry){
+        if(entry.isIntersecting){
+          const img=entry.target;
+          if(img.dataset.src){img.src=img.dataset.src;delete img.dataset.src;}
+          obs.unobserve(img);
+        }
+      });
+    },{rootMargin:'200px'})
+  : null;
+
+function lazyLoad(img, src){
+  if(!_lazyObserver){img.src=src;return;}
+  img.src='data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+  img.dataset.src=src;
+  img.style.backgroundColor='var(--bg3)';
+  img.addEventListener('load',function(){img.style.backgroundColor='';},{once:true});
+  _lazyObserver.observe(img);
+}
+
+/* ─── Skeleton card while data loads ─── */
+function skeletonCard(lines){
+  lines=lines||3;
+  const bars=[];
+  for(let i=0;i<lines;i++){
+    const w=i===0?'70%':i===lines-1?'45%':'90%';
+    const h=i===0?'18px':'13px';
+    bars.push('<div style="height:'+h+';background:var(--bg3);border-radius:6px;margin-bottom:8px;width:'+w+';animation:fh-shimmer 1.5s infinite;"></div>');
+  }
+  return '<div style="padding:16px;border-radius:var(--rl,12px);background:var(--bg2);border:1px solid var(--border);margin-bottom:10px;">'+bars.join('')+'</div>';
+}
+
+/* ─── Password strength validation (mirrors backend) ─── */
+function validatePasswordStrength(p){
+  if(!p||p.length<8) return 'Password must be at least 8 characters';
+  if(!/[A-Z]/.test(p)) return 'Must contain an uppercase letter';
+  if(!/[a-z]/.test(p)) return 'Must contain a lowercase letter';
+  if(!/[0-9]/.test(p)) return 'Must contain a number';
+  if(!/[^A-Za-z0-9]/.test(p)) return 'Must contain a special character';
+  return null;
+}
+
+/* ─── Safe error message setter (uses textContent, never innerHTML) ─── */
+function setMsg(el, text, type){
+  if(!el) return;
+  type=type||'danger';
+  el.innerHTML='';
+  const div=document.createElement('div');
+  div.className='alert alert-'+type;
+  div.textContent=text;
+  el.appendChild(div);
+}
+
+/* ─── Debounce / throttle utilities ─── */
+function debounce(fn,ms){
+  ms=ms||300; let timer;
+  return function(){const args=arguments; clearTimeout(timer); timer=setTimeout(function(){fn.apply(null,args);},ms);};
+}
+function throttle(fn,ms){
+  ms=ms||100; let last=0;
+  return function(){const now=Date.now(); if(now-last>=ms){last=now;fn.apply(null,arguments);}};
+}
 
 
 
-// Generate or retrieve unique device ID
+
+/* ─── Device ID: stable per-browser, uses crypto.randomUUID when available ─── */
 function getDeviceId(){
-  try {
-    let did = localStorage.getItem('fh_device_id');
+  try{
+    let did=localStorage.getItem('fh_device_id');
     if(!did){
-      did = 'dev_' + Date.now() + '_' + Math.random().toString(36).slice(2,9);
-      localStorage.setItem('fh_device_id', did);
+      did=typeof crypto.randomUUID==='function'
+        ?'dev_'+crypto.randomUUID()
+        :'dev_'+Date.now()+'_'+Math.random().toString(36).slice(2,9);
+      localStorage.setItem('fh_device_id',did);
     }
     return did;
-  } catch(e){ return 'dev_unknown'; }
+  }catch(e){return 'dev_unknown';}
 }
 
-async function api(method, path, body=null){
+/* ─── In-memory API cache (avoids redundant round-trips) ─── */
+const apiCache = {
+  _store: new Map(),
+  set(key, value, ttlMs=30000){ this._store.set(key,{value,expires:Date.now()+ttlMs}); },
+  get(key){ const e=this._store.get(key); if(!e) return null; if(Date.now()>e.expires){this._store.delete(key);return null;} return e.value; },
+  del(key){ this._store.delete(key); },
+  clear(){ this._store.clear(); },
+};
+
+/* ─── Unified API wrapper: timeout + exponential-backoff retry + cache ─── */
+async function api(method, path, body=null, {cache=false, cacheTtl=30000, retries=2}={}){
+  const cacheKey = method+':'+path+(body?':'+JSON.stringify(body):'');
+  if(method==='GET' && cache){ const hit=apiCache.get(cacheKey); if(hit) return hit; }
   const headers = {'Content-Type':'application/json'};
-  // Send JWT token from memory (never from localStorage or sessionStorage)
-  const token = _authToken || null;
-  if (token) headers['Authorization'] = 'Bearer ' + token;
-  const opts = { method, headers };
-  if (body) opts.body = JSON.stringify(body);
-  try {
-    const res = await fetch(WORKER_URL + path, opts);
-    if (res.status === 401) { doLogout(); return { error: 'Session expired. Please log in again.' }; }
-    return await res.json();
-  } catch(e) {
-    console.error('API error:', e.message);
-    return { error: 'Network error. Please check your connection.' };
+  if(_authToken) headers['Authorization'] = 'Bearer ' + _authToken;
+  let attempt=0;
+  while(attempt<=retries){
+    const controller=new AbortController();
+    const tid=setTimeout(()=>controller.abort(), 20000); // 20s timeout
+    try{
+      const opts={method,headers,signal:controller.signal};
+      if(body) opts.body=JSON.stringify(body);
+      const res=await fetch(WORKER_URL+path, opts);
+      clearTimeout(tid);
+      if(res.status===401){ doLogout(); return {error:'Session expired. Please log in again.'}; }
+      if(res.status===429) return {error:'Too many requests. Please wait a moment.'};
+      if(res.status===503) return {error:'Server is temporarily unavailable. Please try again.'};
+      if(!res.ok && res.status>=500){
+        if(attempt<retries){ await new Promise(r=>setTimeout(r,1000*Math.pow(2,attempt))); attempt++; continue; }
+        return {error:'Server error. Please try again.'};
+      }
+      const data=await res.json();
+      if(method==='GET' && cache && data && !data.error) apiCache.set(cacheKey,data,cacheTtl);
+      if(['POST','PUT','DELETE'].includes(method)){
+        const pfx=path.split('/')[2]||'';
+        for(const k of [...apiCache._store.keys()]){ if(k.includes(pfx)) apiCache.del(k); }
+      }
+      return data;
+    }catch(e){
+      clearTimeout(tid);
+      if(e.name==='AbortError'){
+        if(attempt<retries){ await new Promise(r=>setTimeout(r,1000*Math.pow(2,attempt))); attempt++; continue; }
+        return {error:'Request timed out. Please check your connection.'};
+      }
+      if(attempt<retries){ await new Promise(r=>setTimeout(r,1000*Math.pow(2,attempt))); attempt++; continue; }
+      return {error:'Network error. Please check your connection.'};
+    }
   }
+  return {error:'Request failed after multiple attempts.'};
 }
 
+/* ─── Upload progress bar ─── */
+const UploadProgress = {
+  _el:null, _bar:null, _lbl:null, _pct:null,
+  show(){
+    if(!this._el){
+      const el=document.createElement('div'); el.id='fh-upload-progress';
+      el.style.cssText='position:fixed;bottom:0;left:0;right:0;z-index:9999;padding:12px 20px 16px;background:var(--bg2);border-top:1px solid var(--border);box-shadow:0 -2px 12px rgba(0,0,0,.1);';
+      el.innerHTML='<div style="max-width:480px;margin:0 auto;"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;"><span id="fh-upl-lbl" style="font-size:13px;font-weight:600;color:var(--text);">Uploading\u2026</span><span id="fh-upl-pct" style="font-size:13px;font-weight:700;color:var(--accent);">0%</span></div><div style="background:var(--bg3);border-radius:99px;height:5px;overflow:hidden;"><div id="fh-upl-bar" style="height:100%;background:var(--accent);border-radius:99px;width:0%;transition:width .2s ease;"></div></div></div>';
+      document.body.appendChild(el); this._el=el;
+    }
+    this._el.style.display='block';
+    this._bar=document.getElementById('fh-upl-bar');
+    this._lbl=document.getElementById('fh-upl-lbl');
+    this._pct=document.getElementById('fh-upl-pct');
+  },
+  update(pct,label){
+    if(!this._el) this.show();
+    label=label||'Uploading\u2026';
+    const p=Math.max(0,Math.min(100,Math.round(pct)));
+    if(this._bar) this._bar.style.width=p+'%';
+    if(this._lbl) this._lbl.textContent=label;
+    if(this._pct) this._pct.textContent=p+'%';
+  },
+  hide(){ if(this._el) this._el.style.display='none'; },
+};
+
+/* ─── Chunked resumable upload (for files > 2 MB) ─── */
+const CHUNK_SIZE = 2*1024*1024;
+async function _uploadFileChunked(file, onProgress){
+  const rKey='fh_upl_'+file.name+'_'+file.size;
+  let state=null; try{ state=JSON.parse(sessionStorage.getItem(rKey)||'null'); }catch(e2){}
+  let uploadId=state&&state.uploadId?state.uploadId:null;
+  let received=state&&state.received?state.received:[];
+  const totalChunks=Math.ceil(file.size/CHUNK_SIZE);
+  if(!uploadId){
+    const sr=await api('POST','/api/upload/start',{filename:file.name,totalChunks:totalChunks,mime:file.type,totalSize:file.size});
+    if(sr&&sr.error) return {error:sr.error};
+    uploadId=sr.uploadId; received=[];
+    try{ sessionStorage.setItem(rKey,JSON.stringify({uploadId:uploadId,received:received})); }catch(e2){}
+  }
+  const hdrs=_authToken?{'Authorization':'Bearer '+_authToken}:{};
+  for(let i=0;i<totalChunks;i++){
+    if(received.indexOf(i)!==-1){ if(onProgress) onProgress((received.length/totalChunks)*95,'Resuming\u2026 '+received.length+'/'+totalChunks); continue; }
+    const chunkBlob=file.slice(i*CHUNK_SIZE,Math.min((i+1)*CHUNK_SIZE,file.size));
+    let chunkOk=false;
+    for(let att=0;att<3;att++){
+      try{
+        const fd=new FormData(); fd.append('uploadId',uploadId); fd.append('chunkIndex',String(i)); fd.append('chunk',chunkBlob,'chunk_'+i);
+        const ctrl=new AbortController(); const tid=setTimeout(function(){ctrl.abort();},120000);
+        const res=await fetch(WORKER_URL+'/api/upload/chunk',{method:'POST',body:fd,headers:hdrs,signal:ctrl.signal});
+        clearTimeout(tid);
+        const cr=await res.json(); if(cr&&cr.error) return {error:cr.error};
+        received=cr.received||received; chunkOk=true; break;
+      }catch(e2){ if(att<2) await new Promise(function(r){setTimeout(r,1000*(att+1));}); }
+    }
+    if(!chunkOk) return {error:'Failed to upload part '+(i+1)+'. Please try again.'};
+    try{ sessionStorage.setItem(rKey,JSON.stringify({uploadId:uploadId,received:received})); }catch(e2){}
+    if(onProgress) onProgress((received.length/totalChunks)*95,'Uploading\u2026 '+received.length+'/'+totalChunks+' parts');
+  }
+  if(onProgress) onProgress(97,'Assembling file\u2026');
+  const cr2=await api('POST','/api/upload/complete',{uploadId:uploadId});
+  if(cr2&&cr2.error) return {error:cr2.error};
+  try{ sessionStorage.removeItem(rKey); }catch(e2){}
+  if(onProgress) onProgress(100,'Upload complete!');
+  return cr2;
+}
+
+/* ─── Main uploadFile: small files via XHR progress, large via chunked ─── */
 async function uploadFile(file){
-  const form = new FormData();
-  form.append('file', file);
-  const headers = _authToken ? { 'Authorization': 'Bearer ' + _authToken } : {};
-  try {
-    const res = await fetch(WORKER_URL + '/api/upload', { method:'POST', body: form, headers });
-    if (res.status === 401) { doLogout(); return { error: 'Session expired' }; }
-    return await res.json();
-  } catch(e) { return { error: 'Upload failed. Please try again.' }; }
+  const isPdf=file.type==='application/pdf';
+  const isImg=file.type==='image/jpeg'||file.type==='image/png';
+  if(!isPdf && !isImg) return {error:'Only PDF, JPEG, and PNG files are accepted.'};
+  const maxB=isPdf?10*1024*1024:5*1024*1024;
+  if(file.size>maxB) return {error:'File too large. Max is '+(isPdf?'10':'5')+' MB.'};
+  UploadProgress.show(); UploadProgress.update(0,'Preparing upload\u2026');
+  try{
+    if(file.size>CHUNK_SIZE) return await _uploadFileChunked(file,function(p,l){UploadProgress.update(p,l);});
+    return await new Promise(function(resolve){
+      const form=new FormData(); form.append('file',file);
+      const xhr=new XMLHttpRequest();
+      xhr.open('POST',WORKER_URL+'/api/upload');
+      if(_authToken) xhr.setRequestHeader('Authorization','Bearer '+_authToken);
+      xhr.upload.onprogress=function(e){ if(e.lengthComputable) UploadProgress.update(Math.round(e.loaded/e.total*95),'Uploading\u2026'); };
+      xhr.onload=function(){
+        if(xhr.status===401){ doLogout(); resolve({error:'Session expired.'}); return; }
+        if(xhr.status===413){ resolve({error:'File too large.'}); return; }
+        if(xhr.status===415){ resolve({error:'File type not allowed.'}); return; }
+        try{ resolve(JSON.parse(xhr.responseText)); }catch(e2){ resolve({error:'Upload response invalid.'}); }
+      };
+      xhr.onerror=function(){ resolve({error:'Network error during upload.'}); };
+      xhr.ontimeout=function(){ resolve({error:'Upload timed out.'}); };
+      xhr.timeout=120000;
+      xhr.send(form);
+    });
+  }finally{ UploadProgress.hide(); }
 }
 
 // Convert base64 dataURL to Blob without using fetch() — works in all browsers
@@ -2431,79 +2618,84 @@ function dataUrlToBlob(dataUrl){
   return new Blob([arr], { type: mime });
 }
 
-// Upload ref photos — all in one FormData request (no batching overhead)
-// Falls back gracefully: if upload fails, photo kept as base64 in worker fallback
+/* ─── Compress image client-side before upload (resizes + converts to JPEG) ─── */
+function compressImage(file, maxDim, quality){
+  maxDim = maxDim||1920; quality = quality||0.82;
+  return new Promise(function(resolve, reject){
+    const url=URL.createObjectURL(file);
+    const img=new Image();
+    img.onload=function(){
+      URL.revokeObjectURL(url);
+      let w=img.width, h=img.height;
+      if(w>maxDim||h>maxDim){ if(w>h){h=Math.round(h*maxDim/w);w=maxDim;}else{w=Math.round(w*maxDim/h);h=maxDim;} }
+      const c=document.createElement('canvas'); c.width=w; c.height=h;
+      c.getContext('2d').drawImage(img,0,0,w,h);
+      c.toBlob(function(blob){ if(!blob){reject(new Error('Compression failed'));return;} resolve(blob); },'image/jpeg',quality);
+    };
+    img.onerror=function(){URL.revokeObjectURL(url);reject(new Error('Failed to load image'));};
+    img.src=url;
+  });
+}
+
+/* ─── Batch photo upload with compression + 4-concurrent batches ─── */
 async function preUploadRefPhotos(refs, reportId, onProgress){
-  const jobs = [];
-  refs.forEach((ref, ri) => {
-    (ref.photos || []).forEach((p, pi) => {
-      if(p?.startsWith('data:'))
-        jobs.push({ ri, pi, dataUrl: p, key: `report_${reportId}_ref${ri}_p${pi}` });
+  const jobs=[];
+  refs.forEach(function(ref,ri){
+    (ref.photos||[]).forEach(function(p,pi){
+      if(p&&p.startsWith('data:')) jobs.push({ri:ri,pi:pi,dataUrl:p,key:'report_'+reportId+'_ref'+ri+'_p'+pi});
     });
   });
   if(!jobs.length) return refs;
-
-  // Split into parallel batches of 5 (5 concurrent requests)
-  const BATCH = 5;
-  const urlMap = {};
-  let done = 0;
-  const batches = [];
-  for(let i = 0; i < jobs.length; i += BATCH) batches.push(jobs.slice(i, i + BATCH));
-
-  // Run all batches in parallel
-  await Promise.all(batches.map(async batch => {
-    const form = new FormData();
-    for(const job of batch) {
-      const blob = dataUrlToBlob(job.dataUrl);
-      form.append(job.key, blob, job.key + '.jpg');
+  const BATCH=4, urlMap={};
+  let done=0;
+  for(let i=0;i<jobs.length;i+=BATCH){
+    const batch=jobs.slice(i,i+BATCH);
+    const form=new FormData();
+    for(let j=0;j<batch.length;j++){
+      const job=batch[j];
+      let blob=dataUrlToBlob(job.dataUrl);
+      if(blob.size>500*1024){
+        try{ blob=await compressImage(new File([blob],job.key+'.jpg',{type:blob.type})); }catch(e2){}
+      }
+      if(blob.size<=5*1024*1024) form.append(job.key,blob,job.key+'.jpg');
     }
-    try {
-      // Send admin password OR staff ID depending on who is logged in
-      const upHeaders = _authToken ? { 'Authorization': 'Bearer ' + _authToken } : {};
-      const r = await fetch(WORKER_URL + '/api/upload-photos', { method: 'POST', body: form, headers: upHeaders });
-      const result = await r.json();
-      if(result.ok && result.urls) Object.assign(urlMap, result.urls);
-    } catch(e) { console.warn('Batch upload failed, worker will handle:', e.message); }
-    done += batch.length;
-    if(onProgress) onProgress(done, jobs.length);
-  }));
-
-  return refs.map((ref, ri) => ({
-    ...ref,
-    photos: (ref.photos || []).map((p, pi) => {
-      if(!p?.startsWith('data:')) return p;
-      const job = jobs.find(j => j.ri === ri && j.pi === pi);
-      return (job && urlMap[job.key]) ? urlMap[job.key] : p; // worker handles any remaining base64
-    })
-  }));
+    try{
+      const upHeaders=_authToken?{'Authorization':'Bearer '+_authToken}:{};
+      const r=await fetch(WORKER_URL+'/api/upload-photos',{method:'POST',body:form,headers:upHeaders});
+      const result=await r.json();
+      if(result.ok&&result.urls) Object.assign(urlMap,result.urls);
+    }catch(e){ console.warn('Batch upload failed:',e.message); }
+    done+=batch.length;
+    if(onProgress) onProgress(done,jobs.length);
+  }
+  return refs.map(function(ref,ri){
+    return Object.assign({},ref,{
+      photos:(ref.photos||[]).map(function(p,pi){
+        if(!p||!p.startsWith('data:')) return p;
+        const job=jobs.find(function(j){return j.ri===ri&&j.pi===pi;});
+        return (job&&urlMap[job.key])?urlMap[job.key]:null;
+      }).filter(Boolean)
+    });
+  });
 }
 
-async function loadAllData(reviewerStoreId=null){
+async function loadAllData(reviewerStoreId){
+  reviewerStoreId=reviewerStoreId||null;
   showLoadingOverlay(true);
-  try {
+  try{
     if(reviewerStoreId){
-      const data = await api('GET', `/api/reviewer-data/${reviewerStoreId}`);
-      if(data && data.brand){
-        const idx = DB.brands.findIndex(b => b.id === data.brand.id);
-        if(idx !== -1) DB.brands[idx] = data.brand;
-        else DB.brands = [data.brand];
+      const data=await api('GET','/api/reviewer-data/'+reviewerStoreId,null,{cache:true,cacheTtl:20000});
+      if(data&&data.brand){
+        const idx=DB.brands.findIndex(function(b){return b.id===data.brand.id;});
+        if(idx!==-1) DB.brands[idx]=data.brand; else DB.brands=[data.brand];
       }
-    } else {
-      let data = await api('GET', '/api/brands');
-      // ✅ FIX: if we get an error on first attempt (e.g. auth header race),
-      // wait briefly and retry once — this guarantees data loads on first login
-      if(!Array.isArray(data)){
-        await new Promise(r => setTimeout(r, 350));
-        data = await api('GET', '/api/brands');
-      }
-      if(Array.isArray(data)) DB.brands = data;
-      else if(data && data.error) console.error('Load error:', data.error);
+    }else{
+      const data=await api('GET','/api/brands',null,{cache:true,cacheTtl:15000});
+      if(Array.isArray(data)) DB.brands=data;
+      else if(data&&data.error) console.error('Load error:',data.error);
     }
-  } catch(e) {
-    console.error('Load error:', e);
-  } finally {
-    showLoadingOverlay(false);
-  }
+  }catch(e){ console.error('Load error:',e); }
+  finally{ showLoadingOverlay(false); }
 }
 
 function showLoadingOverlay(show){
@@ -2550,40 +2742,30 @@ function goTo(id){
   }
 }
 
-// Silent background refresh for reviewer — reloads data + re-renders without spinner/toast
-let _rvRefreshPending = false;
+/* ─── Silent reviewer refresh (throttled to 1x per 5s) ─── */
+let _rvRefreshPending=false, _rvLastRefresh=0;
 async function _silentRvRefresh(){
-  if(_rvRefreshPending) return;
-  _rvRefreshPending = true;
+  const now=Date.now();
+  if(_rvRefreshPending||now-_rvLastRefresh<5000) return;
+  _rvRefreshPending=true; _rvLastRefresh=now;
   try{
-    // Use reviewer-specific endpoint — much faster than full /api/brands
-    const sid = DB.reviewerStoreId;
-    let data = null;
+    const sid=DB.reviewerStoreId;
     if(sid){
-      const rv = await api('GET', `/api/reviewer-data/${sid}`);
-      if(rv && rv.brand){
-        const idx = DB.brands.findIndex(b => b.id === rv.brand.id);
-        if(idx !== -1) DB.brands[idx] = rv.brand;
-        else DB.brands = [rv.brand];
-        data = true;
+      apiCache.del('GET:/api/reviewer-data/'+sid+':');
+      const rv=await api('GET','/api/reviewer-data/'+sid);
+      if(rv&&rv.brand){
+        const idx=DB.brands.findIndex(function(b){return b.id===rv.brand.id;});
+        if(idx!==-1) DB.brands[idx]=rv.brand; else DB.brands=[rv.brand];
+        const activeScreen=document.querySelector('.screen.active');
+        const formDiv=document.getElementById('rv-feedback-form');
+        const formVisible=formDiv&&formDiv.style.display!=='none';
+        if(!(activeScreen&&activeScreen.id==='s-reviewer-report'&&formVisible&&DB.itemFeedbacks&&DB.itemFeedbacks.length)){
+          if(DB.role==='reviewer') renderReviewerHome();
+        }
       }
     }
-    if(!data){
-      const all = await api('GET', '/api/brands');
-      if(Array.isArray(all)) DB.brands = all;
-    }
-    const activeScreen = document.querySelector('.screen.active');
-    const isOnFormScreen = activeScreen && activeScreen.id === 's-reviewer-report';
-    const formDiv = document.getElementById('rv-feedback-form');
-    const formVisible = formDiv && formDiv.style.display !== 'none';
-    // Don't clobber in-memory form state if reviewer is actively editing
-    if(isOnFormScreen && formVisible && DB.itemFeedbacks && DB.itemFeedbacks.length && DB.reviewerReportId && DB.editingFeedbackId){
-      // Keep in-memory edits — don't re-render
-    } else {
-      if(DB.role==='reviewer') renderReviewerHome();
-    }
-  } catch(e){ /* silent */ }
-  _rvRefreshPending = false;
+  }catch(e){ /* silent */ }
+  _rvRefreshPending=false;
 }
 function brand(){ return DB.brands.find(b=>b.id===DB.currentBrandId); }
 
@@ -2617,58 +2799,76 @@ async function doLogin(){
   const u=document.getElementById('login-u').value.trim();
   const p=document.getElementById('login-p').value;
   const errEl=document.getElementById('login-err');
-  errEl.style.display='none';
-  if(!u||!p){ errEl.style.display='block'; errEl.textContent='Please enter username and password.'; return; }
+  if(errEl) errEl.style.display='none';
+  if(!u||!p){
+    if(errEl){errEl.style.display='block';errEl.textContent='Please enter username and password.';}
+    return;
+  }
+  /* Client-side attempt throttle (server enforces real rate limit) */
+  if((window._loginAttempts||0)>=5){
+    if(errEl){errEl.style.display='block';errEl.textContent='Too many attempts. Please wait a moment.';}
+    return;
+  }
   const btn=document.querySelector('#s-login .btn-primary');
-  if(btn){ btn.textContent='Signing in...'; btn.disabled=true; }
-  try {
-    const result=await api('POST','/api/login',{username:u, password:p, device_id:getDeviceId()});
-    if(btn){ btn.textContent='Sign in →'; btn.disabled=false; }
-    if(!result || result.error){
-      errEl.style.display='block'; errEl.textContent=result?.error||'Incorrect username or password.'; return;
+  if(btn){btn.textContent='Signing in…';btn.disabled=true;}
+  try{
+    const result=await api('POST','/api/login',{username:u,password:p,device_id:getDeviceId()},{retries:1});
+    if(btn){btn.textContent='Sign in →';btn.disabled=false;}
+    if(!result||result.error){
+      window._loginAttempts=(window._loginAttempts||0)+1;
+      if(errEl){
+        errEl.style.display='block';
+        /* FIX: show helpful message for JWT_SECRET misconfiguration */
+        const msg=result&&result.error?result.error:'';
+        if(msg.indexOf('JWT_SECRET')!==-1||msg.indexOf('503')!==-1||msg.indexOf('starting up')!==-1||msg.indexOf('configuration')!==-1){
+          errEl.textContent='Server configuration issue. Please contact your administrator. (JWT_SECRET may not be set.)';
+        }else{
+          errEl.textContent='Incorrect username or password.';
+        }
+      }
+      return;
     }
-    // ✅ FIX: set role + credentials BEFORE loadAllData so auth header is sent correctly
+    window._loginAttempts=0;
+    /* Set token + role BEFORE loadAllData so auth header is sent correctly */
+    _authToken=result.token||null;
     DB.role=result.role;
     if(result.role==='admin'){
-      _authToken = result.token || null;
-      saveSession('admin', null, null);
-    } else if(result.token) _authToken = result.token;
-    if(result.role==='staff'){
+      saveSession('admin',null,null);
+    }else if(result.role==='staff'){
       DB.staffData=result;
-      saveSession('staff', null, null, result);
-    } else if(result.token) _authToken = result.token;
-    if(result.role==='reviewer'){
+      saveSession('staff',null,null,result);
+    }else if(result.role==='reviewer'){
       DB.reviewerBrandId=result.brand_id;
       DB.reviewerStoreId=result.store_id;
-      saveSession('reviewer', result.brand_id, result.store_id);
+      saveSession('reviewer',result.brand_id,result.store_id);
     }
-    await loadAllData(result.role==='reviewer' ? result.store_id : null);
+    await loadAllData(result.role==='reviewer'?result.store_id:null);
     if(result.role==='admin'){
       await loadAdminSettingsFromDB();
-      renderHome(); renderHomeAppLogo(); goTo('s-home');
-    } else if(result.role==='staff'){
+      renderHome();renderHomeAppLogo();goTo('s-home');
+    }else if(result.role==='staff'){
       try{
         const prefs=JSON.parse(result.notif_prefs||'null');
-        if(prefs?.theme){ localStorage.setItem('fh_theme', prefs.theme); localStorage.setItem('fh_theme_manual', prefs.theme); document.documentElement.setAttribute('data-theme', prefs.theme); }
-      }catch(e){}
-      renderStaffHome(); goTo('s-home');
-    } else if(result.role==='reviewer'){
+        if(prefs&&prefs.theme){localStorage.setItem('fh_theme',prefs.theme);localStorage.setItem('fh_theme_manual',prefs.theme);document.documentElement.setAttribute('data-theme',prefs.theme);}
+      }catch(e2){}
+      renderStaffHome();goTo('s-home');
+    }else if(result.role==='reviewer'){
       if(result.notif_email){
         const sid=result.store_id;
         try{
           const raw=localStorage.getItem('fh_rv_settings_'+sid);
           let local=raw?JSON.parse(raw):{};
-          local.notifEnabled=true; local.notifEmail=result.notif_email;
-          localStorage.setItem('fh_rv_settings_'+sid, JSON.stringify(local));
-        }catch(e){}
+          local.notifEnabled=true;local.notifEmail=result.notif_email;
+          localStorage.setItem('fh_rv_settings_'+sid,JSON.stringify(local));
+        }catch(e2){}
       }
       await loadRvSettingsFromDB(result.store_id);
-      renderReviewerHome(); goTo('s-reviewer-home');
+      renderReviewerHome();goTo('s-reviewer-home');
     }
-  } catch(e) {
-    if(btn){ btn.textContent='Sign in →'; btn.disabled=false; }
+  }catch(e){
+    if(btn){btn.textContent='Sign in →';btn.disabled=false;}
     showLoadingOverlay(false);
-    errEl.style.display='block'; errEl.textContent='Error: '+e.message;
+    if(errEl){errEl.style.display='block';errEl.textContent='Login failed. Please try again.';}
     console.error('Login error:',e);
   }
 }
@@ -2853,23 +3053,23 @@ async function restoreSession(){
 }
 
 // Run on page load
-window.addEventListener('load', async ()=>{
+window.addEventListener('load', async function(){
   // Global delegated click handler — catches brand card clicks even if inline onclick fails
   document.addEventListener('click', function(e){
     const brandCard = e.target.closest('[data-brand-id]');
     if(brandCard && !e.target.closest('[data-report-id]') && brandCard.dataset.brandId){
       // Only handle if no inline onclick already handled it
-      // (inline onclick sets DB.currentBrandId before this fires)
     }
-  }, true); // capture phase — fires before any element handlers
+  }, true);
   loadSettingsFromStorage();
-  // ✅ FIX: restore admin password from sessionStorage immediately on load
-  // so it is available before restoreSession calls loadAllData
-  // _authToken is session-only in memory — not persisted to storage
-  const restored = await restoreSession();
-  if(!restored){
-    goTo('s-login');
+  /* Inject shimmer CSS for skeleton loaders */
+  if(!document.getElementById('fh-skeleton-css')){
+    const s=document.createElement('style'); s.id='fh-skeleton-css';
+    s.textContent='@keyframes fh-shimmer{0%,100%{opacity:1}50%{opacity:.5}}';
+    document.head.appendChild(s);
   }
+  const restored = await restoreSession();
+  if(!restored){ goTo('s-login'); }
 });
 
 /* ===== HOME ===== */
@@ -4017,27 +4217,29 @@ function addRefPhotos(id,input){
   });
 }
 
-// ── Central HEIC/HEIF → JPEG converter ───────────────────────────────────────
-// Returns a dataURL (JPEG). Handles HEIC, HEIF, and all standard image formats.
+/* ─── HEIC/HEIF → JPEG + compress (resize to max 1920px, ~82% quality) ─── */
 async function convertToJpeg(file){
-  const isHeic = file.type === 'image/heic' || file.type === 'image/heif'
-    || file.name.toLowerCase().endsWith('.heic')
-    || file.name.toLowerCase().endsWith('.heif');
-  let blob = file;
+  const isHeic=file.type==='image/heic'||file.type==='image/heif'
+    ||file.name.toLowerCase().endsWith('.heic')||file.name.toLowerCase().endsWith('.heif');
+  let blob=file;
   if(isHeic){
-    // Show a brief toast so user knows conversion is happening
-    showToast('Converting photo...');
-    try {
-      const converted = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.88 });
-      blob = Array.isArray(converted) ? converted[0] : converted;
-    } catch(e) {
-      console.warn('HEIC convert failed, using original:', e.message);
-    }
+    showToast('Converting photo…');
+    try{
+      const converted=await heic2any({blob:file,toType:'image/jpeg',quality:0.88});
+      blob=Array.isArray(converted)?converted[0]:converted;
+    }catch(e){console.warn('HEIC convert failed, using original:',e.message);}
   }
-  return new Promise((resolve, reject)=>{
-    const reader = new FileReader();
-    reader.onload = e => resolve(e.target.result);
-    reader.onerror = reject;
+  /* Compress if larger than 300 KB to save upload bandwidth */
+  if(blob.size>300*1024){
+    try{
+      const fileObj=blob instanceof File?blob:new File([blob],file.name||'photo.jpg',{type:'image/jpeg'});
+      blob=await compressImage(fileObj,1920,0.82);
+    }catch(e){console.warn('Compression failed, using original:',e.message);}
+  }
+  return new Promise(function(resolve,reject){
+    const reader=new FileReader();
+    reader.onload=function(e){resolve(e.target.result);};
+    reader.onerror=reject;
     reader.readAsDataURL(blob);
   });
 }
@@ -5925,32 +6127,38 @@ async function autoSavePhotoToDevice(dataUrl, label){
   await savePhotoToDevice(dataUrl, name);
 }
 
+/* ─── stampPhoto: deferred via requestIdleCallback to avoid blocking UI ─── */
 function stampPhoto(dataURL, label){
-  return new Promise(resolve=>{
-    const img=new Image();
-    img.onload=()=>{
-      const c=document.createElement('canvas');
-      c.width=img.width; c.height=img.height;
-      const ctx=c.getContext('2d');
-      ctx.drawImage(img,0,0);
-      const ts=getTimestamp();
-      const takenBy=label||'Quality Control';
-      const line1='Date: '+ts;
-      const line2='Take by: '+takenBy;
-      const fontSize=Math.max(14,Math.round(img.width/30));
-      ctx.font='bold '+fontSize+'px sans-serif';
-      const pad=10, lineH=fontSize+6;
-      const w1=ctx.measureText(line1).width, w2=ctx.measureText(line2).width;
-      const bw=Math.max(w1,w2)+pad*2, bh=lineH*2+pad*2;
-      const bx=img.width-bw-10, by=img.height-bh-10;
-      ctx.fillStyle='rgba(0,0,0,0.6)';
-      ctx.fillRect(bx,by,bw,bh);
-      ctx.fillStyle='#ffffff';
-      ctx.fillText(line1,bx+pad,by+pad+fontSize);
-      ctx.fillText(line2,bx+pad,by+pad+fontSize+lineH);
-      resolve(c.toDataURL('image/jpeg',0.88));
-    };
-    img.src=dataURL;
+  return new Promise(function(resolve){
+    function doStamp(){
+      const img=new Image();
+      img.onload=function(){
+        const c=document.createElement('canvas');
+        c.width=img.width; c.height=img.height;
+        const ctx=c.getContext('2d');
+        ctx.drawImage(img,0,0);
+        const ts=getTimestamp();
+        const takenBy=label||'Quality Control';
+        const line1='Date: '+ts;
+        const line2='By: '+takenBy;
+        const fontSize=Math.max(14,Math.round(img.width/30));
+        ctx.font='bold '+fontSize+'px -apple-system,sans-serif';
+        const pad=10, lineH=fontSize+6;
+        const w1=ctx.measureText(line1).width, w2=ctx.measureText(line2).width;
+        const bw=Math.max(w1,w2)+pad*2, bh=lineH*2+pad*2;
+        const bx=img.width-bw-10, by=img.height-bh-10;
+        ctx.fillStyle='rgba(0,0,0,0.62)';
+        ctx.fillRect(bx,by,bw,bh);
+        ctx.fillStyle='#ffffff';
+        ctx.fillText(line1,bx+pad,by+pad+fontSize);
+        ctx.fillText(line2,bx+pad,by+pad+fontSize+lineH);
+        resolve(c.toDataURL('image/jpeg',0.88));
+      };
+      img.onerror=function(){resolve(dataURL);};
+      img.src=dataURL;
+    }
+    if(typeof requestIdleCallback!=='undefined') requestIdleCallback(doStamp);
+    else setTimeout(doStamp,0);
   });
 }
 function getReviewerName(){
@@ -10037,33 +10245,33 @@ async function doExportData(){
 function openLightbox(src){ document.getElementById('lightbox-img').src=src; document.getElementById('lightbox').classList.add('open'); }
 function closeLightbox(){ document.getElementById('lightbox').classList.remove('open'); }
 
-// Refresh reviewer data when they switch back to the tab/app
-// Silent background refresh for admin/staff — reloads data + re-renders without spinner
-let _adminRefreshPending = false;
+/* ─── Silent admin/staff refresh (throttled to 1x per 5s) ─── */
+let _adminRefreshPending=false, _adminLastRefresh=0;
 async function _silentAdminRefresh(){
-  if(_adminRefreshPending) return;
-  _adminRefreshPending = true;
-  try {
-    const data = await api('GET', '/api/brands');
+  const now=Date.now();
+  if(_adminRefreshPending||now-_adminLastRefresh<5000) return;
+  _adminRefreshPending=true; _adminLastRefresh=now;
+  try{
+    apiCache.del('GET:/api/brands:');
+    const data=await api('GET','/api/brands');
     if(Array.isArray(data)){
-      DB.brands = data;
+      DB.brands=data;
       if(DB.role==='staff') renderStaffHome();
-      else { renderHome(); if(DB.currentBrandId) { renderBrandHero(); renderBrandReports(); } }
+      else{ renderHome(); if(DB.currentBrandId){renderBrandHero();renderBrandReports();} }
     }
-  } catch(e) { /* silent */ }
-  _adminRefreshPending = false;
+  }catch(e){ /* silent */ }
+  _adminRefreshPending=false;
 }
 
-document.addEventListener('visibilitychange', ()=>{
-  if(document.visibilityState !== 'visible') return;
-  const activeScreen = document.querySelector('.screen.active');
+document.addEventListener('visibilitychange',function(){
+  if(document.visibilityState!=='visible') return;
+  const activeScreen=document.querySelector('.screen.active');
   if(!activeScreen) return;
-  if(DB.role === 'reviewer'){
-    if(activeScreen.id === 's-reviewer-home') _silentRvRefresh();
-  } else if(DB.role === 'admin' || DB.role === 'staff'){
-    // Refresh on any main screen (not mid-edit screens)
-    const refreshScreens = ['s-home','s-brand','s-store-detail'];
-    if(refreshScreens.includes(activeScreen.id)) _silentAdminRefresh();
+  if(DB.role==='reviewer'){
+    if(activeScreen.id==='s-reviewer-home') _silentRvRefresh();
+  }else if(DB.role==='admin'||DB.role==='staff'){
+    const refreshScreens=['s-home','s-brand','s-store-detail'];
+    if(refreshScreens.indexOf(activeScreen.id)!==-1) _silentAdminRefresh();
   }
 });
 </script>
