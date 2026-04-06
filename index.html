@@ -2460,6 +2460,9 @@ function getDeviceId(){
   }catch(e){return 'dev_unknown';}
 }
 
+/* ─── Auth token: in-memory only, never localStorage ─── */
+let _authToken = null;
+
 /* ─── In-memory API cache (avoids redundant round-trips) ─── */
 const apiCache = {
   _store: new Map(),
@@ -7800,7 +7803,7 @@ async function testNotif(){
   setTimeout(()=>{ msg.innerHTML=''; },8000);
 }
 let ADMIN_CREDS = { username: 'admin' };  // password NEVER stored
-let _authToken = null;  // JWT held only in memory — cleared on logout/refresh
+// _authToken declared near top of script (see below)
 
 async function changeAdminUser(){
   const newUser=document.getElementById('admin-username-edit').value.trim();
